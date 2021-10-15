@@ -1,4 +1,6 @@
-import numpy as np
+import os
+from pathlib import Path
+
 from dipy.core.gradients import gradient_table
 from dipy.data import default_sphere
 from dipy.direction import DeterministicMaximumDirectionGetter
@@ -14,17 +16,13 @@ from dipy.tracking.local_tracking import LocalTracking
 from dipy.tracking.stopping_criterion import ThresholdStoppingCriterion
 from dipy.tracking.streamline import Streamlines
 from dipy.segment.mask import median_otsu
-from dipy.viz import window, actor, colormap, has_fury
-import nibabel
 import matplotlib.pyplot as plt
 
-# Enables/disables interactive visualization
-interactive = False
-
-# define file paths
+# define paths
 fimg = "../../data/input/sharepoint/ADNI/003_S_4136.nii.gz"
 fbval = "../../data/input/sharepoint/ADNI/7_1027719_7_20120918154348.bval"
 fbvec = "../../data/input/sharepoint/ADNI/7_1027719_7_20120918154348.bvec"
+output_dir = "../../data/output/"
 
 data, affine, hardi_img = load_nifti(fimg, return_img=True) 
 mask, binary_mask = median_otsu(data[:, :, :, 0]) 
@@ -58,45 +56,6 @@ streamline_generator = LocalTracking(detmax_dg, stopping_criterion,
                                      return_all=False)
 streamlines = Streamlines(streamline_generator)
 
-##############################
-# Create connectivity matrix
-##############################
- 
-# # remove tracks shorter than 30 mm
-# longer_streamlines = [t for t in streamlines if len(t)>30]
-
-# # load atlas data
-# atlas = nibabel.load('../../data/input/atlas_reg.nii.gz')
-# labels = atlas.get_fdata().astype(np.uint8)
-
-# # visualize atlas cross-section
-# plt.figure()
-# plt.imshow(labels[:, :, 25])
-# plt.show()
-
-# print(f'No. of unique atlas labels: {len(np.unique(labels))}')
-
-# M = utils.connectivity_matrix(longer_streamlines, 
-#                               label_volume=labels, 
-#                               affine=affine, 
-#                               return_mapping=True,
-#                               mapping_as_streamlines=True)
-
-
-# print(M)
-
-######################################
-
-# maybe try: dipy.align.affine_registration to find affine transformation between two 3D images
-
-
+# generate and save tractogram 
 sft = StatefulTractogram(streamlines, hardi_img, Space.RASMM)
-save_trk(sft, "../../data/output/tractogram_deterministic_dg_ADNI.trk") # save tractogram 
-
-# if has_fury:
-#     scene = window.Scene()
-#     scene.add(actor.line(streamlines, colormap.line_colors(streamlines)))
-#     window.record(scene, out_path='../../data/output/tractogram_deterministic_dg_ADNI.png',
-#                   size=(800, 800))
-#     if interactive:
-#         window.show(scene)
+save_trk(sft, os.path.join(output_dir, f"tractogram_{Path(fimg).stem}.trk"))
