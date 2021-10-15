@@ -16,6 +16,7 @@ from dipy.align.transforms import (TranslationTransform3D,
                                    AffineTransform3D)
 import matplotlib.pyplot as plt
 
+from utils_vis import visualize_NIfTI_data
 
 atlas_path = '../../data/input/atlas_reg.nii.gz'
 adni_path = '../../data/input/sharepoint/ADNI/003_S_4136.nii.gz'
@@ -30,6 +31,7 @@ static = np.squeeze(nib_adni.get_fdata())[..., 0]
 static_grid2world = nib_adni.affine
 
 nib_atlas = nib.load(atlas_path)
+visualize_NIfTI_data(nib_atlas, depths=[0, 10, 15, 37])
 moving = np.array(nib_atlas.get_fdata())
 moving_grid2world = nib_atlas.affine
 
