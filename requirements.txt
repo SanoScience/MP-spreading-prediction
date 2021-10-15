@@ -1,12 +1,7 @@
-tqdm
-numpy
-scipy
-matplotlib
+visbrain
 pandas
-nibabel
-scikit-image
-scikit-learn
-networkx
 dipy
+numpy 
+nibabel
+matplotlib
 fury
-pyyaml
