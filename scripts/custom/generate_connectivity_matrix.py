@@ -6,6 +6,7 @@ import nibabel
 from dipy.tracking import utils 
 import matplotlib.pyplot as plt
 import matplotlib
+from scipy.ndimage.measurements import label
 matplotlib.use('TKAgg')
 
 # load tractogram data
@@ -20,10 +21,11 @@ affine = tractogram.affine # transformation to align streamlines to atlas
 print(f'No. of streamlines: {np.shape(longer_streamlines)}')
 
 # load atlas data
-atlas = nibabel.load('../../data/input/atlas_registered.nii.gz')
+atlas = nibabel.load('../../data/input/atlas/aal_registered.nii.gz')
 labels = atlas.get_fdata().astype(np.uint8)
 
-print(f'No. of unique atlas labels: {len(np.unique(labels))}')
+print(np.unique(labels))
+print(f'No. of unique atlas labels: {len(np.unique(labels))} mas value: {np.max(labels)}')
 
 print('SHAPES: ', [np.shape(t) for t in [longer_streamlines, affine, labels]])
 
@@ -38,11 +40,13 @@ M, grouping = utils.connectivity_matrix(longer_streamlines,
 M[:3, :] = 0
 M[:, :3] = 0
 
+print(f'Connectivity matrix shape: {M.shape}')
+
 # remove connections to own regions (inplace)
 np.fill_diagonal(M, 0)
 
 # save connectivity matrix 
-np.savetxt('/home/bam/Misfolded-protein-spreading/data/output/connect_matrix.csv', M, delimiter=',')
+np.savetxt('/home/bam/Alexandra/Misfolded-protein-spreading/data/output/connect_matrix.csv', M, delimiter=',')
 
 # plot
 plt.imshow(np.log1p(M), interpolation='nearest')

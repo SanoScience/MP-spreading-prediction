@@ -19,9 +19,9 @@ from dipy.segment.mask import median_otsu
 import matplotlib.pyplot as plt
 
 # define paths
-fimg = "../../data/input/sharepoint/ADNI/003_S_4136.nii.gz"
-fbval = "../../data/input/sharepoint/ADNI/7_1027719_7_20120918154348.bval"
-fbvec = "../../data/input/sharepoint/ADNI/7_1027719_7_20120918154348.bvec"
+fimg = "../../data/input/ADNI/003_S_4136_registered.nii.gz"
+fbval = "../../data/input/7_1027719_7_20120918154348.bval"
+fbvec = "../../data/input/7_1027719_7_20120918154348.bvec"
 output_dir = "../../data/output/"
 
 data, affine, hardi_img = load_nifti(fimg, return_img=True) 
