@@ -8,9 +8,10 @@ import matplotlib.pyplot as plt
 import matplotlib
 from scipy.ndimage.measurements import label
 matplotlib.use('TKAgg')
+import os
 
 # load tractogram data
-path = '../../data/output/tractogram_003_S_4136.nii.trk'
+path = '/home/bam/ADNI_2_3_BIDS_OPT/sub-AD1/ses-1/dwi/tractogram_sub-AD1_ses-1_acq-AP_dwi.nii.trk'
 tractogram = load(path)
 
 # tracks shorter than 30 mm are removed
@@ -21,7 +22,7 @@ affine = tractogram.affine # transformation to align streamlines to atlas
 print(f'No. of streamlines: {np.shape(longer_streamlines)}')
 
 # load atlas data
-atlas = nibabel.load('../../data/input/atlas/aal_registered.nii.gz')
+atlas = nibabel.load('/home/bam/Alexandra/Misfolded-protein-spreading/data/input/atlas/aal.nii.gz')
 labels = atlas.get_fdata().astype(np.uint8)
 
 print(np.unique(labels))
@@ -37,17 +38,26 @@ M, grouping = utils.connectivity_matrix(longer_streamlines,
                               mapping_as_streamlines=True)
 
 # remove background
-M[:3, :] = 0
-M[:, :3] = 0
+M = M[1:, 1:]
 
 print(f'Connectivity matrix shape: {M.shape}')
+
+#Reshuffle making all left areas first right areas
+odd_odd = M[::2, ::2]
+odd_even = M[::2, 1::2]
+print(odd_even.shape, odd_odd.shape)
+first = np.vstack((odd_odd, odd_even))
+even_odd = M[1::2, ::2]
+even_even= M[1::2, 1::2]
+second = np.vstack((even_odd, even_even))
+M = np.hstack((first,second))
 
 # remove connections to own regions (inplace)
 np.fill_diagonal(M, 0)
 
 # save connectivity matrix 
-np.savetxt('/home/bam/Alexandra/Misfolded-protein-spreading/data/output/connect_matrix.csv', M, delimiter=',')
+np.savetxt('/home/bam/ADNI_2_3_BIDS_OPT/sub-AD1/ses-1/dwi/connect_matrix.csv', M, delimiter=',')
 
 # plot
 plt.imshow(np.log1p(M), interpolation='nearest')
-plt.savefig('../../data/output/connect_matrix.png')
+plt.savefig('/home/bam/ADNI_2_3_BIDS_OPT/sub-AD1/ses-1/dwi/connect_matrix.png')
