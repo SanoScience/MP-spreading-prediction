@@ -5,3 +5,7 @@ numpy
 nibabel
 matplotlib
 fury
+<<<<<<< HEAD
+=======
+pyyaml
+>>>>>>> b661aa3 (tractogram_generation rewritten)
