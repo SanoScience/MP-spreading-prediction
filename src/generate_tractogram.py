@@ -39,29 +39,31 @@ def get_gradient_table(bval_path, bvec_path):
     gradient_tab = gradient_table(bvals, bvecs)
     return gradient_tab
 
-def generate_tractogram(data, affine, hardi_img, gtab):
+def generate_tractogram(config, data, affine, hardi_img, gtab):
+    cfg = config['tractogram_config']
+
+    # create binary mask based on the first volume
     mask, binary_mask = median_otsu(data[:, :, :, 0]) 
     seed_mask = binary_mask 
     white_matter  = mask 
-    seeds = utils.seeds_from_mask(seed_mask, affine, density=1)
+    seeds = utils.seeds_from_mask(seed_mask, affine, density=cfg['seed_density'])
 
-    # original fa_thr=0.7
-    response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=0.01)
+    response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=cfg['fa_thres'])
 
-    csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=6)  
+    csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=cfg['sh_order'])  
     csd_fit = csd_model.fit(data, mask=white_matter)
 
-    csa_model = CsaOdfModel(gtab, sh_order=6) 
+    csa_model = CsaOdfModel(gtab, sh_order=cfg['sh_order']) 
     gfa = csa_model.fit(data, mask=white_matter).gfa
-    stopping_criterion = ThresholdStoppingCriterion(gfa, .25)
+    stopping_criterion = ThresholdStoppingCriterion(gfa, cfg['stop_thres'])
 
     detmax_dg = DeterministicMaximumDirectionGetter.from_shcoeff(
         csd_fit.shm_coeff, max_angle=30., sphere=default_sphere)
     streamline_generator = LocalTracking(detmax_dg, stopping_criterion, 
                                         affine=affine,
                                         seeds=seeds,
-                                        max_cross=1,
-                                        step_size=.5,
+                                        max_cross=cfg['max_cross'],
+                                        step_size=cfg['step_size'],
                                         return_all=False)
     streamlines = Streamlines(streamline_generator)
 
@@ -78,16 +80,18 @@ def task_completion_info(sound_duration=1, sound_freq=440):
     os.system(f'play -nq -t alsa synth {sound_duration} sine {sound_freq}')
 
 def main():
-    with open('../../config.yaml', 'r') as f:
+    with open('../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-    print(f"[INFO] Processing subject: {config['paths']['subject']}")
     img_path, bval_path, bvec_path, output_dir = get_paths(config)
 
     data, affine, hardi_img = load_nifti_data(img_path)
     gradient_tab = get_gradient_table(bval_path, bvec_path)
 
-    tractogram = generate_tractogram(data, affine, hardi_img, gradient_table)
+    print(f"[INFO] Processing subject: {config['paths']['subject']}")
+    print(f"[INFO] No. of volumes: {data.shape[-1]}")
+
+    tractogram = generate_tractogram(config, data, affine, hardi_img, gradient_table)
     save_tractogram(tractogram)
 
     task_completion_info()
