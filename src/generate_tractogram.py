@@ -86,13 +86,13 @@ def main():
     img_path, bval_path, bvec_path, output_dir = get_paths(config)
 
     data, affine, hardi_img = load_nifti_data(img_path)
-    gradient_tab = get_gradient_table(bval_path, bvec_path)
+    gradient_table = get_gradient_table(bval_path, bvec_path)
 
     print(f"[INFO] Processing subject: {config['paths']['subject']}")
     print(f"[INFO] No. of volumes: {data.shape[-1]}")
 
     tractogram = generate_tractogram(config, data, affine, hardi_img, gradient_table)
-    save_tractogram(tractogram)
+    save_tractogram(tractogram, output_dir, img_path)
 
     task_completion_info()
 

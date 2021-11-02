@@ -1,63 +1,82 @@
 ''' Generate connectivity matrix from tractogram. '''
 
+import os
+
 import numpy as np
 from nibabel.streamlines import load
 import nibabel
 from dipy.tracking import utils 
 import matplotlib.pyplot as plt
-import matplotlib
-from scipy.ndimage.measurements import label
-matplotlib.use('TKAgg')
-import os
+import yaml
 
-# load tractogram data
-path = '/home/bam/ADNI_2_3_BIDS_OPT/sub-AD1/ses-1/dwi/tractogram_sub-AD1_ses-1_acq-AP_dwi.nii.trk'
-tractogram = load(path)
+def remove_short_connections(streamlines, thres=30):
+    longer_streamlines = [t for t in streamlines if len(t)>thres]
+    return longer_streamlines
 
-# tracks shorter than 30 mm are removed
-longer_streamlines = [t for t in tractogram.streamlines if len(t)>30]
+def load_atlas(path):
+    atlas = nibabel.load(path)
+    labels = atlas.get_fdata().astype(np.uint8)
+    return atlas, labels   
 
-affine = tractogram.affine # transformation to align streamlines to atlas 
+def create_connectivity_matrix(streamlines, affine, labels, reshuffle=True):
+    ''' Find out which regions of the brain are connected by provided streamlines. '''
+    M, grouping = utils.connectivity_matrix(streamlines, 
+                                            affine=affine, 
+                                            label_volume=labels, 
+                                            return_mapping=True,
+                                            mapping_as_streamlines=True)
+    # remove background
+    M = M[1:, 1:]
 
-print(f'No. of streamlines: {np.shape(longer_streamlines)}')
+    if reshuffle:
+        # make all left areas first 
+        odd_odd = M[::2, ::2]
+        odd_even = M[::2, 1::2]
+        first = np.vstack((odd_odd, odd_even))
+        even_odd = M[1::2, ::2]
+        even_even= M[1::2, 1::2]
+        second = np.vstack((even_odd, even_even))
+        M = np.hstack((first,second))
 
-# load atlas data
-atlas = nibabel.load('/home/bam/Alexandra/Misfolded-protein-spreading/data/input/atlas/aal.nii.gz')
-labels = atlas.get_fdata().astype(np.uint8)
+    # remove connections to own regions (inplace)
+    np.fill_diagonal(M, 0)
 
-print(np.unique(labels))
-print(f'No. of unique atlas labels: {len(np.unique(labels))} mas value: {np.max(labels)}')
+    return M
 
-print('SHAPES: ', [np.shape(t) for t in [longer_streamlines, affine, labels]])
+def plot_connectivity_matrix(matrix, output_dir, take_log=False):
+    if take_log: matrix = np.log1p(matrix)
+    plt.figure(figsize=(8, 6))
+    plt.imshow(matrix, interpolation='nearest')
+    plt.colorbar()
+    plt.title(f'Connectivity matrix (log values: {take_log})')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'connect_matrix.png'))
 
-# create connectivity matrix; find out which regions of the brain are connected by these streamlines
-M, grouping = utils.connectivity_matrix(longer_streamlines, 
-                              affine=affine, 
-                              label_volume=labels, 
-                              return_mapping=True,
-                              mapping_as_streamlines=True)
+def main():
+    with open('../config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+    output_dir = os.path.join(config['paths']['output_dir'], 
+                              config['paths']['subject'])
+    atlas_path = config['paths']['atlas_path']
+    
+    tractogram = load(os.path.join(output_dir, 'tractogram_sub-AD1_ses-1_acq-AP_dwi.trk'))
+    print(f'No. of streamlines: {np.shape(tractogram.streamlines)}')
 
-# remove background
-M = M[1:, 1:]
+    affine = tractogram.affine # transformation to align streamlines to atlas 
+    atlas, labels  = load_atlas(atlas_path)
+    print(f'No. of unique atlas labels: {len(np.unique(labels))}, \
+            min value: {np.min(labels)}, max value: {np.max(labels)}')
 
-print(f'Connectivity matrix shape: {M.shape}')
+    connect_matrix = create_connectivity_matrix(tractogram.streamlines, 
+                                                affine, 
+                                                labels)
+    np.savetxt(os.path.join(output_dir, 'connect_matrix.csv'), 
+               connect_matrix, delimiter=',')
+    print(f'Shape of connectivity matrix: {connect_matrix.shape}. \
+            Sum of values: {np.sum(connect_matrix)}')
 
-#Reshuffle making all left areas first right areas
-odd_odd = M[::2, ::2]
-odd_even = M[::2, 1::2]
-print(odd_even.shape, odd_odd.shape)
-first = np.vstack((odd_odd, odd_even))
-even_odd = M[1::2, ::2]
-even_even= M[1::2, 1::2]
-second = np.vstack((even_odd, even_even))
-M = np.hstack((first,second))
+    plot_connectivity_matrix(connect_matrix, output_dir)
 
-# remove connections to own regions (inplace)
-np.fill_diagonal(M, 0)
 
-# save connectivity matrix 
-np.savetxt('/home/bam/ADNI_2_3_BIDS_OPT/sub-AD1/ses-1/dwi/connect_matrix.csv', M, delimiter=',')
-
-# plot
-plt.imshow(np.log1p(M), interpolation='nearest')
-plt.savefig('/home/bam/ADNI_2_3_BIDS_OPT/sub-AD1/ses-1/dwi/connect_matrix.png')
+if __name__ == '__main__':
+    main()
