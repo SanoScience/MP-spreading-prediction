@@ -19,12 +19,12 @@ def load_atlas(path):
     return atlas, labels   
 
 def create_connectivity_matrix(streamlines, affine, labels, reshuffle=True):
-    ''' Find out which regions of the brain are connected by provided streamlines. '''
-    M, grouping = utils.connectivity_matrix(streamlines, 
-                                            affine=affine, 
-                                            label_volume=labels, 
-                                            return_mapping=True,
-                                            mapping_as_streamlines=True)
+    ''' Get the no. of connections between each pair of brain regions. '''
+    M, _ = utils.connectivity_matrix(streamlines, 
+                                    affine=affine, 
+                                    label_volume=labels, 
+                                    return_mapping=True,
+                                    mapping_as_streamlines=True)
     # remove background
     M = M[1:, 1:]
 
@@ -43,7 +43,7 @@ def create_connectivity_matrix(streamlines, affine, labels, reshuffle=True):
 
     return M
 
-def plot_connectivity_matrix(matrix, output_dir, take_log=False):
+def plot_connectivity_matrix(matrix, output_dir, take_log=True):
     if take_log: matrix = np.log1p(matrix)
     plt.figure(figsize=(8, 6))
     plt.imshow(matrix, interpolation='nearest')
@@ -65,7 +65,7 @@ def main():
     affine = tractogram.affine # transformation to align streamlines to atlas 
     atlas, labels  = load_atlas(atlas_path)
     print(f'No. of unique atlas labels: {len(np.unique(labels))}, \
-            min value: {np.min(labels)}, max value: {np.max(labels)}')
+        min value: {np.min(labels)}, max value: {np.max(labels)}')
 
     connect_matrix = create_connectivity_matrix(tractogram.streamlines, 
                                                 affine, 
@@ -73,7 +73,7 @@ def main():
     np.savetxt(os.path.join(output_dir, 'connect_matrix.csv'), 
                connect_matrix, delimiter=',')
     print(f'Shape of connectivity matrix: {connect_matrix.shape}. \
-            Sum of values: {np.sum(connect_matrix)}')
+        Sum of values: {np.sum(connect_matrix)} (after removing background and connections to own regions)')
 
     plot_connectivity_matrix(connect_matrix, output_dir)
 

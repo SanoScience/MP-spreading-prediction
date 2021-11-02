@@ -19,11 +19,16 @@ import yaml
 
 def get_paths(config):
     ''' Generate paths based on configuration file. '''
-    subject_dir = os.path.join(config['paths']['dataset_dir'], config['paths']['subject'])
-    img_path = os.path.join(subject_dir, 'ses-1', 'dwi', config['paths']['subject']+'_ses-1_acq-AP_dwi.nii.gz')
-    bval_path = os.path.join(subject_dir, 'ses-1', 'dwi', config['paths']['subject']+'_ses-1_acq-AP_dwi.bval')
-    bvec_path = os.path.join(subject_dir, 'ses-1', 'dwi', config['paths']['subject']+'_ses-1_acq-AP_dwi.bvec')
-    output_dir = os.path.join(config['paths']['output_dir'], config['paths']['subject'])
+    subject_dir = os.path.join(config['paths']['dataset_dir'], 
+                               config['paths']['subject'])
+    img_path = os.path.join(subject_dir, 'ses-1', 'dwi', 
+                            config['paths']['subject']+'_ses-1_acq-AP_dwi.nii.gz')
+    bval_path = os.path.join(subject_dir, 'ses-1', 'dwi', 
+                             config['paths']['subject']+'_ses-1_acq-AP_dwi.bval')
+    bvec_path = os.path.join(subject_dir, 'ses-1', 'dwi', 
+                             config['paths']['subject']+'_ses-1_acq-AP_dwi.bvec')
+    output_dir = os.path.join(config['paths']['output_dir'], 
+                              config['paths']['subject'])
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
