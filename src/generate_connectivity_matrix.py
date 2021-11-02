@@ -9,6 +9,14 @@ from dipy.tracking import utils
 import matplotlib.pyplot as plt
 import yaml
 
+def get_paths(config):
+    output_dir = os.path.join(config['paths']['output_dir'], 
+                              config['paths']['subject'])
+    atlas_path = config['paths']['atlas_path']
+    tractogram_path = os.path.join(output_dir, 
+                                   f"tractogram_{config['paths']['subject']}_ses-1_acq-AP_dwi.trk")
+    return output_dir, atlas_path, tractogram_path
+
 def remove_short_connections(streamlines, thres=30):
     longer_streamlines = [t for t in streamlines if len(t)>thres]
     return longer_streamlines
@@ -55,11 +63,11 @@ def plot_connectivity_matrix(matrix, output_dir, take_log=True):
 def main():
     with open('../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-    output_dir = os.path.join(config['paths']['output_dir'], 
-                              config['paths']['subject'])
-    atlas_path = config['paths']['atlas_path']
-    
-    tractogram = load(os.path.join(output_dir, 'tractogram_sub-AD1_ses-1_acq-AP_dwi.trk'))
+        
+    output_dir, atlas_path, tractogram_path =  get_paths(config)
+
+    tractogram = load(tractogram_path)
+    print(f"Loading tractogram from subject: {config['paths']['subject']}")
     print(f'No. of streamlines: {np.shape(tractogram.streamlines)}')
 
     affine = tractogram.affine # transformation to align streamlines to atlas 
