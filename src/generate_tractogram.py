@@ -41,16 +41,13 @@ def get_paths(config):
                               config['paths']['subject'])
       
     # CerebroSpinal Fluid (CSF) is _pve_0
-    csf_path = os.path.join(output_dir,
-                           config['paths']['subject']+'_pve_0.nii.gz')
+    csf_path = os.path.join(output_dir,'_pve_0.nii.gz')
     
     # Grey Matter is _pve_1
-    gm_path = os.path.join(output_dir,
-                           config['paths']['subject']+'_pve_1.nii.gz')
+    gm_path = os.path.join(output_dir, '_pve_1.nii.gz')
     
     # White Matter is _pve_2
-    wm_path = os.path.join(output_dir,
-                           config['paths']['subject']+'_pve_2.nii.gz')
+    wm_path = os.path.join(output_dir, '_pve_2.nii.gz')
     
 
     if not os.path.exists(output_dir):
@@ -153,8 +150,6 @@ def main():
     data_csf = load_nifti_data(csf_path)
     gradient_table = get_gradient_table(bval_path, bvec_path)
     
-    print(data_wm.shape, data_gm.shape, data_csf.shape)
-
     logging.info(f"Generating tractogram using: {config['tractogram_config']['stop_method']} method")
     logging.info(f"Processing subject: {config['paths']['subject']}")
     logging.info(f"No. of volumes: {data.shape[-1]}")

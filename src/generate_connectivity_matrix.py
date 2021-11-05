@@ -19,7 +19,7 @@ def get_paths(config):
     return output_dir, atlas_path, tractogram_path
 
 def remove_short_connections(streamlines, thres=30):
-    longer_streamlines = [t for t in streamlines]# if len(t)>thres]
+    longer_streamlines = [t for t in streamlines if len(t)>thres]
     return longer_streamlines
 
 def load_atlas(path):
