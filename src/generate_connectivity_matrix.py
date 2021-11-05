@@ -1,6 +1,7 @@
 ''' Generate connectivity matrix from tractogram. '''
 
 import os
+import logging
 
 import numpy as np
 from nibabel.streamlines import load
@@ -14,11 +15,11 @@ def get_paths(config):
                               config['paths']['subject'])
     atlas_path = config['paths']['atlas_path']
     tractogram_path = os.path.join(output_dir, 
-                                   f"tractogram_{config['paths']['subject']}_ses-1_acq-AP_dwi.trk")
+                                   f"tractogram_{config['paths']['subject']}_ses-1_acq-AP_dwi_ACT.trk")
     return output_dir, atlas_path, tractogram_path
 
 def remove_short_connections(streamlines, thres=30):
-    longer_streamlines = [t for t in streamlines if len(t)>thres]
+    longer_streamlines = [t for t in streamlines]# if len(t)>thres]
     return longer_streamlines
 
 def load_atlas(path):
@@ -61,18 +62,20 @@ def plot_connectivity_matrix(matrix, output_dir, take_log=True):
     plt.savefig(os.path.join(output_dir, 'connect_matrix.png'))
 
 def main():
+    logging.basicConfig(level=logging.INFO)
+
     with open('../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
         
     output_dir, atlas_path, tractogram_path =  get_paths(config)
 
     tractogram = load(tractogram_path)
-    print(f"Loading tractogram from subject: {config['paths']['subject']}")
-    print(f'No. of streamlines: {np.shape(tractogram.streamlines)}')
+    logging.info(f"Loading tractogram from subject: {config['paths']['subject']}")
+    logging.info(f'No. of streamlines: {np.shape(tractogram.streamlines)}')
 
     affine = tractogram.affine # transformation to align streamlines to atlas 
     atlas, labels  = load_atlas(atlas_path)
-    print(f'No. of unique atlas labels: {len(np.unique(labels))}, \
+    logging.info(f'No. of unique atlas labels: {len(np.unique(labels))}, \
         min value: {np.min(labels)}, max value: {np.max(labels)}')
 
     connect_matrix = create_connectivity_matrix(tractogram.streamlines, 
@@ -80,7 +83,7 @@ def main():
                                                 labels)
     np.savetxt(os.path.join(output_dir, 'connect_matrix.csv'), 
                connect_matrix, delimiter=',')
-    print(f'Shape of connectivity matrix: {connect_matrix.shape}. \
+    logging.info(f'Shape of connectivity matrix: {connect_matrix.shape}. \
         Sum of values: {np.sum(connect_matrix)} (after removing background and connections to own regions)')
 
     plot_connectivity_matrix(connect_matrix, output_dir)
