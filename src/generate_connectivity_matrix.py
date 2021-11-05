@@ -27,7 +27,7 @@ def load_atlas(path):
     labels = atlas.get_fdata().astype(np.uint8)
     return atlas, labels   
 
-def create_connectivity_matrix(streamlines, affine, labels, reshuffle=True):
+def create_connectivity_matrix(streamlines, affine, labels, reshuffle=True, take_log=True):
     ''' Get the no. of connections between each pair of brain regions. '''
     M, _ = utils.connectivity_matrix(streamlines, 
                                     affine=affine, 
@@ -48,12 +48,12 @@ def create_connectivity_matrix(streamlines, affine, labels, reshuffle=True):
         M = np.hstack((first,second))
 
     # remove connections to own regions (inplace)
-    np.fill_diagonal(M, 0)
+    np.fill_diagonal(M, 0) 
+    if take_log: M = np.log1p(M)
 
     return M
 
 def plot_connectivity_matrix(matrix, output_dir, take_log=True):
-    if take_log: matrix = np.log1p(matrix)
     plt.figure(figsize=(8, 6))
     plt.imshow(matrix, interpolation='nearest')
     plt.colorbar()
@@ -80,13 +80,16 @@ def main():
 
     connect_matrix = create_connectivity_matrix(tractogram.streamlines, 
                                                 affine, 
-                                                labels)
+                                                labels,
+                                                config['tractogram_config']['take_log'])
+    
     np.savetxt(os.path.join(output_dir, 'connect_matrix.csv'), 
                connect_matrix, delimiter=',')
     logging.info(f'Shape of connectivity matrix: {connect_matrix.shape}. \
         Sum of values: {np.sum(connect_matrix)} (after removing background and connections to own regions)')
 
-    plot_connectivity_matrix(connect_matrix, output_dir)
+    plot_connectivity_matrix(connect_matrix, output_dir, 
+                             config['tractogram_config']['take_log'])
 
 
 if __name__ == '__main__':
