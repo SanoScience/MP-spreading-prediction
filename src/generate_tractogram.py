@@ -17,6 +17,7 @@ from dipy.reconst.shm import CsaOdfModel
 from dipy.tracking import utils
 from dipy.tracking.local_tracking import (LocalTracking,
                                           ParticleFilteringTracking)
+import dipy.tracking.life as life
 from dipy.tracking.stopping_criterion import (ThresholdStoppingCriterion, 
                                               ActStoppingCriterion)
 from dipy.tracking.streamline import Streamlines
@@ -57,6 +58,7 @@ def get_paths(config):
     
 
 def get_gradient_table(bval_path, bvec_path):
+    ''' Read .bval and .bec files to build the gradient table'''
     bvals, bvecs = read_bvals_bvecs(bval_path, bvec_path)
     gradient_tab = gradient_table(bvals, bvecs)
     return gradient_tab
@@ -126,6 +128,21 @@ def generate_tractogram(config, data, affine, hardi_img, gtab,
 
     streamlines = Streamlines(streamline_generator)
 
+    # Optimization phase (Linear Fascicle Evaluation, LiFE https://dipy.org/documentation/1.1.1./examples_built/linear_fascicle_evaluation/)
+    # Streamlines are used to fit a linear model able to evaluate tractography results and assign a weight (Beta) to each streamline, representing its expected contribution (redundant streamlines have a weight of 0)  
+    fiber_model = life.FiberModel(gtab)
+    # Adapt this example if the streamlines are NOT in the voxel-space but in the world space
+    #inv_affine = np.linalg.inv(hardi_img.affine)
+    fiber_fit = fiber_model.fit(data, streamlines, affine=np.eye(4))
+    # redundant fibers (beta = 0) are removed
+    streamlines = list(np.array(streamlines)[np.where(fiber_fit.beta > 0)[0]])
+    
+    # Evaluating Root Mean Square Error
+    model_predict = fiber_fit.predict()
+    model_error = model_predict - fiber_fit.data
+    model_rmse = np.sqrt(np.mean(model_error[:, 10:] ** 2, -1))
+    logging.info(f"The Root Mean Square Error between Optimized streamlines and the original ones is: {model_rmse}")
+
     # generate and save tractogram 
     sft = StatefulTractogram(streamlines, hardi_img, Space.RASMM)
     return sft
@@ -156,6 +173,7 @@ def main():
 
     tractogram = generate_tractogram(config, data, affine, hardi_img, 
                                      gradient_table, data_wm, data_gm, data_csf)
+    
     save_tractogram(tractogram, output_dir, img_path)
 
     task_completion_info()
