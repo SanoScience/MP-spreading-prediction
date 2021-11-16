@@ -25,8 +25,6 @@ from dipy.segment.mask import median_otsu
 import yaml
 import numpy as np
 
-from utils import task_completion_info
-
 def get_paths(config):
     ''' Generate paths based on configuration file. '''
     subject_dir = os.path.join(config['paths']['dataset_dir'], 
@@ -107,6 +105,7 @@ def remove_short_connections(streamlines, len_thres):
     longer_streamlines = [s for s in streamlines
                           if compute_streamline_length(s)>=len_thres]
     logging.info(f'No. of streamlines AFTER length filtering: {len(longer_streamlines)}')
+    logging.info(f'Percentage of remaining streamlines: {round(len(longer_streamlines)/len(streamlines), 4)*100}')
     return longer_streamlines
 
 def compute_streamline_length(streamline, is_dipy=True):
@@ -145,23 +144,7 @@ def generate_tractogram(config, data, affine, hardi_img, gtab,
         logging.error('Provide valid stopping criterion!')
         exit()
 
-    streamlines = Streamlines(streamline_generator)
-    streamlines = remove_short_connections(streamlines, cfg['stream_max_len'])
-
-    # Optimization phase (Linear Fascicle Evaluation, LiFE https://dipy.org/documentation/1.1.1./examples_built/linear_fascicle_evaluation/)
-    # Streamlines are used to fit a linear model able to evaluate tractography results and assign a weight (Beta) to each streamline, representing its expected contribution (redundant streamlines have a weight of 0)  
-    fiber_model = life.FiberModel(gtab)
-    # Adapt this example if the streamlines are NOT in the voxel-space but in the world space
-    #inv_affine = np.linalg.inv(hardi_img.affine)
-    fiber_fit = fiber_model.fit(data, streamlines, affine=np.eye(4))
-    # redundant fibers (beta = 0) are removed
-    streamlines = list(np.array(streamlines)[np.where(fiber_fit.beta > 0)[0]])
-    
-    # Evaluating Root Mean Square Error
-    model_predict = fiber_fit.predict()
-    model_error = model_predict - fiber_fit.data
-    model_rmse = np.sqrt(np.mean(model_error[:, 10:] ** 2, -1))
-    logging.info(f"The Root Mean Square Error between Optimized streamlines and the original ones is: {model_rmse}")
+    streamlines = remove_short_connections(Streamlines(streamline_generator, cfg['stream_max_len']))
 
     # generate and save tractogram 
     sft = StatefulTractogram(streamlines, hardi_img, Space.RASMM)
@@ -170,6 +153,7 @@ def generate_tractogram(config, data, affine, hardi_img, gtab,
 def save_tractogram(tractogram, output_dir, image_path):
     file_stem = os.path.basename(image_path).split('.')[0]
     save_trk(tractogram, os.path.join(output_dir, f"tractogram_{file_stem}_ACT.trk"))
+    logging.info(f"Current tractogram saved as {output_dir}tractogram_{file_stem}_ACT.trk")
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -195,8 +179,6 @@ def main():
                                      gradient_table, data_wm, data_gm, data_csf)
     
     save_tractogram(tractogram, output_dir, img_path)
-
-    task_completion_info()
 
 if __name__ == '__main__':
     main()

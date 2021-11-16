@@ -2,7 +2,6 @@
 
 import os
 import logging
-from nibabel import streamlines
 
 import numpy as np
 from nibabel.streamlines import load
