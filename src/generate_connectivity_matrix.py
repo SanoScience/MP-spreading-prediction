@@ -8,7 +8,6 @@ import numpy as np
 from nibabel.streamlines import load
 import nibabel
 from dipy.tracking import utils 
-from dipy.tracking.streamline import length
 import matplotlib.pyplot as plt
 import yaml
 
@@ -19,24 +18,6 @@ def get_paths(config):
     tractogram_path = os.path.join(output_dir, 
                                    f"tractogram_{config['paths']['subject']}_ses-1_acq-AP_dwi_ACT.trk")
     return output_dir, atlas_path, tractogram_path
-
-def remove_short_connections(streamlines, len_thres=30):
-    ''' Filter streamlines with the length shorter 
-    than provided threshold [usually in mm]. '''
-    longer_streamlines = [s for s in streamlines
-                          if compute_streamline_length(s)>len_thres]
-    return longer_streamlines
-
-def compute_streamline_length(streamline, is_dipy=True):
-    if is_dipy:
-        # use built-in DIPY function to calculate the length of streamline
-        return length(streamline)
-    else:
-        # use classical method with calculating vector norm
-        streamline = np.array(streamline)
-        s_length = np.sum([np.linalg.norm(streamline[i+1]-streamline[i]) 
-                    for i in range(0, len(streamline)-1)])
-    return s_length
 
 def load_atlas(path):
     atlas = nibabel.load(path)
@@ -90,8 +71,6 @@ def main():
     logging.info(f"Loading tractogram from subject: {config['paths']['subject']}")
     logging.info(f'No. of streamlines: {np.shape(streamlines)}')
    
-    streamlines = remove_short_connections(streamlines)
-
     affine = tractogram.affine # transformation to align streamlines to atlas 
     atlas, labels  = load_atlas(atlas_path)
     logging.info(f'No. of unique atlas labels: {len(np.unique(labels))}, \

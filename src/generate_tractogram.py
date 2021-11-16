@@ -20,9 +20,8 @@ from dipy.tracking.local_tracking import (LocalTracking,
 import dipy.tracking.life as life
 from dipy.tracking.stopping_criterion import (ThresholdStoppingCriterion, 
                                               ActStoppingCriterion)
-from dipy.tracking.streamline import Streamlines
+from dipy.tracking.streamline import Streamlines, length
 from dipy.segment.mask import median_otsu
-from nibabel.affines import voxel_sizes
 import yaml
 import numpy as np
 
@@ -101,10 +100,30 @@ def act_method(data_wm, data_gm, data_csf, affine, seeds, shm_coeff):
                                                     return_all=False)
     return streamline_generator
 
+def remove_short_connections(streamlines, len_thres):
+    ''' Filter streamlines with the length shorter 
+    than provided threshold [usually in mm]. '''
+    logging.info(f'No. of streamlines BEFORE length filtering: {len(streamlines)}')
+    longer_streamlines = [s for s in streamlines
+                          if compute_streamline_length(s)>=len_thres]
+    logging.info(f'No. of streamlines AFTER length filtering: {len(longer_streamlines)}')
+    return longer_streamlines
+
+def compute_streamline_length(streamline, is_dipy=True):
+    if is_dipy:
+        # use built-in DIPY function to calculate the length of streamline
+        return length(streamline)
+    else:
+        # use classical method with calculating vector norm
+        streamline = np.array(streamline)
+        s_length = np.sum([np.linalg.norm(streamline[i+1]-streamline[i]) 
+                    for i in range(0, len(streamline)-1)])
+    return s_length
+
 def generate_tractogram(config, data, affine, hardi_img, gtab, 
                         data_wm, data_gm, data_csf):
     cfg = config['tractogram_config']
-
+    
     # create binary mask based on the first volume
     mask, binary_mask = median_otsu(data[:, :, :, 0]) 
     seed_mask = binary_mask 
@@ -127,6 +146,7 @@ def generate_tractogram(config, data, affine, hardi_img, gtab,
         exit()
 
     streamlines = Streamlines(streamline_generator)
+    streamlines = remove_short_connections(streamlines, cfg['stream_max_len'])
 
     # Optimization phase (Linear Fascicle Evaluation, LiFE https://dipy.org/documentation/1.1.1./examples_built/linear_fascicle_evaluation/)
     # Streamlines are used to fit a linear model able to evaluate tractography results and assign a weight (Beta) to each streamline, representing its expected contribution (redundant streamlines have a weight of 0)  
