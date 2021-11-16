@@ -1,4 +1,5 @@
-''' Generate tractogram using FA threshold or ACT stopping criterion. '''
+''' Generate tractogram using FA threshold or ACT stopping criterion. 
+Compute and visualize connectivity matrix. '''
 
 import os
 import logging
@@ -17,13 +18,15 @@ from dipy.reconst.shm import CsaOdfModel
 from dipy.tracking import utils
 from dipy.tracking.local_tracking import (LocalTracking,
                                           ParticleFilteringTracking)
-import dipy.tracking.life as life
 from dipy.tracking.stopping_criterion import (ThresholdStoppingCriterion, 
                                               ActStoppingCriterion)
 from dipy.tracking.streamline import Streamlines, length
 from dipy.segment.mask import median_otsu
+import nibabel
 import yaml
 import numpy as np
+
+from generate_connectivity_matrix import ConnectivityMatrix
 
 def get_paths(config):
     ''' Generate paths based on configuration file. '''
@@ -47,11 +50,14 @@ def get_paths(config):
     # White Matter is _pve_2
     wm_path = os.path.join(output_dir, '_pve_2.nii.gz')
     
-
+    # AAL atlas path
+    atlas_path = config['paths']['atlas_path']
+    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    return img_path, bval_path, bvec_path, output_dir, csf_path, gm_path, wm_path
+    return (img_path, bval_path, bvec_path, output_dir, 
+            csf_path, gm_path, wm_path, atlas_path)
     
 
 def get_gradient_table(bval_path, bvec_path):
@@ -59,6 +65,11 @@ def get_gradient_table(bval_path, bvec_path):
     bvals, bvecs = read_bvals_bvecs(bval_path, bvec_path)
     gradient_tab = gradient_table(bvals, bvecs)
     return gradient_tab
+
+def load_atlas(path):
+    atlas = nibabel.load(path)
+    labels = atlas.get_fdata().astype(np.uint8)
+    return atlas, labels   
 
 def fa_method(config, data, white_matter, gradient_table, affine, seeds, shm_coeff):
     # apply threshold stopping criterion
@@ -162,7 +173,8 @@ def main():
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     # get paths
-    img_path, bval_path, bvec_path, output_dir, csf_path, gm_path, wm_path = get_paths(config)
+    (img_path, bval_path, bvec_path, output_dir, 
+     csf_path, gm_path, wm_path, atlas_path) = get_paths(config)
 
     # load data 
     data, affine, hardi_img = load_nifti(img_path, return_img=True) 
@@ -175,10 +187,17 @@ def main():
     logging.info(f"Processing subject: {config['paths']['subject']}")
     logging.info(f"No. of volumes: {data.shape[-1]}")
 
+    # generate tractogram
     tractogram = generate_tractogram(config, data, affine, hardi_img, 
                                      gradient_table, data_wm, data_gm, data_csf)
-    
     save_tractogram(tractogram, output_dir, img_path)
+    
+    # generate connectivity matrix
+    atlas, labels  = load_atlas(atlas_path)
+    cm = ConnectivityMatrix(tractogram, labels, output_dir, 
+                            config['tractogram_config']['take_log'])
+    cm.process()
+      
 
 if __name__ == '__main__':
     main()
