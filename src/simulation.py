@@ -1,5 +1,9 @@
 ''' Simulation of spreading the misfolded beta_amyloid with 
-Intra-brain Epidemic Spreading model. '''
+Intra-brain Epidemic Spreading model. 
+
+# A. Randriatahina 
+# Adapted from Iturria-Medina, Yasser, et al, PloS Biology 2014
+'''
 
 from glob import glob 
 
@@ -23,6 +27,32 @@ def dijkstra(matrix):
     return distance
 
 def Simulation(N_regions, v, dt, T_total, Sconnectom , sconnLen, ROI, amy_control, init_number, prob_stay, trans_rate):
+    # A function to simulate the spread of misfolded beta_amyloid
+
+    ##input parameters (inside parenthesis are values used in the paper)	
+    #N_regions: number of regions 
+    #v: speed (1)
+    # dt: time step (0.01)
+    # T_total: total time steps (10000)
+    #GBA: GBA gene expression (zscore, N_regions * 1 vector) (empirical GBA expression)
+    #SNCA: SNCA gene expression after normalization (zscore, N_regions * 1 vector) (empirical SNCA expression)
+    # sconnLen: structural connectivity matrix (length) (estimated from HCP data)
+    # sconnDen: structural connectivity matrix (strength) (estimated from HCP data)
+    # ROIsize: region sizes (voxel counts)
+    # seed: seed region of misfolded beta-amyloid injection (choose as you like? )
+    # syn_control: a parameter to control the number of voxels in which beta-amyloid may get synthesized (region size, i.e., ROIsize)
+    # init_number: number of injected misfolded beta-amyloid (1) 
+    # prob_stay: the probability of staying in the same region per unit time (0.5)
+    # trans_rate: a scalar value, controlling the baseline infectivity
+
+    ## output parameters
+    # Rnor_all: A N_regions * T_total matrix, recording the number of normal beta-amyloid in regions
+    # Rmis_all: A N_regions * T_total matrix, recording the number of misfolded beta-amyloid in regions
+    # Rnor0: a N_Regions * 1 vector, the population of normal agents in regions before pathogenic spreading 
+    # Pnor0: a N_Regions * 1 vecotr, the population of normal agents in edges before pathogenic spreading 
+    #Pnor_all: a N_regions * N_regions * T_total matrix, recording the number of normal beta_amyloid in paths could be memory-consuming
+    #Pmis_all: a N_regions * N_regions * T_total matrix, recording the number of misfolded beta_amyloid in paths could be memoryconsuming
+    
 
     Sconnectom = Sconnectom - np.diag(np.diag(Sconnectom))
     sconnLen = sconnLen - np.diag(np.diag(sconnLen))
