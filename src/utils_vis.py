@@ -20,3 +20,14 @@ def visualize_NIfTI_data(data, depths, time_idx=None):
     plt.suptitle(f'time index: {time_idx}')
     plt.tight_layout()
     plt.show()
+    
+def visualize_diffusion_matrix(matrix, save_path=None):
+    plt.figure(figsize=(15,3))
+    plt.imshow(matrix.T) #, interpolation='nearest'
+    plt.xlabel('Iteration' )
+    plt.ylabel('ROIs')
+    plt.colorbar()
+    plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path)
+    plt.show() 

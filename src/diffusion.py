@@ -12,10 +12,12 @@ from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 
+from utils_vis import visualize_diffusion_matrix
+
 
 ############# Parameters
 beta = 1.5  #As in the Raj et al. papers
-iterations = int(1e3)#1000
+iterations = int(1e6)#1000
 rois = 116 #AAL atlas has 116 rois
 tstar = 10.0
 timestep = tstar / iterations
@@ -57,13 +59,19 @@ for _ in tqdm(range(iterations)):
     next_step = integration_step(all_steps[-1], timestep)
     all_steps.append(next_step)
 
+
+def downsample_matrix(matrix, target_len=int(1e3)):
+    ''' Take every n-th sample when the matrix is longer than target length. '''
+    current_len = matrix.shape[0]
+    if current_len > target_len:
+        factor = int(current_len/target_len)
+        matrix = matrix[::factor, :] # downsampling
+    return matrix
+
 A = np.asarray(all_steps)
 
-# plot results
-plt.figure(figsize=(15,3))
-plt.imshow(A.T) #, interpolation='nearest'
-plt.xlabel('Iteration' )
-plt.ylabel('ROIs' )
-plt.colorbar()
-plt.tight_layout()
-plt.show() 
+A = downsample_matrix(A)
+
+np.savetxt("../data/output/sub-AD4009/diffusion_matrix.csv", A, delimiter=",")
+
+visualize_diffusion_matrix(A)
