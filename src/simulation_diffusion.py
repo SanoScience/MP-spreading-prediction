@@ -28,13 +28,9 @@ class DiffusionSimulation:
     def define_seeds(self):
         ''' Define Alzheimer seed regions manually. '''
         # Store initial misfolded proteins
-        X0 = np.zeros(self.rois)
+        self.diffusion_init = np.zeros(self.rois)
         # Seed regions for Alzheimer (according to AAL atlas): 31, 32, 35, 36 (TODO: confirm)
-        X0[31] = 1
-        X0[32] = 1
-        X0[35] = 1
-        X0[36] = 1
-        self.diffusion_init = X0
+        self.diffusion_init[[31, 32, 35, 36]] = 1
         
     def calc_laplacian(self):
         adjacency = self.cm
