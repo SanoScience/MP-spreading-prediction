@@ -21,7 +21,7 @@ def visualize_NIfTI_data(data, depths, time_idx=None):
     plt.tight_layout()
     plt.show()
     
-def visualize_diffusion_matrix(matrix, save_path=None):
+def visualize_diffusion_timeplot(matrix, save_path=None):
     plt.figure(figsize=(15,3))
     plt.imshow(matrix.T) #, interpolation='nearest'
     plt.xlabel('Iteration' )
