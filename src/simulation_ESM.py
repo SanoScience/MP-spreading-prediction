@@ -10,6 +10,7 @@ from glob import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
+from tqdm import tqdm
 
 def dijkstra(matrix):
     ''' Find the shortest path between nodes in a graph. '''
@@ -106,7 +107,7 @@ def Simulation(N_regions, v, dt, T_total, Sconnectom , sconnLen, ROI, amy_contro
 
     movOut = np.zeros((N_regions, N_regions))
     #normal amyloid protein growth
-    for t in range(iter_max):  
+    for t in tqdm(range(iter_max)):  
     ##moving process
     # regions towards paths
     # movDrt stores the number of proteins towards each region. i.e. element in kth row lth col denotes the number of proteins in region k moving towards l
@@ -142,8 +143,9 @@ def Simulation(N_regions, v, dt, T_total, Sconnectom , sconnLen, ROI, amy_contro
     movOut_mis = np.zeros((N_regions, N_regions))
     movDrt_mis = np.zeros((N_regions, N_regions))
     #seed regions
-    Rmis[97] = init_number
-    Rmis[99] = init_number
+    # Rmis[97] = init_number
+    # Rmis[99] = init_number
+    Rmis[[31, 32, 35, 36]] = init_number
     for t  in range (T_total):
         #moving process
         # misfolded proteins: region -->> paths
@@ -213,7 +215,7 @@ def main():
         print('the connectivity matrix')
         surface_plot2d(subject)
         print('the number of misfolded beta-amyloid in regions')
-        print(Rmis_all)
+        print(Rmis_all, np.max(Rmis_all), np.min(Rmis_all))
         surface_plot2d(Rmis_all)
         for t in range(T_total):
             Y = Pmis_all[:, :, t]
