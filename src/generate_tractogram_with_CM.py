@@ -27,10 +27,10 @@ import yaml
 import numpy as np
 
 from generate_connectivity_matrix import ConnectivityMatrix
+from utils import parallelize
 
-def get_paths(config):
-    ''' Generate paths based on configuration file. '''
-    subject_name = config['paths']['subject']
+def get_paths(config, subject_name):
+    ''' Generate paths based on configuration file and selected subject. '''
 
     subject_dir = os.path.join(config['paths']['dataset_dir'], 
                                subject_name)
@@ -171,15 +171,12 @@ def save_tractogram(tractogram, output_dir, image_path):
     save_trk(tractogram, os.path.join(output_dir, f"tractogram_{file_stem}_ACT.trk"))
     logging.info(f"Current tractogram saved as {output_dir}tractogram_{file_stem}_ACT.trk")
 
-def main():
-    logging.basicConfig(level=logging.INFO)
-
-    with open('../config.yaml', 'r') as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
-
+def run(config, subject_name):
+    ''' Run workflow for selected subject. '''
+    
     # get paths
     (img_path, bval_path, bvec_path, output_dir, 
-     csf_path, gm_path, wm_path, atlas_path) = get_paths(config)
+     csf_path, gm_path, wm_path, atlas_path) = get_paths(config, subject_name)
 
     # load data 
     data, affine, hardi_img = load_nifti(img_path, return_img=True) 
@@ -203,6 +200,21 @@ def main():
                             config['tractogram_config']['take_log'])
     cm.process()
       
+      
+def main():
+    logging.basicConfig(level=logging.INFO)
+
+    with open('../config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+                    
+    subject_name = config['paths']['subject']
+    
+    if subject_name is not None:
+        run(config, subject_name)
+    else:
+        # run workflow on all subjects 
+        subject_name_list = os.listdir(config['paths']['dataset_dir'])
+        parallelize(subject_name_list, run, config)
 
 if __name__ == '__main__':
     main()
