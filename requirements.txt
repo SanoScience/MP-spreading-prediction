@@ -6,4 +6,3 @@ nibabel
 matplotlib
 fury
 pyyaml
-networkx

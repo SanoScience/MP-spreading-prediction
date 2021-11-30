@@ -30,26 +30,31 @@ from generate_connectivity_matrix import ConnectivityMatrix
 
 def get_paths(config):
     ''' Generate paths based on configuration file. '''
+    subject_name = config['paths']['subject']
+
     subject_dir = os.path.join(config['paths']['dataset_dir'], 
-                               config['paths']['subject'])
+                               subject_name)
     img_path = os.path.join(subject_dir, 'ses-1', 'dwi', 
-                            config['paths']['subject']+'_ses-1_acq-AP_dwi.nii.gz')
+                            subject_name+'_ses-1_acq-AP_dwi.nii.gz')
     bval_path = os.path.join(subject_dir, 'ses-1', 'dwi', 
-                             config['paths']['subject']+'_ses-1_acq-AP_dwi.bval')
+                             subject_name+'_ses-1_acq-AP_dwi.bval')
     bvec_path = os.path.join(subject_dir, 'ses-1', 'dwi', 
-                             config['paths']['subject']+'_ses-1_acq-AP_dwi.bvec')
+                             subject_name+'_ses-1_acq-AP_dwi.bvec')
     output_dir = os.path.join(config['paths']['output_dir'], 
-                              config['paths']['subject'])
+                              subject_name)
       
     # CerebroSpinal Fluid (CSF) is _pve_0
-    csf_path = os.path.join(output_dir,'_pve_0.nii.gz')
+    csf_path = os.path.join(subject_dir, 'ses-1', 't1', 
+                            subject_name+'_ses-1_acq-AP_t1_pve_0.nii.gz')
     
     # Grey Matter is _pve_1
-    gm_path = os.path.join(output_dir, '_pve_1.nii.gz')
+    gm_path = os.path.join(subject_dir, 'ses-1', 't1', 
+                           subject_name+'_ses-1_acq-AP_t1_pve_1.nii.gz')
     
     # White Matter is _pve_2
-    wm_path = os.path.join(output_dir, '_pve_2.nii.gz')
-    
+    wm_path = os.path.join(subject_dir, 'ses-1', 't1', 
+                           subject_name+'_ses-1_acq-AP_t1_pve_2.nii.gz')
+
     # AAL atlas path
     atlas_path = config['paths']['atlas_path']
     
