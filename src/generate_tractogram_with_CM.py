@@ -171,7 +171,7 @@ def save_tractogram(tractogram, output_dir, image_path):
     save_trk(tractogram, os.path.join(output_dir, f"tractogram_{file_stem}_ACT.trk"))
     logging.info(f"Current tractogram saved as {output_dir}tractogram_{file_stem}_ACT.trk")
 
-def run(config, subject_name):
+def run(config=None, subject_name=None):
     ''' Run workflow for selected subject. '''
     
     # get paths
@@ -186,7 +186,7 @@ def run(config, subject_name):
     gradient_table = get_gradient_table(bval_path, bvec_path)
     
     logging.info(f"Generating tractogram using: {config['tractogram_config']['stop_method']} method")
-    logging.info(f"Processing subject: {config['paths']['subject']}")
+    logging.info(f"Processing subject: {subject_name}")
     logging.info(f"No. of volumes: {data.shape[-1]}")
 
     # generate tractogram
@@ -199,7 +199,6 @@ def run(config, subject_name):
     cm = ConnectivityMatrix(tractogram, labels, output_dir, 
                             config['tractogram_config']['take_log'])
     cm.process()
-      
       
 def main():
     logging.basicConfig(level=logging.INFO)

@@ -9,14 +9,11 @@ def task_completion_info(sound_duration=1, sound_freq=440):
     
     
 def parallelize(subject_names, func, args):
-    ''' Run specific function on multiple subjects in parallel. '''
+    ''' Run function on multiple subjects in parallel. '''
     
     logging.info('Parallelization started.')
     
     procs = []
-    proc = Process(target=func)  # instantiating without any argument
-    procs.append(proc)
-    proc.start()
 
     # instantiating process with arguments
     for name in subject_names:
