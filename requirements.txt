@@ -1,0 +1,8 @@
+tqdm
+numpy
+scipy
+matplotlib
+pandas
+nibabel
+scikit-image
+networkx
