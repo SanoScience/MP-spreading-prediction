@@ -11,6 +11,7 @@ import logging
 from tqdm import tqdm 
 import numpy as np
 from scipy.sparse.csgraph import laplacian as scipy_laplacian
+from scipy.stats.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
 
@@ -41,6 +42,7 @@ class DiffusionSimulation:
         self.diffusion_final = self.iterate_spreading()
         if downsample: 
             self.diffusion_final = self.downsample_matrix(self.diffusion_final)
+        return self.diffusion_final[-1]
         
     def define_seeds(self, init_concentration=1):
         ''' Define Alzheimer seed regions manually. 
@@ -124,24 +126,24 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
     t1_concentration = load_matrix(t1_concentration_path)
             
     simulation = DiffusionSimulation(connect_matrix, t0_concentration)
-    simulation.run()
+    t1_concentration_pred = simulation.run()
     simulation.save_diffusion_matrix(subject_output_dir)
     simulation.save_terminal_concentration(subject_output_dir)
     visualize_diffusion_timeplot(simulation.diffusion_final, 
                                  simulation.timestep,
                                  simulation.tstar,
                                  save_dir=subject_output_dir)
-    rmse = calc_error(simulation.diffusion_final[-1], t1_concentration)
+    rmse = calc_error(t1_concentration_pred, t1_concentration)
+    corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
     logging.info(f'MSE for subject {subject} is: {rmse:.2f}')
+    logging.info(f'Pearson correlation coefficient for subject {subject} is: {corr_coef:.2f}')
     
     visualize_terminal_state_comparison(t0_concentration, 
-                                        simulation.diffusion_final[-1],
+                                        t1_concentration_pred,
                                         t1_concentration,
                                         rmse,
                                         save_dir=subject_output_dir)
     
-    # TODO: calculate correlation between predicted and true t1 vectors 
-
 def main():
     connectomes_dir = '../../data/connectomes'
     concentrations_dir = '../../data/PET_regions_concentrations'
