@@ -57,11 +57,16 @@ class DiffusionSimulation:
         diffusion_init[[31, 32, 35, 36]] = init_concentration
         return diffusion_init
         
-    def calc_laplacian(self):
-        # normed laplacian 
-        adjacency = self.cm
-        laplacian = scipy_laplacian(adjacency, normed=True)
-        self.eigvals, self.eigvecs = np.linalg.eig(laplacian)
+    def calc_laplacian(self):      
+        # assume: A - adjacency matrix, D - degree matrix, I - identity matrix, L - laplacian matrix
+        # equation to get normed Laplacian: L = I - D-1/2 @ A @ D-1/2
+        A = self.cm
+        D = np.diag(np.sum(A, axis=1)) # total no. of. connections to other vertices
+        I = np.identity(A.shape[0]) # identity matrix
+        D_inv_sqrt = np.linalg.inv(np.sqrt(D))
+        L = I - (D_inv_sqrt @ A) @ D_inv_sqrt
+        
+        self.eigvals, self.eigvecs = np.linalg.eig(L)
     
     def integration_step(self, x0, t):
         xt = self.eigvecs.T @ x0
