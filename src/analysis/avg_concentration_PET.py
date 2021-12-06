@@ -25,7 +25,9 @@ def load_pet(path, channel=3):
 
 def extract_regions_means(pet_data, atlas_data):
     means = []
-    for label in np.sort(np.unique(atlas_data)):
+    # do not take atlas region with index=0, which indicates the background
+    atlas_labels = [label for label in np.unique(atlas_data) if label!=0]
+    for label in np.sort(atlas_labels):
         avg = pet_data[np.where(label == atlas_data)].mean()
         means.append(avg)
     return means
@@ -37,7 +39,6 @@ def save_concentrations(concentrations, path):
 
 def run(pet_dir, concentrations_dir, subject, atlas_data):
     # get the preprocessed PET data
-    # TODO: in atlas we have 117 regions
     pet_files_paths = glob(os.path.join(pet_dir, subject, 
                                         'ses-1', 'pet-abeta-av45', '*.nii.gz'))
     

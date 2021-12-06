@@ -1,3 +1,2 @@
 # BrainSpread
-Misfolded proteins spreading
-
+Scripts concerning "Misfolded proteins spreading" project presented during Geneva and Marseille BrainHacks.
