@@ -25,8 +25,8 @@ class DiffusionSimulation:
         self.beta = 1.5 # As in the Raj et al. papers
         self.iterations = int(1e3) #1000
         self.rois = 116 # AAL atlas has 116 rois
-        self.tstar = 2 # total length of the simulation in years
-        self.timestep = self.tstar / self.iterations
+        self.t_total = 2 # total length of the simulation in years
+        self.timestep = self.t_total / self.iterations
         self.cm = connect_matrix
         if concentrations is not None: 
             logging.info(f'Loading concentration from PET files.')
@@ -57,21 +57,23 @@ class DiffusionSimulation:
         diffusion_init[[31, 32, 35, 36]] = init_concentration
         return diffusion_init
         
-    def calc_laplacian(self):      
+    def calc_laplacian(self): 
+        # calculate normalized Laplacian: L = I - D-1/2 @ A @ D-1/2
         # assume: A - adjacency matrix, D - degree matrix, I - identity matrix, L - laplacian matrix
-        # equation to get normed Laplacian: L = I - D-1/2 @ A @ D-1/2
         A = self.cm
         D = np.diag(np.sum(A, axis=1)) # total no. of. connections to other vertices
         I = np.identity(A.shape[0]) # identity matrix
         D_inv_sqrt = np.linalg.inv(np.sqrt(D))
         L = I - (D_inv_sqrt @ A) @ D_inv_sqrt
         
+        # eigendecomposition
         self.eigvals, self.eigvecs = np.linalg.eig(L)
-    
+        
     def integration_step(self, x0, t):
-        xt = self.eigvecs.T @ x0
-        xt = np.diag(np.exp(-self.beta * t * self.eigvals)) @ xt
-        return self.eigvecs @ xt  
+        # persistent mode of propagation
+        # x(t) = U exp(-lambda * beta * t) U... x(0)
+        xt = self.eigvecs @ np.diag(np.exp(-self.eigvals * self.beta * t)) @ self.eigvecs.T @ x0
+        return xt
     
     def iterate_spreading(self):  
         diffusion = [self.diffusion_init]  #List containing all timepoints
@@ -136,7 +138,7 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
     simulation.save_terminal_concentration(subject_output_dir)
     visualize_diffusion_timeplot(simulation.diffusion_final, 
                                  simulation.timestep,
-                                 simulation.tstar,
+                                 simulation.t_total,
                                  save_dir=subject_output_dir)
     rmse = calc_error(t1_concentration_pred, t1_concentration)
     corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
