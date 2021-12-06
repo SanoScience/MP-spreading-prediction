@@ -23,10 +23,10 @@ class DiffusionSimulation:
         Otherwise: manually choose initial seeds and concentrations. '''
         
         self.beta = 1.5 # As in the Raj et al. papers
-        self.iterations = int(1e3) #1000
         self.rois = 116 # AAL atlas has 116 rois
         self.t_total = 2 # total length of the simulation in years
-        self.timestep = self.t_total / self.iterations
+        self.timestep = 0.001
+        self.iterations = int(self.t_total / self.timestep)
         self.cm = connect_matrix
         if concentrations is not None: 
             logging.info(f'Loading concentration from PET files.')
@@ -35,7 +35,7 @@ class DiffusionSimulation:
             logging.info(f'Loading concentration manually.')
             self.diffusion_init = self.define_seeds()
                     
-    def run(self, inverse_log=True, downsample=True):
+    def run(self, inverse_log=True, downsample=False):
         ''' Run simulation. '''
         if inverse_log: self.calc_exponent()
         self.calc_laplacian()

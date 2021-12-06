@@ -25,13 +25,11 @@ def visualize_NIfTI_data(data, depths, time_idx=None):
     plt.show()
     
 def visualize_diffusion_timeplot(matrix, timestep, total_time, save_dir=None):
-    # TODO: repair imshow plot for small no. of iterations
     # TODO: change xticks and labels to time in years
     # plt.xticks(np.arange(0, total_time, step=timestep), labels=np.arange(0, total_time, step=timestep))
     # plt.xlabel('Time [years]' )
     
-    plt.figure(figsize=(15,3))
-    plt.imshow(matrix.T) #, interpolation='nearest'
+    plt.imshow(matrix.T, aspect='auto')
     plt.xlabel('# iterations')
     plt.ylabel('ROIs')
     plt.colorbar()
