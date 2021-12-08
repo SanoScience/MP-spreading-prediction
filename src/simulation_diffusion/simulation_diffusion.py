@@ -39,7 +39,7 @@ class DiffusionSimulation:
         ''' Run simulation. '''
         if inverse_log: self.calc_exponent()
         self.calc_laplacian()
-        self.diffusion_final = self.iterate_spreading()
+        self.diffusion_final = self.iterate_spreading_by_Julien()
         if downsample: 
             self.diffusion_final = self.downsample_matrix(self.diffusion_final)
         return self.diffusion_final[-1]
@@ -64,17 +64,17 @@ class DiffusionSimulation:
         D = np.diag(np.sum(A, axis=1)) # total no. of. connections to other vertices
         I = np.identity(A.shape[0]) # identity matrix
         D_inv_sqrt = np.linalg.inv(np.sqrt(D))
-        L = I - (D_inv_sqrt @ A) @ D_inv_sqrt
-                
+        self.L = I - (D_inv_sqrt @ A) @ D_inv_sqrt
+                        
         # eigendecomposition
-        self.eigvals, self.eigvecs = np.linalg.eig(L)
+        self.eigvals, self.eigvecs = np.linalg.eig(self.L)
         
     def integration_step(self, x0, t):
         # persistent mode of propagation
         # x(t) = U exp(-lambda * beta * t) U_conjugate x(0)
         # warning: t - elapsed time 
-        # TODO: x0 should be the initial concentration or previous concentration?
-        xt = self.eigvecs @ np.diag(np.exp(-self.eigvals * self.beta * t)) @ np.conjugate(self.eigvecs.T) @ x0
+        # TODO: x0 should be the initial concentration or previous concentration?   
+        xt = self.eigvecs @ np.diag(np.exp(-self.eigvals * self.beta * t)) @ np.conjugate(self.eigvecs.T) @ x0        
         return xt
     
     def iterate_spreading(self):  
@@ -85,6 +85,20 @@ class DiffusionSimulation:
             diffusion.append(next_step)  
             
         return np.asarray(diffusion)   
+    
+    def integration_step_by_Julien(self, x_prev, timestep):
+        # methods proposed by Julien Lefevre during Marseille Brainhack 
+        xt = x_prev - timestep*self.L @ x_prev
+        return xt
+    
+    def iterate_spreading_by_Julien(self):
+        diffusion = [self.diffusion_init]  
+        
+        for i in tqdm(range(self.iterations)):
+            next_step = self.integration_step_by_Julien(diffusion[-1], self.timestep)
+            diffusion.append(next_step)  
+            
+        return np.asarray(diffusion) 
  
     def calc_exponent(self):
         ''' Inverse operation to log1p. '''
