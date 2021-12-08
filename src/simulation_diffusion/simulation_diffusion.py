@@ -24,8 +24,8 @@ class DiffusionSimulation:
         
         self.beta = 1.5 # As in the Raj et al. papers
         self.rois = 116 # AAL atlas has 116 rois
-        self.t_total = 2 # total length of the simulation in years
-        self.timestep = 0.001
+        self.t_total = 1 # total length of the simulation in years
+        self.timestep = 0.01
         self.iterations = int(self.t_total / self.timestep)
         self.cm = connect_matrix
         if concentrations is not None: 
@@ -65,21 +65,23 @@ class DiffusionSimulation:
         I = np.identity(A.shape[0]) # identity matrix
         D_inv_sqrt = np.linalg.inv(np.sqrt(D))
         L = I - (D_inv_sqrt @ A) @ D_inv_sqrt
-        
+                
         # eigendecomposition
         self.eigvals, self.eigvecs = np.linalg.eig(L)
         
     def integration_step(self, x0, t):
         # persistent mode of propagation
-        # x(t) = U exp(-lambda * beta * t) U... x(0)
-        xt = self.eigvecs @ np.diag(np.exp(-self.eigvals * self.beta * t)) @ self.eigvecs.T @ x0
+        # x(t) = U exp(-lambda * beta * t) U_conjugate x(0)
+        # warning: t - elapsed time 
+        # TODO: x0 should be the initial concentration or previous concentration?
+        xt = self.eigvecs @ np.diag(np.exp(-self.eigvals * self.beta * t)) @ np.conjugate(self.eigvecs.T) @ x0
         return xt
     
     def iterate_spreading(self):  
         diffusion = [self.diffusion_init]  #List containing all timepoints
 
-        for _ in tqdm(range(self.iterations)):
-            next_step = self.integration_step(diffusion[-1], self.timestep)
+        for i in tqdm(range(self.iterations)):
+            next_step = self.integration_step(diffusion[0], i*self.timestep)
             diffusion.append(next_step)  
             
         return np.asarray(diffusion)   
