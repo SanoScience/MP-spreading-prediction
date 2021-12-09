@@ -30,31 +30,50 @@ class EMS_Simulation:
     #GBA: GBA gene expression (zscore, N_regions * 1 vector) (empirical GBA expression)
     #SNCA: SNCA gene expression after normalization (zscore, N_regions * 1 vector) (empirical SNCA expression)
 
-    def __init__(self, connect_matrix_in, concentrations, sconnLens, years):
+    def __init__(self, connect_matrix_in, sconnLens, years, concentrations=None):
         # constants used in calculation
         self.N_regions = 116    # N_regions: number of regions 
         self.v = 1              # v: speed (1)
         self.dt = 0.01          # dt: time step (0.01)
         self.T_total = years    # total time steps (10000)
-        self.ROI = 116          # TODO documentation
+        self.rois = 116          # TODO documentation
         self.amy_control = 3    # TODO documentation
         self.prob_stay = 0.5    # the probability of staying in the same region per unit time (0.5)
         self.trans_rate = 4     # a scalar value, controlling the baseline infectivity
         self.P = 0              # TODO documentation
         self.iter_max = 50      # fill the network with normal proteins
-        self.beta0 = 1 * self.trans_rate / self.ROI 
+        self.beta0 = 1 * self.trans_rate / self.rois 
         self.mu_noise = 0       # mean of the additive noise
         self.sigma_noise = 1    # standard deviation of the additive noise
-        self.diffusion_init = concentrations
         self.mu_noise = 0       # mean of the additive noise
         self.sigma_noise = 1    # standard deviation of the additive noise
         self.connect_matrix = connect_matrix_in - np.diag(np.diag(connect_matrix_in)) # connectivity matrix of the patient
         self.clearance_rate = np.ones(self.N_regions)   # TODO documentation
         self.synthesis_rate = np.ones(self.N_regions)   # TODO documentation
         
+        if concentrations is not None: 
+            logging.info(f'Loading concentration from PET files.')
+            self.diffusion_init = concentrations
+        else:
+            logging.info(f'Loading concentration manually.')
+            self.diffusion_init = self.define_seeds()
+        
         epsilon = 1e-2 # We choose this small espilon to avoid division with zero 
         sconnLen1 = sconnLens - np.diag(np.diag(sconnLens))    # sconnLen: structural connectivity matrix (length) (estimated from HCP data)
         self.sconnLen = sconnLen1 + epsilon 
+        
+    def define_seeds(self, init_concentration=0.2):
+        ''' Define Alzheimer seed regions manually. 
+        
+        Args:
+            init_concentration (int): initial concentration of misfolded proteins in the seeds. '''
+            
+        # Store initial misfolded proteins
+        diffusion_init = np.zeros(self.rois)
+        # Seed regions for Alzheimer (according to AAL atlas): 31, 32, 35, 36 (TODO: confirm)
+        # assign initial concentration of proteins in this region
+        diffusion_init[[31, 32, 35, 36]] = init_concentration
+        return diffusion_init
 
     def calculate_connect(self):
         g = 1 #global tuning variable that quantifies the temporal MP deposition inequality 
@@ -81,8 +100,7 @@ class EMS_Simulation:
 
         return connect
     
-    def calculate_Rnor_Pnor(self, connect):
-        
+    def calculate_Rnor_Pnor(self, connect):      
         Rnor = np.zeros(self.N_regions) # number of  normal amyloid in regions
         Pnor = np.zeros(self.N_regions) # number of  normal amyloid in paths
 
@@ -187,24 +205,25 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
     t1_concentration_path = os.path.join(concentrations_dir, subject, 
                                         f'nodeIntensities-not-normalized-{subject}t1.csv')
     subject_output_dir = os.path.join(output_dir, subject)
-    years = 10
+    years = 50
 
     # load connectome
     connectivity_matrix = load_matrix(connectivity_matrix_path)
     # load proteins concentration in brian regions
-    concentrations_init = load_matrix(t0_concentration_path)
-    real_concentration = load_matrix(t1_concentration_path)
+    t0_concentration = load_matrix(t0_concentration_path)
+    t1_concentration = load_matrix(t1_concentration_path)
     
     # the simulation
     shortest = dijkstra(connectivity_matrix)
-    simulation = EMS_Simulation(connectivity_matrix, concentrations_init, shortest, years)
+    
+    
+    simulation = EMS_Simulation(connectivity_matrix, shortest, years, concentrations=t0_concentration)
     connect = simulation.calculate_connect()
     Rnor, Pnor = simulation.calculate_Rnor_Pnor(connect)
     Rmis_all, Pmis_all = simulation.calculate_Rmis_Pmis(connect, Rnor, Pnor)
 
     # RESULTS
     print(f'Sketch for Subject: {subject}')
-
     print('the number of misfolded beta-amyloid in regions')
 
     # resulting concentration matrix
@@ -213,23 +232,23 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
 
     # predicted vs real plot
     predicted = Rmis_all[:, years-1]
-    rmse = calc_error(real_concentration, predicted)
-    visualize_terminal_state_comparison(concentrations_init, predicted, real_concentration, rmse)
+    rmse = calc_error(t1_concentration, predicted)
+    visualize_terminal_state_comparison(t0_concentration, predicted, t1_concentration, rmse)
 
 def dijkstra(matrix):
-        # Find the shortest path between nodes in a graph.
-        L = len(matrix)
-        distance = np.zeros((L,L))
-        G = nx.from_numpy_matrix(matrix, create_using=nx.DiGraph())
-        for i in range(L):
-            for j in range(L):
-                t = nx.has_path(G,i,j)
-                if t == False:
-                    distance[i,j] = 0
-                else:
-                    t = nx.dijkstra_path_length(G, i, j, weight = 'weight')
-                    distance [i, j] = t
-        return distance
+    # Find the shortest path between nodes in a graph.
+    L = len(matrix)
+    distance = np.zeros((L,L))
+    G = nx.from_numpy_matrix(matrix, create_using=nx.DiGraph())
+    for i in range(L):
+        for j in range(L):
+            t = nx.has_path(G,i,j)
+            if t == False:
+                distance[i,j] = 0
+            else:
+                t = nx.dijkstra_path_length(G, i, j, weight = 'weight')
+                distance [i, j] = t
+    return distance
 
 def load_matrix(path):
     return np.genfromtxt(path, delimiter=",")

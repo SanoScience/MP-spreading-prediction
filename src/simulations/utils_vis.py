@@ -32,7 +32,8 @@ def visualize_diffusion_timeplot(matrix, timestep, total_time, save_dir=None):
     plt.imshow(matrix, aspect='auto')
     plt.xlabel('# iterations')
     plt.ylabel('ROIs')
-    plt.colorbar()
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel('concentration of amyloid beta', rotation=270)
     plt.title(f'Total time of simulation: {total_time} years')
     plt.tight_layout()
     if save_dir is not None:
