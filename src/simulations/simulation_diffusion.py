@@ -88,7 +88,7 @@ class DiffusionSimulation:
     
     def integration_step_by_Julien(self, x_prev, timestep):
         # methods proposed by Julien Lefevre during Marseille Brainhack 
-        xt = x_prev - timestep*self.L @ x_prev
+        xt = x_prev - timestep * self.beta * self.L @ x_prev
         return xt
     
     def iterate_spreading_by_Julien(self):
@@ -152,7 +152,7 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
     t1_concentration_pred = simulation.run()
     simulation.save_diffusion_matrix(subject_output_dir)
     simulation.save_terminal_concentration(subject_output_dir)
-    visualize_diffusion_timeplot(simulation.diffusion_final, 
+    visualize_diffusion_timeplot(simulation.diffusion_final.T, 
                                  simulation.timestep,
                                  simulation.t_total,
                                  save_dir=subject_output_dir)

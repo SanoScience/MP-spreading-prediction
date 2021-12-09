@@ -29,7 +29,7 @@ def visualize_diffusion_timeplot(matrix, timestep, total_time, save_dir=None):
     # plt.xticks(np.arange(0, total_time, step=timestep), labels=np.arange(0, total_time, step=timestep))
     # plt.xlabel('Time [years]' )
     
-    plt.imshow(matrix.T, aspect='auto')
+    plt.imshow(matrix, aspect='auto')
     plt.xlabel('# iterations')
     plt.ylabel('ROIs')
     plt.colorbar()
