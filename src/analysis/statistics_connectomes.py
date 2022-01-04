@@ -1,4 +1,4 @@
-''' Script for calculating beta-amyloid concentration statistics. '''
+''' Script for calculating connection statistics based on connectivity matrix. '''
 
 import os
 from glob import glob
@@ -12,6 +12,7 @@ import matplotlib
 logging.basicConfig(level=logging.INFO)
     
 def heatmap(array, binary=False):
+    plt.figure(figsize=(15, 12))
     if binary:
         cmap = matplotlib.colors.ListedColormap(['w', 'b'])
         plt.imshow(array, cmap=cmap)
