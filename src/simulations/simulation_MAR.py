@@ -14,25 +14,18 @@ from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_com
 
 logging.basicConfig(level=logging.INFO)
 
-class MARSimulation:
-    def __init__(self, connect_matrix, concentrations=None):
+class MARsimulation:
+    def __init__(self, connect_matrix, t0_concentrations, t1_concentrations):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
-        
         self.brain_par = 116                                                    # no. of brain areas from the atlas
         self.maxiter = 5000                                                     # max no. of iterations for the gradient descent
-        self.error_des = 1e10                                                   # initial error of reconstruction 
         self.th = 0.016                                                         # acceptable error threshold for the reconstruction error
-        self.eta = 5e-6                                                         # learning rate of the gradient descent 
-        
+        self.eta = 5e-15                                                        # learning rate of the gradient descent       
         self.cm = connect_matrix
-        if concentrations is not None: 
-            logging.info(f'Loading concentration from PET files.')
-            self.diffusion_init = concentrations
-        else:
-            logging.info(f'Loading concentration manually.')
-            self.diffusion_init = self.define_seeds()
-                    
+        self.init_concentrations = t0_concentrations
+        self.final_concentrations = t1_concentrations
+
     def run(self, norm_opt, inverse_log=False):
         ''' Run simulation. 
         
@@ -42,20 +35,7 @@ class MARSimulation:
         if inverse_log: self.calc_exponent()
         self.transform_cm(norm_opt)
         self.generate_indicator_matrix()
-        
-        
-    def define_seeds(self, init_concentration=1):
-        ''' Define Alzheimer seed regions manually. 
-        
-        Args:
-            init_concentration (int): initial concentration of misfolded proteins in the seeds. '''
-            
-        # Store initial misfolded proteins
-        diffusion_init = np.zeros(self.rois)
-        # Seed regions for Alzheimer (according to AAL atlas): 31, 32, 35, 36 (TODO: confirm)
-        # assign initial concentration of proteins in this region
-        diffusion_init[[31, 32, 35, 36]] = init_concentration
-        return diffusion_init
+        coef_matrix = self.run_gradient_descent()
  
     def calc_exponent(self):
         ''' Inverse operation to log1p. '''
@@ -70,7 +50,7 @@ class MARSimulation:
             logging.info('No normalization of the initial matrix')
         elif norm_opt == 1:
             logging.info('Initial matrix binarized')
-            self.cm = self.cm > 0
+            self.cm = np.where(self.cm > 0, 1, 0).astype('float32')
         elif norm_opt == 2:
             logging.info('Initial matrix normalized according to its largest value')
             max_val = np.max(self.cm)
@@ -82,8 +62,35 @@ class MARSimulation:
         ''' Construct a matrix with only zeros and ones to be used to 
         reinforce the zero connection (this is **B** in our paper).
         noconn_M has zero elements where no structural connectivity appears. '''
-        self.noconn_M = np.where(self.cm==0, 0, 1)
- 
+        self.noconn_M = np.where(self.cm==0, 0, 1).astype('float32')
+        
+    def run_gradient_descent(self):
+        iter_count = 0  # counter of the current iteration 
+        etem = [] # reconstruction error along iterations
+        error_des = 1e10 # initial error of reconstruction 
+        M = self.cm # initial value for coefficient matrix is connectivity matrix 
+
+        # loop direct connections until criteria are met 
+        while (error_des > self.th) and (iter_count < self.maxiter):
+            gradient = np.zeros((self.brain_par, self.brain_par))
+            # calculate reconstruction error 
+            error_des = 0.5 * np.linalg.norm(self.final_concentrations - M @ self.init_concentrations)
+            etem.append(error_des)
+            # TODO: gradient computation; verify with Alex; grandient values are really high
+            gradient += ((self.final_concentrations - M @ self.init_concentrations) * self.init_concentrations)
+            # gradient += (M @ self.init_concentrations @ self.init_concentrations.T - self.final_concentrations @ self.init_concentrations.T)
+            # update rule
+            M -= self.eta * gradient
+            # reinforce where there was no connection at the beginning 
+            M *= self.noconn_M
+            # TODO: remove negative values?
+            # M *= (M > 0)
+            iter_count += 1
+            
+        print(etem)
+        # print(etem)
+        return M
+            
     def save_diffusion_matrix(self, save_dir):
         np.savetxt(os.path.join(save_dir, 'diffusion_matrix_over_time.csv'), 
                                 self.diffusion_final, delimiter=",")
@@ -96,12 +103,6 @@ class MARSimulation:
 def load_matrix(path):
     data = np.genfromtxt(path, delimiter=",")
     return data
-
-def calc_error(output, target):
-    ''' Compare output from simulation with 
-    the target data extracted from PET using MSE metric. '''
-    RMSE = np.sqrt(np.sum((output - target)**2) / len(output))
-    return RMSE 
     
 def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):    
     ''' Run simulation for single patient. '''
@@ -120,10 +121,9 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
     t0_concentration = load_matrix(t0_concentration_path) 
     t1_concentration = load_matrix(t1_concentration_path)
             
-    simulation = MARSimulation(connect_matrix, t0_concentration)
-    simulation.run(norm_opt=0)
+    simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration)
+    simulation.run(norm_opt=2)
     
- 
 def main():
     connectomes_dir = '../../data/connectomes'
     concentrations_dir = '../../data/PET_regions_concentrations'
