@@ -59,7 +59,7 @@ def main():
     
     patients = ['sub-AD4009', 'sub-AD4215', 'sub-AD4500', 'sub-AD4892', 'sub-AD6264']
     for subject in patients:
-        logging.info(f'Simulation for subject: {subject}')
+        logging.info(f'Beta-amyloid concentration extraction for subject: {subject}')
         run(pet_dir, concentrations_dir, subject, atlas_data)
 
 if __name__ == '__main__':
