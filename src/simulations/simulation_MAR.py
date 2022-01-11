@@ -10,7 +10,7 @@ import logging
 from tqdm import tqdm 
 import numpy as np
 
-from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
+from utils_vis import visualize_terminal_state_comparison
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,7 +22,7 @@ class MARsimulation:
         self.maxiter = 5000                                                     # max no. of iterations for the gradient descent
         self.th = 0.016                                                         # acceptable error threshold for the reconstruction error
         self.eta = 5e-15                                                        # learning rate of the gradient descent       
-        self.cm = connect_matrix
+        self.cm = connect_matrix                                                # connectivity matrix 
         self.init_concentrations = t0_concentrations
         self.final_concentrations = t1_concentrations
 
@@ -35,7 +35,9 @@ class MARsimulation:
         if inverse_log: self.calc_exponent()
         self.transform_cm(norm_opt)
         self.generate_indicator_matrix()
-        coef_matrix = self.run_gradient_descent()
+        coef_matrix = self.run_gradient_descent() # get the model params
+        pred_concentrations = coef_matrix @ self.init_concentrations # make predictions 
+        return pred_concentrations
  
     def calc_exponent(self):
         ''' Inverse operation to log1p. '''
@@ -77,8 +79,8 @@ class MARsimulation:
             error_des = 0.5 * np.linalg.norm(self.final_concentrations - M @ self.init_concentrations)
             etem.append(error_des)
             # TODO: gradient computation; verify with Alex; grandient values are really high
-            gradient += ((self.final_concentrations - M @ self.init_concentrations) * self.init_concentrations)
-            # gradient += (M @ self.init_concentrations @ self.init_concentrations.T - self.final_concentrations @ self.init_concentrations.T)
+            gradient += ((self.final_concentrations - M @ self.init_concentrations) * self.init_concentrations) # according to paper 
+            # gradient += (M @ self.init_concentrations @ self.init_concentrations.T - self.final_concentrations @ self.init_concentrations.T) # according to matlab code  
             # update rule
             M -= self.eta * gradient
             # reinforce where there was no connection at the beginning 
@@ -87,7 +89,6 @@ class MARsimulation:
             # M *= (M > 0)
             iter_count += 1
             
-        print(etem)
         # print(etem)
         return M
             
@@ -122,7 +123,10 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
     t1_concentration = load_matrix(t1_concentration_path)
             
     simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration)
-    simulation.run(norm_opt=2)
+    t1_concentration_pred = simulation.run(norm_opt=2)
+    visualize_terminal_state_comparison(t0_concentration, 
+                                        t1_concentration_pred,
+                                        t1_concentration,)
     
 def main():
     connectomes_dir = '../../data/connectomes'
