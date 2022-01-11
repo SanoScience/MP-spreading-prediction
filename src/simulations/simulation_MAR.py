@@ -21,18 +21,21 @@ class MARsimulation:
         self.brain_par = 116                                                    # no. of brain areas from the atlas
         self.maxiter = 5000                                                     # max no. of iterations for the gradient descent
         self.th = 0.016                                                         # acceptable error threshold for the reconstruction error
-        self.eta = 5e-15                                                        # learning rate of the gradient descent       
+        self.eta = 5e-13                                                        # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
+        self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
         self.final_concentrations = t1_concentrations
 
-    def run(self, norm_opt, inverse_log=False):
+    def run(self, norm_opt, inverse_log=True):
         ''' Run simulation. 
         
         Args:
             norm_opt (int): normalize option for connectivity matrix
-            inverse_log (boolean): use normal values instead of logarithmic in connectivity matrix '''
-        if inverse_log: self.calc_exponent()
+            inverse_log (boolean): if True use normal values instead of logarithmic in connectivity matrix '''
+        if inverse_log: 
+            self.calc_exponent()
+            self.filter_connections()
         self.transform_cm(norm_opt)
         self.generate_indicator_matrix()
         coef_matrix = self.run_gradient_descent() # get the model params
@@ -43,8 +46,14 @@ class MARsimulation:
         ''' Inverse operation to log1p. '''
         self.cm = np.expm1(self.cm)
         
+    def filter_connections(self):
+        ''' Filter out all connections with less than n fiber reaching. '''
+        self.cm = np.where(self.cm > self.min_tract_num, self.cm, 0).astype('float32')
+        
     def transform_cm(self, norm_opt):
         '''
+        Transform initial conenctivity matrix. 
+        
         Args:
             0 means no normalization, = 1 means binarize, = 2 means divide by the maximum '''
         
@@ -70,7 +79,7 @@ class MARsimulation:
         iter_count = 0  # counter of the current iteration 
         etem = [] # reconstruction error along iterations
         error_des = 1e10 # initial error of reconstruction 
-        M = self.cm # initial value for coefficient matrix is connectivity matrix 
+        M = self.cm # the resulting effective matrix; initialized with connectivity matrix 
 
         # loop direct connections until criteria are met 
         while (error_des > self.th) and (iter_count < self.maxiter):
@@ -79,8 +88,8 @@ class MARsimulation:
             error_des = 0.5 * np.linalg.norm(self.final_concentrations - M @ self.init_concentrations)
             etem.append(error_des)
             # TODO: gradient computation; verify with Alex; grandient values are really high
-            gradient += ((self.final_concentrations - M @ self.init_concentrations) * self.init_concentrations) # according to paper 
-            # gradient += (M @ self.init_concentrations @ self.init_concentrations.T - self.final_concentrations @ self.init_concentrations.T) # according to matlab code  
+            # gradient += ((self.final_concentrations - M @ self.init_concentrations) * self.init_concentrations) # according to paper 
+            gradient += (M @ self.init_concentrations @ self.init_concentrations.T - self.final_concentrations @ self.init_concentrations.T) # according to matlab code  
             # update rule
             M -= self.eta * gradient
             # reinforce where there was no connection at the beginning 
@@ -89,7 +98,7 @@ class MARsimulation:
             # M *= (M > 0)
             iter_count += 1
             
-        # print(etem)
+        print('ERRORS: ', etem)
         return M
             
     def save_diffusion_matrix(self, save_dir):
