@@ -21,7 +21,7 @@ class MARsimulation:
         self.brain_par = 116                                                    # no. of brain areas from the atlas
         self.maxiter = 5000                                                     # max no. of iterations for the gradient descent
         self.th = 0.016                                                         # acceptable error threshold for the reconstruction error
-        self.eta = 5e-13                                                        # learning rate of the gradient descent       
+        self.eta = 5e-12                                                        # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -89,7 +89,7 @@ class MARsimulation:
             etem.append(error_des)
             # TODO: gradient computation; verify with Alex; grandient values are really high
             # gradient += ((self.final_concentrations - M @ self.init_concentrations) * self.init_concentrations) # according to paper 
-            gradient += (M @ self.init_concentrations @ self.init_concentrations.T - self.final_concentrations @ self.init_concentrations.T) # according to matlab code  
+            gradient += (M @ self.init_concentrations.T @ self.init_concentrations - self.final_concentrations.T @ self.init_concentrations) # according to matlab code; error gets saturated at 24142 for eta = 5e-12
             # update rule
             M -= self.eta * gradient
             # reinforce where there was no connection at the beginning 
