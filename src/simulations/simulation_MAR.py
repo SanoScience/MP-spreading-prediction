@@ -5,6 +5,7 @@ A.Crimi et al. "Effective Brain Connectivity Through a Constrained Autoregressiv
 '''
 
 import os
+from glob import glob
 import logging
 
 from tqdm import tqdm 
@@ -98,7 +99,7 @@ class MARsimulation:
             # M *= (M > 0)
             iter_count += 1
             
-        print('ERRORS: ', etem)
+        # print('ERRORS: ', etem)
         return M
             
     def save_diffusion_matrix(self, save_dir):
@@ -119,17 +120,21 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
       
     connectivity_matrix_path = os.path.join(os.path.join(connectomes_dir, subject), 
                                             'connect_matrix_rough.csv')
-    t0_concentration_path = os.path.join(concentrations_dir, subject, 
-                                         f'nodeIntensities-not-normalized-{subject}t0.csv')
-    t1_concentration_path = os.path.join(concentrations_dir, subject, 
-                                         f'nodeIntensities-not-normalized-{subject}t1.csv')
+    concentrations_paths = glob(os.path.join(concentrations_dir, subject, '*.csv'))
+    t0_concentration_path = [path for path in concentrations_paths if 'baseline' in path][0]
+    t1_concentration_path = [path for path in concentrations_paths if 'followup' in path][0]
+ 
     subject_output_dir = os.path.join(output_dir, subject)
     
     # load connectome
     connect_matrix = load_matrix(connectivity_matrix_path)
-    # load proteins concentration in brian regions
+    # load proteins concentration in brain regions
     t0_concentration = load_matrix(t0_concentration_path) 
     t1_concentration = load_matrix(t1_concentration_path)
+    
+    if (t0_concentration == t1_concentration).all():
+        logging.info('Followup is the same as baseline. Subject skipped.')
+        return
             
     simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration)
     t1_concentration_pred = simulation.run(norm_opt=2)
@@ -142,7 +147,7 @@ def main():
     concentrations_dir = '../../data/PET_regions_concentrations'
     output_dir = '../../results' 
     
-    patients = ['sub-AD6264'] #['sub-AD4215', 'sub-AD4500', 'sub-AD6264']
+    patients = ['sub-AD4215', 'sub-AD4009']
     for subject in patients:
         logging.info(f'Simulation for subject: {subject}')
         run_simulation(connectomes_dir, concentrations_dir, output_dir, subject)

@@ -27,16 +27,16 @@ class EMS_Simulation:
 
     def __init__(self, connect_matrix, regions_distances, years, concentrations=None):
         self.N_regions = 116    # number of brain regions 
-        self.v = 1              # speed
+        self.speed = 1          # propagation velocity
         self.dt = 0.01          # time step (0.01)
         self.T_total = years    # total time 
-        self.amy_control = 3    # a parameter to control the number of voxels in which beta-amyloid may get synthesized (?)
+        self.amy_control = 3    # parameter to control the number of voxels in which beta-amyloid may get synthesized (?)
         self.prob_stay = 0.5    # the probability of staying in the same region per unit time (0.5)
         self.trans_rate = 4     # a scalar value, controlling the baseline infectivity
         self.iter_max = 50      # max no. of iterations
         self.mu_noise = 0       # mean of the additive noise
         self.sigma_noise = 1    # standard deviation of the additive noise
-        self.g = 1              # global tuning variable that quantifies the temporal MP deposition inequality among different brain regions
+        self.gini_coeff = 1     # measure of statistical dispersion in a given system, with value 0 reflecting perfect equality and value 1 corresponding to a complete inequality
         self.clearance_rate = np.ones(self.N_regions)   
         self.synthesis_rate = np.ones(self.N_regions)  
         self.beta0 = 1 * self.trans_rate / self.N_regions
@@ -70,9 +70,9 @@ class EMS_Simulation:
         return matrix
 
     def calculate_connect(self):
-        epsilon = 1e-2
+        eps = 1e-2
         self.regions_distances = self.remove_diagonal(self.regions_distances)
-        self.regions_distances += epsilon # add small epsilon to avoid dividing by zero
+        self.regions_distances += eps # add small epsilon to avoid dividing by zero
         self.connect_matrix = self.remove_diagonal(self.connect_matrix)
         
         connect = self.connect_matrix
@@ -84,16 +84,15 @@ class EMS_Simulation:
             t = 0
             for j in range(self.N_regions):
                 if i != j:
-                    t +=  beta * self.prob_stay * (self.connect_matrix[i, j] * self.g + self.connect_matrix[i, i] * (1 - self.g))
+                    t +=  beta * self.prob_stay * (self.connect_matrix[i, j] * self.gini_coeff + self.connect_matrix[i, i] * (1 - self.gini_coeff))
             Epsilon[i] = t
             
         # INTRA-BRAIN EPIDEMIC SPREADING MODEL 
-        connect = (1 - self.prob_stay)* Epsilon - self.prob_stay * np.exp(- self.diffusion_init* self.prob_stay) +  noise
+        connect = (1 - self.prob_stay)*Epsilon - self.prob_stay * np.exp(- self.diffusion_init* self.prob_stay) +  noise
         
         # The probability of moving from region i to edge (i,j)
         sum_line = np.sum(connect, axis=1)
-        Total_el_col= np.tile(np.transpose(sum_line), (1,1)) 
-        connect /= Total_el_col
+        connect /= sum_line
         return connect
     
     def calculate_Rnor_Pnor(self, connect):  
@@ -114,7 +113,7 @@ class EMS_Simulation:
             # paths towards regions
             # longer path & smaller v = lower probability of moving out of paths
             # update moving
-            movOut = (self.v * Pnor)  / self.regions_distances
+            movOut = (self.speed * Pnor)  / self.regions_distances
             movOut = self.remove_diagonal(movOut)
 
             Pnor = Pnor - movOut * self.dt + movDrt
@@ -164,7 +163,7 @@ class EMS_Simulation:
             movDrt_mis = self.remove_diagonal(movDrt_mis)
             
             # normal proteins: paths -->> regions
-            movOut_mis = (Pnor0 / self.regions_distances)* self.v 
+            movOut_mis = (Pnor0 / self.regions_distances)* self.speed
             movOut_mis = self.remove_diagonal(movOut_mis)
         
             # update regions and paths
@@ -254,7 +253,7 @@ def main():
     concentrations_dir = '../../data/PET_regions_concentrations'
     output_dir = '../../results' 
     
-    patients = ['sub-AD6264'] #['sub-AD4215', 'sub-AD4500', 'sub-AD6264']
+    patients = ['sub-AD4215', 'sub-AD4009']
     for subject in patients:
         logging.info(f'Simulation for subject: {subject}')
         run_simulation(connectomes_dir, concentrations_dir, output_dir, subject)
