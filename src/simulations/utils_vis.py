@@ -40,7 +40,9 @@ def visualize_diffusion_timeplot(matrix, timestep, total_time, save_dir=None):
         plt.savefig(os.path.join(save_dir, 'diffusion_over_time.png'))
     plt.show() 
     
-def visualize_terminal_state_comparison(input_vec, output_vec, target_vec, rmse=None, save_dir=None):
+def visualize_terminal_state_comparison(input_vec, output_vec, target_vec, 
+                                        subject, error=None, corr_coeff=None, 
+                                        save_dir=None):
     plt.figure(figsize=(15, 5))
     plt.plot(input_vec, '--', marker='o', c='b', label='initial concentration t0')
     plt.plot(output_vec, '--', marker='o', c='r', label='predicted concentration t1')
@@ -48,7 +50,7 @@ def visualize_terminal_state_comparison(input_vec, output_vec, target_vec, rmse=
     plt.xlabel('ROI (index of brain region based on AAL atlas)')
     plt.ylabel('concentration of misfolded proteins')
     plt.legend(loc='upper right')
-    if rmse is not None: plt.title(f'RMSE between true and predicted t1: {rmse:.2f}')
+    if error is not None: plt.title(f'Subject: {subject} \nError between true and predicted t1: {error:.2f}\nPearson correlation coeff: {corr_coeff:.2f}')
     plt.tight_layout()
     if save_dir is not None:
         plt.savefig(os.path.join(save_dir, 'concentration_comparison.png'))

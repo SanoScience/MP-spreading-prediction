@@ -7,6 +7,7 @@ Ashish Raj, Amy Kuceyeski, Michael Weiner,
 
 import os
 import logging
+from glob import glob
 
 from tqdm import tqdm 
 import numpy as np
@@ -14,6 +15,7 @@ from scipy.sparse.csgraph import laplacian as scipy_laplacian
 from scipy.stats.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
+from utils import load_matrix, calc_rmse
 
 logging.basicConfig(level=logging.INFO)
 
@@ -57,13 +59,13 @@ class DiffusionSimulation:
         diffusion_init[[31, 32, 35, 36]] = init_concentration
         return diffusion_init
         
-    def calc_laplacian(self): 
+    def calc_laplacian(self, eps=1e-10): 
         # calculate normalized Laplacian: L = I - D-1/2 @ A @ D-1/2
         # assume: A - adjacency matrix, D - degree matrix, I - identity matrix, L - laplacian matrix
         A = self.cm
-        D = np.diag(np.sum(A, axis=1)) # total no. of. connections to other vertices
+        D = np.diag(np.sum(A, axis=1))# total no. of. connections to other vertices
         I = np.identity(A.shape[0]) # identity matrix
-        D_inv_sqrt = np.linalg.inv(np.sqrt(D))
+        D_inv_sqrt = np.linalg.inv(np.sqrt(D)+eps) # add epsilon to avoid getting 0 determinant
         self.L = I - (D_inv_sqrt @ A) @ D_inv_sqrt
                         
         # eigendecomposition
@@ -120,26 +122,15 @@ class DiffusionSimulation:
         ''' Save last (terminal) concentration. '''
         np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
                    self.diffusion_final[-1, :], delimiter=',')
-               
-def load_matrix(path):
-    data = np.genfromtxt(path, delimiter=",")
-    return data
 
-def calc_error(output, target):
-    ''' Compare output from simulation with 
-    the target data extracted from PET using MSE metric. '''
-    RMSE = np.sqrt(np.sum((output - target)**2) / len(output))
-    return RMSE 
-    
 def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):    
     ''' Run simulation for single patient. '''
       
     connectivity_matrix_path = os.path.join(os.path.join(connectomes_dir, subject), 
                                             'connect_matrix_rough.csv')
-    t0_concentration_path = os.path.join(concentrations_dir, subject, 
-                                         f'nodeIntensities-not-normalized-{subject}t0.csv')
-    t1_concentration_path = os.path.join(concentrations_dir, subject, 
-                                         f'nodeIntensities-not-normalized-{subject}t1.csv')
+    concentrations_paths = glob(os.path.join(concentrations_dir, subject, '*.csv'))
+    t0_concentration_path = [path for path in concentrations_paths if 'baseline' in path][0]
+    t1_concentration_path = [path for path in concentrations_paths if 'followup' in path][0]
     subject_output_dir = os.path.join(output_dir, subject)
     
     # load connectome
@@ -156,7 +147,7 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
                                  simulation.timestep,
                                  simulation.t_total,
                                  save_dir=subject_output_dir)
-    rmse = calc_error(t1_concentration_pred, t1_concentration)
+    rmse = calc_rmse(t1_concentration_pred, t1_concentration)
     corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
     logging.info(f'MSE for subject {subject} is: {rmse:.2f}')
     logging.info(f'Pearson correlation coefficient for subject {subject} is: {corr_coef:.2f}')
@@ -164,7 +155,9 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
     visualize_terminal_state_comparison(t0_concentration, 
                                         t1_concentration_pred,
                                         t1_concentration,
+                                        subject,
                                         rmse,
+                                        corr_coef,
                                         save_dir=subject_output_dir)
     
 def main():
@@ -172,7 +165,7 @@ def main():
     concentrations_dir = '../../data/PET_regions_concentrations'
     output_dir = '../../results' 
     
-    patients = ['sub-AD6264'] #['sub-AD4215', 'sub-AD4500', 'sub-AD6264']
+    patients = ['sub-AD4215', 'sub-AD4009']
     for subject in patients:
         logging.info(f'Simulation for subject: {subject}')
         run_simulation(connectomes_dir, concentrations_dir, output_dir, subject)

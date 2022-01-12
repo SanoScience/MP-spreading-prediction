@@ -18,7 +18,10 @@ import networkx as nx
 from tqdm import tqdm
 from networkx.algorithms.shortest_paths.generic import shortest_path
 from networkx.algorithms.shortest_paths.weighted import _dijkstra
+from scipy.stats.stats import pearsonr as pearson_corr_coef
+
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
+from utils import load_matrix, calc_rmse
 
 logging.basicConfig(level=logging.INFO)
 
@@ -190,12 +193,6 @@ class EMS_Simulation:
             
         return Rmis_all, Pmis_all
     
-def calc_error(output, target):
-    ''' Compare output from simulation with 
-    the target data extracted from PET using MSE metric. '''
-    RMSE = np.sqrt(np.sum((output - target)**2) / len(output))
-    return RMSE 
-
 def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):    
     connectivity_matrix_path = os.path.join(os.path.join(connectomes_dir, subject), 
                                             'connect_matrix_rough.csv')
@@ -225,11 +222,14 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
 
     # predicted vs real plot; take results from the last step
     t1_concentration_pred = Rmis_all[:, years-1]
-    rmse = calc_error(t1_concentration, t1_concentration_pred)
+    rmse = calc_rmse(t1_concentration, t1_concentration_pred)
+    corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
     visualize_terminal_state_comparison(t0_concentration, 
                                         t1_concentration_pred, 
                                         t1_concentration, 
-                                        rmse)
+                                        subject,
+                                        rmse,
+                                        corr_coef)
 
 def dijkstra(matrix):
     # calculate distance matrix using Dijkstra algorithm 
@@ -247,9 +247,6 @@ def dijkstra(matrix):
                 distance [i, j] = t
                 
     return distance
-
-def load_matrix(path):
-    return np.genfromtxt(path, delimiter=",")
 
 def main():
     connectomes_dir = '../../data/connectomes'

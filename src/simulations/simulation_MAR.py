@@ -10,8 +10,10 @@ import logging
 
 from tqdm import tqdm 
 import numpy as np
+from scipy.stats.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import visualize_terminal_state_comparison
+from utils import load_matrix, calc_rmse
 
 logging.basicConfig(level=logging.INFO)
 
@@ -110,11 +112,7 @@ class MARsimulation:
         ''' Save last (terminal) concentration. '''
         np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
                    self.diffusion_final[-1, :], delimiter=',')
-               
-def load_matrix(path):
-    data = np.genfromtxt(path, delimiter=",")
-    return data
-    
+                   
 def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):    
     ''' Run simulation for single patient. '''
       
@@ -141,9 +139,14 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
             
     simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration)
     t1_concentration_pred = simulation.run(norm_opt=2)
+    rmse = calc_rmse(t1_concentration, t1_concentration_pred)
+    corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
     visualize_terminal_state_comparison(t0_concentration, 
                                         t1_concentration_pred,
-                                        t1_concentration,)
+                                        t1_concentration,
+                                        subject,
+                                        rmse, 
+                                        corr_coef)
     
 def main():
     connectomes_dir = '../../data/connectomes'
