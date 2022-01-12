@@ -1,8 +1,6 @@
 ''' Simulation of spreading the misfolded beta_amyloid with 
 Intra-brain Epidemic Spreading model. 
 
-Author: A. Randriatahina 
-
 Based on publication: 
 "Epidemic Spreading Model to Characterize Misfolded Proteins Propagation 
 in Aging and Associated Neurodegenerative Disorders"
@@ -38,6 +36,7 @@ class EMS_Simulation:
         self.iter_max = 50      # max no. of iterations
         self.mu_noise = 0       # mean of the additive noise
         self.sigma_noise = 1    # standard deviation of the additive noise
+        self.g = 1              # global tuning variable that quantifies the temporal MP deposition inequality among different brain regions
         self.clearance_rate = np.ones(self.N_regions)   
         self.synthesis_rate = np.ones(self.N_regions)  
         self.beta0 = 1 * self.trans_rate / self.N_regions
@@ -64,15 +63,19 @@ class EMS_Simulation:
         # assign initial concentration of proteins in this region
         diffusion_init[[31, 32, 35, 36]] = init_concentration
         return diffusion_init
+    
+    def remove_diagonal(self, matrix):
+        # remove diagonal elements from matrix
+        matrix -= np.diag(np.diag(matrix))
+        return matrix
 
     def calculate_connect(self):
-        epsilon = 1e-2 # choose small epsilon to avoid division by zero 
-        self.regions_distances -= np.diag(np.diag(self.regions_distances))
-        self.regions_distances += epsilon
-        self.connect_matrix -= np.diag(np.diag(self.connect_matrix))
+        epsilon = 1e-2
+        self.regions_distances = self.remove_diagonal(self.regions_distances)
+        self.regions_distances += epsilon # add small epsilon to avoid dividing by zero
+        self.connect_matrix = self.remove_diagonal(self.connect_matrix)
         
         connect = self.connect_matrix
-        g = 1 # global tuning variable that quantifies the temporal MP deposition inequality among different brain regions
         noise = np.random.normal(self.mu_noise, self.sigma_noise, (self.N_regions, self.N_regions))     
         beta = 1 - np.exp(self.beta0 * self.prob_stay)  # regional probability receiving MP infectous-like agents
         Epsilon = np.zeros((self.N_regions, self.N_regions))
@@ -81,14 +84,14 @@ class EMS_Simulation:
             t = 0
             for j in range(self.N_regions):
                 if i != j:
-                    t +=  beta * self.prob_stay * (self.connect_matrix[i, j] * g + self.connect_matrix[i, i] * (1 - g))
+                    t +=  beta * self.prob_stay * (self.connect_matrix[i, j] * self.g + self.connect_matrix[i, i] * (1 - self.g))
             Epsilon[i] = t
             
         # INTRA-BRAIN EPIDEMIC SPREADING MODEL 
         connect = (1 - self.prob_stay)* Epsilon - self.prob_stay * np.exp(- self.diffusion_init* self.prob_stay) +  noise
         
         # The probability of moving from region i to edge (i,j)
-        sum_line= [sum(connect[i]) for i in range(self.N_regions)]
+        sum_line = np.sum(connect, axis=1)
         Total_el_col= np.tile(np.transpose(sum_line), (1,1)) 
         connect /= Total_el_col
         return connect
@@ -105,20 +108,19 @@ class EMS_Simulation:
         for t in tqdm(range(self.iter_max)):  
             # movDrt stores the number of proteins towards each region. 
             # i.e. element in kth row lth col denotes the number of proteins in region k moving towards l
-            movDrt = Rnor * connect
-            movDrt *= self.dt 
-            movDrt -= np.diag(np.diag(movDrt))
+            movDrt = Rnor * connect * self.dt
+            movDrt = self.remove_diagonal(movDrt)
         
             # paths towards regions
             # longer path & smaller v = lower probability of moving out of paths
             # update moving
             movOut = (self.v * Pnor)  / self.regions_distances
-            movOut -= np.diag(np.diag(movOut))
+            movOut = self.remove_diagonal(movOut)
 
             Pnor = Pnor - movOut * self.dt + movDrt
-            Pnor -= np.diag(np.diag(Pnor))
-            Sum_rows_movOut = [sum(movOut[i])for i in range(self.N_regions)]
-            Sum_cols_movDrt = [sum(movDrt[:,i]) for i in range(self.N_regions)]
+            Pnor = self.remove_diagonal(Pnor)
+            Sum_rows_movOut = np.sum(movOut, axis=1)
+            Sum_cols_movDrt = np.sum(movDrt, axis=0)
 
             Rtmp = Rnor
             Rnor = Rnor +  np.transpose(Sum_rows_movOut) * self.dt -  Sum_cols_movDrt
@@ -159,18 +161,18 @@ class EMS_Simulation:
             # moving process
             # misfolded proteins: region -->> paths
             movDrt_mis = Rnor0 * connect * self.dt
-            movDrt_mis -= np.diag(np.diag(movDrt_mis))
+            movDrt_mis = self.remove_diagonal(movDrt_mis)
             
             # normal proteins: paths -->> regions
             movOut_mis = (Pnor0 / self.regions_distances)* self.v 
-            movOut_mis -= np.diag(np.diag(movOut_mis))
+            movOut_mis = self.remove_diagonal(movOut_mis)
         
             # update regions and paths
             Pmis = Pmis - movOut_mis * self.dt +  movDrt_mis
-            Pmis -= np.diag(np.diag(Pmis))
+            Pmis = self.remove_diagonal(Pmis)
 
-            Sum_rows_movOut_mis = [sum(movOut_mis[i]) for i in range(self.N_regions)]
-            Sum_cols_movDrt_mis = [sum(movDrt_mis[:,i]) for i in range(self.N_regions)]
+            Sum_rows_movOut_mis = np.sum(movOut_mis, axis=1)
+            Sum_cols_movDrt_mis = np.sum(movDrt_mis, axis=0)
 
             Rmis = Rmis + np.transpose(Sum_rows_movOut_mis) * self.dt  - Sum_cols_movDrt_mis
             Rmis_cleared = Rmis * (1 - np.exp(-self.clearance_rate * self.dt))
