@@ -211,6 +211,9 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
     t0_concentration = load_matrix(t0_concentration_path)
     t1_concentration = load_matrix(t1_concentration_path)
     
+    logging.info(f'Sum of t0 concentration: {np.sum(t0_concentration)}')
+    logging.info(f'Sum of t1 concentration: {np.sum(t1_concentration)}')
+    
     regions_distances = dijkstra(connectivity_matrix)
         
     simulation = EMS_Simulation(connectivity_matrix, regions_distances, years, concentrations=t0_concentration)
