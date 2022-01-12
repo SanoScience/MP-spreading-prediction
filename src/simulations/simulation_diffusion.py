@@ -15,7 +15,7 @@ from scipy.sparse.csgraph import laplacian as scipy_laplacian
 from scipy.stats.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
-from utils import load_matrix, calc_rmse
+from utils import load_matrix, calc_rmse, calc_msle
 
 logging.basicConfig(level=logging.INFO)
 
