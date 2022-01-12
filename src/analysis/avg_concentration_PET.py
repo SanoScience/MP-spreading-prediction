@@ -1,4 +1,4 @@
-''' Script for getting mean amyloid beta concentration 
+''' Script for extracting mean amyloid beta concentration 
 from brain regions based on atlas. '''
 
 import os
@@ -23,7 +23,7 @@ def get_atlas_labels_info(atlas):
 
 def load_pet(path):
     pet = nibabel.load(path).get_fdata()
-    # visualize_PET(pet)
+    visualize_PET(pet)
     return pet
 
 def visualize_PET(data):

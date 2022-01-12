@@ -44,12 +44,16 @@ def run(connectomes_dir, subjects):
     mean_across_subj = np.mean(data, axis=0)
     heatmap(mean_across_subj)
     
+    buffer = []
     print('No. of non-negative values above mean:')
     for array, subj in zip(data, subjects):
         condition_matrix, counts = count_values_above_mean(array, mean_across_subj)
         ratio = counts/array.shape[0]**2
+        buffer.append(counts)
         print(f'Subject: {subj}, counts: {counts}, ratio: {ratio:.2f}')
         heatmap(condition_matrix, binary=True)
+        
+    print(f'Total mean of counts: {np.mean(buffer)}')
         
 def main():
     connectomes_dir = '../../data/connectomes'   
