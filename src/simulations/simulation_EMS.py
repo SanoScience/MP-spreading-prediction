@@ -27,29 +27,20 @@ logging.basicConfig(level=logging.INFO)
 class EMS_Simulation:
     ''' A class to simulate the spread of misfolded beta_amyloid. '''
 
-    #GBA: GBA gene expression (zscore, N_regions * 1 vector) (empirical GBA expression)
-    #SNCA: SNCA gene expression after normalization (zscore, N_regions * 1 vector) (empirical SNCA expression)
-
-    def __init__(self, connect_matrix_in, sconnLens, years, concentrations=None):
-        # constants used in calculation
-        self.N_regions = 116    # N_regions: number of regions 
-        self.v = 1              # v: speed (1)
-        self.dt = 0.01          # dt: time step (0.01)
-        self.T_total = years    # total time steps (10000)
-        self.rois = 116          # TODO documentation
-        self.amy_control = 3    # TODO documentation
+    def __init__(self, connect_matrix, regions_distances, years, concentrations=None):
+        self.N_regions = 116    # number of brain regions 
+        self.v = 1              # speed
+        self.dt = 0.01          # time step (0.01)
+        self.T_total = years    # total time 
+        self.amy_control = 3    # a parameter to control the number of voxels in which beta-amyloid may get synthesized (?)
         self.prob_stay = 0.5    # the probability of staying in the same region per unit time (0.5)
         self.trans_rate = 4     # a scalar value, controlling the baseline infectivity
-        self.P = 0              # TODO documentation
-        self.iter_max = 50      # fill the network with normal proteins
-        self.beta0 = 1 * self.trans_rate / self.rois 
+        self.iter_max = 50      # max no. of iterations
         self.mu_noise = 0       # mean of the additive noise
         self.sigma_noise = 1    # standard deviation of the additive noise
-        self.mu_noise = 0       # mean of the additive noise
-        self.sigma_noise = 1    # standard deviation of the additive noise
-        self.connect_matrix = connect_matrix_in - np.diag(np.diag(connect_matrix_in)) # connectivity matrix of the patient
-        self.clearance_rate = np.ones(self.N_regions)   # TODO documentation
-        self.synthesis_rate = np.ones(self.N_regions)   # TODO documentation
+        self.clearance_rate = np.ones(self.N_regions)   
+        self.synthesis_rate = np.ones(self.N_regions)  
+        self.beta0 = 1 * self.trans_rate / self.N_regions
         
         if concentrations is not None: 
             logging.info(f'Loading concentration from PET files.')
@@ -58,9 +49,8 @@ class EMS_Simulation:
             logging.info(f'Loading concentration manually.')
             self.diffusion_init = self.define_seeds()
         
-        epsilon = 1e-2 # We choose this small espilon to avoid division with zero 
-        sconnLen1 = sconnLens - np.diag(np.diag(sconnLens))    # sconnLen: structural connectivity matrix (length) (estimated from HCP data)
-        self.sconnLen = sconnLen1 + epsilon 
+        self.regions_distances = regions_distances
+        self.connect_matrix = connect_matrix
         
     def define_seeds(self, init_concentration=0.2):
         ''' Define Alzheimer seed regions manually. 
@@ -69,59 +59,64 @@ class EMS_Simulation:
             init_concentration (int): initial concentration of misfolded proteins in the seeds. '''
             
         # Store initial misfolded proteins
-        diffusion_init = np.zeros(self.rois)
+        diffusion_init = np.zeros(self.N_regions)
         # Seed regions for Alzheimer (according to AAL atlas): 31, 32, 35, 36 (TODO: confirm)
         # assign initial concentration of proteins in this region
         diffusion_init[[31, 32, 35, 36]] = init_concentration
         return diffusion_init
 
     def calculate_connect(self):
-        g = 1 #global tuning variable that quantifies the temporal MP deposition inequality 
-
-        Ki = np.random.normal(self.mu_noise, self.sigma_noise, (self.N_regions,self.N_regions))
+        epsilon = 1e-2 # choose small epsilon to avoid division by zero 
+        self.regions_distances -= np.diag(np.diag(self.regions_distances))
+        self.regions_distances += epsilon
+        self.connect_matrix -= np.diag(np.diag(self.connect_matrix))
         
-        # regional probability receiving MP infectous-like agents
-        beta = 1 - np.exp(-self.beta0 *self.prob_stay)
-        Epsilon0 = np.zeros((self.N_regions, self.N_regions))
+        connect = self.connect_matrix
+        g = 1 # global tuning variable that quantifies the temporal MP deposition inequality among different brain regions
+        noise = np.random.normal(self.mu_noise, self.sigma_noise, (self.N_regions, self.N_regions))     
+        beta = 1 - np.exp(self.beta0 * self.prob_stay)  # regional probability receiving MP infectous-like agents
+        Epsilon = np.zeros((self.N_regions, self.N_regions))
         
         for i in range(self.N_regions):
             t = 0
             for j in range(self.N_regions):
                 if i != j:
-                    t =  t +  beta * self.prob_stay * (self.connect_matrix[i, j] * g + self.connect_matrix[i, i] * (1 - g))
-            Epsilon0[i] = t
+                    t +=  beta * self.prob_stay * (self.connect_matrix[i, j] * g + self.connect_matrix[i, i] * (1 - g))
+            Epsilon[i] = t
+            
         # INTRA-BRAIN EPIDEMIC SPREADING MODEL 
-        connect = (1 - self.prob_stay)* Epsilon0 - self.prob_stay * np.exp(- self.diffusion_init* self.prob_stay) +  Ki
+        connect = (1 - self.prob_stay)* Epsilon - self.prob_stay * np.exp(- self.diffusion_init* self.prob_stay) +  noise
         
         # The probability of moving from region i to edge (i,j)
         sum_line= [sum(connect[i]) for i in range(self.N_regions)]
         Total_el_col= np.tile(np.transpose(sum_line), (1,1)) 
-        connect = connect / Total_el_col
-
+        connect /= Total_el_col
         return connect
     
-    def calculate_Rnor_Pnor(self, connect):      
+    def calculate_Rnor_Pnor(self, connect):  
+        ''' Calculate and return no. of normal amyloid in regions and paths. '''
+                   
         Rnor = np.zeros(self.N_regions) # number of  normal amyloid in regions
         Pnor = np.zeros(self.N_regions) # number of  normal amyloid in paths
 
         movOut = np.zeros((self.N_regions, self.N_regions))
 
-        #normal amyloid protein growth
+        # moving process
         for t in tqdm(range(self.iter_max)):  
-        ## moving process
-        # regions towards paths
-        # movDrt stores the number of proteins towards each region. i.e. element in kth row lth col denotes the number of proteins in region k moving towards l
+            # movDrt stores the number of proteins towards each region. 
+            # i.e. element in kth row lth col denotes the number of proteins in region k moving towards l
             movDrt = Rnor * connect
-            movDrt = movDrt * self.dt 
-            movDrt = movDrt - np.diag(np.diag(movDrt))
+            movDrt *= self.dt 
+            movDrt -= np.diag(np.diag(movDrt))
         
             # paths towards regions
+            # longer path & smaller v = lower probability of moving out of paths
             # update moving
-            movOut = (self.v * Pnor)  / self.sconnLen
-            movOut = movOut - np.diag(np.diag(movOut))
+            movOut = (self.v * Pnor)  / self.regions_distances
+            movOut -= np.diag(np.diag(movOut))
 
             Pnor = Pnor - movOut * self.dt + movDrt
-            Pnor = Pnor-  np.diag(np.diag(Pnor))
+            Pnor -= np.diag(np.diag(Pnor))
             Sum_rows_movOut = [sum(movOut[i])for i in range(self.N_regions)]
             Sum_cols_movDrt = [sum(movDrt[:,i]) for i in range(self.N_regions)]
 
@@ -129,23 +124,27 @@ class EMS_Simulation:
             Rnor = Rnor +  np.transpose(Sum_rows_movOut) * self.dt -  Sum_cols_movDrt
 
             #growth process	
-            Rnor = Rnor -  Rnor * (1 - np.exp(- self.clearance_rate * self.dt))   + (self.synthesis_rate * self.amy_control) * self.dt
-            if np.absolute(Rnor - Rtmp).all() < (1e-7 * Rtmp).all():
+            precision = 1e-7
+            Rnor = Rnor -  Rnor * (1 - np.exp(- self.clearance_rate * self.dt)) + (self.synthesis_rate * self.amy_control) * self.dt
+            if abs(Rnor - Rtmp).all() < (precision * Rtmp).all():
                 break
     
         return Rnor, Pnor
 
     def calculate_Rmis_Pmis(self, connect, Rnor0, Pnor0):
-        # Pmis_all: a N_regions * N_regions * T_total matrix, recording the number of misfolded beta_amyloid in paths could be memoryconsuming
-        # Rmis_all: A N_regions * T_total matrix, recording the number of misfolded beta-amyloid in regions
-        # Rnor0: a N_Regions * 1 vector, the population of normal agents in regions before pathogenic spreading 
-        # Pnor0: a N_Regions * 1 vecotr, the population of normal agents in edges before pathogenic spreading 
+        ''' Calculate and return no. of misfolded amyloid in regions and paths. 
+        at each timestep. 
+        
+        Args:
+            Rnor0 (list): vector with length N_Regions, the population of normal agents in regions before pathogenic spreading 
+            Pnor0 (list): vector with length N_Regions, the population of normal agents in edges before pathogenic spreading 
+        '''
 
-        # Rmis, Pmis store results of single simulation at each time
+        # store results for single timepoint
         Rmis = np.zeros(self.N_regions)                         # number of misfolded beta-amyloid in regions
         Pmis = np.zeros((self.N_regions, self.N_regions))       # number of misfolded beta-amyloid in paths
 
-        # store the number of misfolded beta-amyloid at each time step
+        # store results at each timepoint
         Rmis_all = np.zeros((self.N_regions, self.T_total))
         Pmis_all = np.zeros((self.N_regions, self.N_regions, self.T_total))
         
@@ -153,28 +152,30 @@ class EMS_Simulation:
         movOut_mis = np.zeros((self.N_regions, self.N_regions))
         movDrt_mis = np.zeros((self.N_regions, self.N_regions))
 
+        # fill with PET data 
         Rmis = self.diffusion_init
-        for t  in range (self.T_total):
+        
+        for t in range(self.T_total):
             # moving process
             # misfolded proteins: region -->> paths
-            movDrt_mis= Rnor0 * connect * self.dt
-            movDrt_mis = movDrt_mis - np.diag(np.diag(movDrt_mis))
+            movDrt_mis = Rnor0 * connect * self.dt
+            movDrt_mis -= np.diag(np.diag(movDrt_mis))
             
             # normal proteins: paths -->> regions
-            movOut_mis = (Pnor0 / self.sconnLen)* self.v 
-            movOut_mis = movOut_mis - np.diag(np.diag(movOut_mis))
+            movOut_mis = (Pnor0 / self.regions_distances)* self.v 
+            movOut_mis -= np.diag(np.diag(movOut_mis))
         
             # update regions and paths
             Pmis = Pmis - movOut_mis * self.dt +  movDrt_mis
-            Pmis = Pmis - np.diag(np.diag(Pmis))
+            Pmis -= np.diag(np.diag(Pmis))
 
             Sum_rows_movOut_mis = [sum(movOut_mis[i]) for i in range(self.N_regions)]
             Sum_cols_movDrt_mis = [sum(movDrt_mis[:,i]) for i in range(self.N_regions)]
 
-            Rmis = Rmis + np.transpose(Sum_rows_movOut_mis ) * self.dt  - Sum_cols_movDrt_mis
+            Rmis = Rmis + np.transpose(Sum_rows_movOut_mis) * self.dt  - Sum_cols_movDrt_mis
             Rmis_cleared = Rmis * (1 - np.exp(-self.clearance_rate * self.dt))
     
-            # he probability of getting misfolded
+            # probability of getting misfolded
             misProb = 1 - np.exp( - Rmis * self.beta0 * self.dt)
 
             # number of newly infected
@@ -183,11 +184,8 @@ class EMS_Simulation:
             # update
             Rmis = Rmis - Rmis_cleared + N_misfolded + (self.synthesis_rate * self.amy_control) * self.dt
             
-            # Depostion of misfolded protein
-            # Regions
-            Rmis_all[:,t] = Rmis
-            # paths
-            Pmis_all[:, :, t] = Pmis   
+            Rmis_all[:,t] = Rmis # regions
+            Pmis_all[:, :, t] = Pmis # paths
             
         return Rmis_all, Pmis_all
     
@@ -199,44 +197,39 @@ def calc_error(output, target):
 
 def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):    
     connectivity_matrix_path = os.path.join(os.path.join(connectomes_dir, subject), 
-                                        'connect_matrix_rough.csv')
-    t0_concentration_path = os.path.join(concentrations_dir, subject, 
-                                        f'nodeIntensities-not-normalized-{subject}t0.csv')
-    t1_concentration_path = os.path.join(concentrations_dir, subject, 
-                                        f'nodeIntensities-not-normalized-{subject}t1.csv')
+                                            'connect_matrix_rough.csv')
+    concentrations_paths = glob(os.path.join(concentrations_dir, subject, '*.csv'))
+    t0_concentration_path = [path for path in concentrations_paths if 'baseline' in path][0]
+    t1_concentration_path = [path for path in concentrations_paths if 'followup' in path][0]
     subject_output_dir = os.path.join(output_dir, subject)
     years = 50
 
     # load connectome
     connectivity_matrix = load_matrix(connectivity_matrix_path)
-    # load proteins concentration in brian regions
+    # load proteins concentration in brain regions
     t0_concentration = load_matrix(t0_concentration_path)
     t1_concentration = load_matrix(t1_concentration_path)
     
-    # the simulation
-    shortest = dijkstra(connectivity_matrix)
-    
-    
-    simulation = EMS_Simulation(connectivity_matrix, shortest, years, concentrations=t0_concentration)
+    regions_distances = dijkstra(connectivity_matrix)
+        
+    simulation = EMS_Simulation(connectivity_matrix, regions_distances, years, concentrations=t0_concentration)
     connect = simulation.calculate_connect()
     Rnor, Pnor = simulation.calculate_Rnor_Pnor(connect)
     Rmis_all, Pmis_all = simulation.calculate_Rmis_Pmis(connect, Rnor, Pnor)
 
-    # RESULTS
-    print(f'Sketch for Subject: {subject}')
-    print('the number of misfolded beta-amyloid in regions')
-
-    # resulting concentration matrix
-    print(Rmis_all, np.max(Rmis_all), np.min(Rmis_all))
     visualize_diffusion_timeplot(Rmis_all, simulation.dt, simulation.T_total)
 
-    # predicted vs real plot
-    predicted = Rmis_all[:, years-1]
-    rmse = calc_error(t1_concentration, predicted)
-    visualize_terminal_state_comparison(t0_concentration, predicted, t1_concentration, rmse)
+    # predicted vs real plot; take results from the last step
+    t1_concentration_pred = Rmis_all[:, years-1]
+    rmse = calc_error(t1_concentration, t1_concentration_pred)
+    visualize_terminal_state_comparison(t0_concentration, 
+                                        t1_concentration_pred, 
+                                        t1_concentration, 
+                                        rmse)
 
 def dijkstra(matrix):
-    # Find the shortest path between nodes in a graph.
+    # calculate distance matrix using Dijkstra algorithm 
+    # in order to find the shortest path between nodes in a graph
     L = len(matrix)
     distance = np.zeros((L,L))
     G = nx.from_numpy_matrix(matrix, create_using=nx.DiGraph())
@@ -248,6 +241,7 @@ def dijkstra(matrix):
             else:
                 t = nx.dijkstra_path_length(G, i, j, weight = 'weight')
                 distance [i, j] = t
+                
     return distance
 
 def load_matrix(path):
