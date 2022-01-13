@@ -1,0 +1,16 @@
+paths:
+  dataset_dir: "/home/alexandra/Misfolded-protein-spreading/data/ADNI"
+  output_dir: "/home/alexandra/Misfolded-protein-spreading/data/output/"
+  atlas_path: "/home/alexandra/Misfolded-protein-spreading/data/atlas/aal.nii.gz"
+  subject: null #"sub-AD4009"                                                           # if null (aka None): scripts are run on the whole dataset 
+
+tractogram_config:
+  stop_method: 'ACT'                                                                    # type of stopping citerion
+  fa_thres: 0.1                                                                         # fractional anisotropy threshold; originally =0.7
+  seed_density: 1                                                                       # the number of seeds to place along each dimension
+  max_cross: 1                                                                          # the maximum no. of direction to track from each seed in crossing voxels
+  sh_order: 6                                                                           # maximal spherical harmonics order
+  stop_thres: 0.25                                                                      # stopping criterion threshold
+  step_size: 0.5                                                                        # step size for tracking
+  take_log: True                                                                        # take the logarithm of values in connectivity matrix 
+  stream_max_len: 20                                                                    # maximum length of streamlines 

@@ -34,7 +34,7 @@ def main():
         t1_concentration = load_matrix(t1_concentration_path)
         
         # load predicted t1 concentration
-        pred_concentrations_path = os.path.join(output_dir, subject, 'concentration_pred_MAR.csv')
+        pred_concentrations_path = os.path.join(output_dir, subject, 'concentration_pred_EMS.csv')
         t1_concentration_pred = load_matrix(pred_concentrations_path)
         
         # do some analysis: normalization and mean calculation

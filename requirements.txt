@@ -7,3 +7,6 @@ nibabel
 scikit-image
 scikit-learn
 networkx
+dipy
+fury
+pyyaml
