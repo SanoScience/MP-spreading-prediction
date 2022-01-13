@@ -21,7 +21,7 @@ from networkx.algorithms.shortest_paths.weighted import _dijkstra
 from scipy.stats.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
-from utils import load_matrix, calc_rmse, calc_msle
+from utils import load_matrix, calc_rmse, calc_msle, save_terminal_concentration
 
 logging.basicConfig(level=logging.INFO)
 
@@ -36,7 +36,7 @@ class EMS_Simulation:
         self.amy_control = 3    # parameter to control the number of voxels in which beta-amyloid may get synthesized (?)
         self.prob_stay = 0.5    # the probability of staying in the same region per unit time (0.5)
         self.trans_rate = 4     # a scalar value, controlling the baseline infectivity
-        self.iter_max = 1000      # max no. of iterations
+        self.iter_max = 50      # max no. of iterations
         self.mu_noise = 0       # mean of the additive noise
         self.sigma_noise = 1    # standard deviation of the additive noise
         self.gini_coeff = 1     # measure of statistical dispersion in a given system, with value 0 reflecting perfect equality and value 1 corresponding to a complete inequality
@@ -230,6 +230,7 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
                                         subject,
                                         rmse,
                                         corr_coef)
+    save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'EMS')
 
 def dijkstra(matrix):
     # calculate distance matrix using Dijkstra algorithm 
@@ -253,7 +254,7 @@ def main():
     concentrations_dir = '../../data/PET_regions_concentrations'
     output_dir = '../../results' 
     
-    patients = ['sub-AD4009']#['sub-AD4215', 'sub-AD4009']
+    patients = ['sub-AD4215', 'sub-AD4009']
     for subject in patients:
         logging.info(f'Simulation for subject: {subject}')
         run_simulation(connectomes_dir, concentrations_dir, output_dir, subject)

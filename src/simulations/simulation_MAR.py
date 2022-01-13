@@ -13,7 +13,7 @@ import numpy as np
 from scipy.stats.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import visualize_terminal_state_comparison
-from utils import load_matrix, calc_rmse, calc_msle
+from utils import load_matrix, calc_rmse, calc_msle, save_terminal_concentration
 
 logging.basicConfig(level=logging.INFO)
 
@@ -103,15 +103,6 @@ class MARsimulation:
             
         # print('ERRORS: ', etem)
         return M
-            
-    def save_diffusion_matrix(self, save_dir):
-        np.savetxt(os.path.join(save_dir, 'diffusion_matrix_over_time.csv'), 
-                                self.diffusion_final, delimiter=",")
-    
-    def save_terminal_concentration(self, save_dir):
-        ''' Save last (terminal) concentration. '''
-        np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
-                   self.diffusion_final[-1, :], delimiter=',')
                    
 def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):    
     ''' Run simulation for single patient. '''
@@ -147,6 +138,7 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
                                         subject,
                                         rmse, 
                                         corr_coef)
+    save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
     
 def main():
     connectomes_dir = '../../data/connectomes'
