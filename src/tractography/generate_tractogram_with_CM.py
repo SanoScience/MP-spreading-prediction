@@ -31,7 +31,7 @@ from generate_connectivity_matrix import ConnectivityMatrix
 from utils import parallelize
 from glob import glob
 
-def get_paths(stem_dwi, stem_t1, config):
+def get_paths(stem_dwi, stem_t1, config, general_dir):
     ''' Generate paths based on configuration file and selected subject. '''
  
     img_path = stem_dwi + '.nii'
@@ -50,10 +50,7 @@ def get_paths(stem_dwi, stem_t1, config):
     wm_path = stem_t1 + '_pve-2.nii'
 
     # AAL atlas path
-    atlas_path = config['paths']['atlas_path']
-    
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    atlas_path = general_dir + config['paths']['atlas_path']
 
     return (img_path, bval_path, bvec_path, output_dir, 
             csf_path, gm_path, wm_path, atlas_path)
@@ -131,32 +128,35 @@ def compute_streamline_length(streamline, is_dipy=True):
 
 def generate_tractogram(config, data, affine, hardi_img, gtab, 
                         data_wm, data_gm, data_csf):
-    cfg = config['tractogram_config']
     
     # create binary mask based on the first volume
     # TODO: pass the binary masks already in 'derivatives/sub*/ses-baseline/anat/
     mask, binary_mask = median_otsu(data[:, :, :, 0]) 
     seed_mask = binary_mask 
     white_matter  = mask 
-    seeds = utils.seeds_from_mask(seed_mask, affine, density=cfg['seed_density'])
+    seeds = utils.seeds_from_mask(seed_mask, affine, density=config['tractogram_config']['seed_density'])
 
-    response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=cfg['fa_thres'])
+    response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=config['tractogram_config']['fa_thres'])
 
-    csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=cfg['sh_order'])  
+    csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=config['tractogram_config']['sh_order'])  
     csd_fit = csd_model.fit(data, mask=white_matter)
 
-    if cfg['stop_method'] == 'FA':
-        streamline_generator = fa_method(cfg, data, white_matter, gtab, 
+    if config['tractogram_config']['stop_method'] == 'FA':
+        streamline_generator = fa_method(config['tractogram_config'], data, white_matter, gtab, 
                                          affine, seeds, csd_fit.shm_coeff)  
-    elif cfg['stop_method'] == 'ACT':
+    elif config['tractogram_config']['stop_method'] == 'ACT':
         streamline_generator = act_method(data_wm, data_gm, data_csf, 
                                           affine, seeds, csd_fit.shm_coeff)
     else:
         logging.error('Provide valid stopping criterion!')
         exit()
 
-    streamlines = remove_short_connections(Streamlines(streamline_generator), cfg['tractogram_config']['stream_min_len'])
-
+    streamlines = Streamlines(streamline_generator)
+    try:
+        streamlines = remove_short_connections(streamlines, config['tractogram_config']['stream_min_len'])
+    except Exception as e:
+        logging.error(e)
+    
     # generate and save tractogram 
     sft = StatefulTractogram(streamlines, hardi_img, Space.RASMM)
     return sft
@@ -166,12 +166,12 @@ def save_tractogram(tractogram, output_dir, image_path):
     save_trk(tractogram, os.path.join(output_dir, f"{file_stem}_sc-act.trk"))
     logging.info(f"Current tractogram saved as {output_dir}{file_stem}_sc-act.trk")
 
-def run(stem_dwi, stem_t1, config=None):
+def run(stem_dwi, stem_t1, config=None, general_dir = ''):
     ''' Run workflow for selected subject. '''
     
     # get paths
     (img_path, bval_path, bvec_path, output_dir, 
-     csf_path, gm_path, wm_path, atlas_path) = get_paths(stem_dwi, stem_t1, config)
+     csf_path, gm_path, wm_path, atlas_path) = get_paths(stem_dwi, stem_t1, config, general_dir)
 
     # load data 
     data, affine, hardi_img = load_nifti(img_path, return_img=True) 
@@ -202,7 +202,7 @@ def main():
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     general_dir = os.getcwd()
-    general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src')
+    general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src') + os.sep
     dwi_dir = general_dir + config['paths']['dataset_dir'] + config['paths']['subject'] + os.sep + 'ses-*' + os.sep + 'dwi' + os.sep + '*_dwi.nii'
     dwi_files = glob(dwi_dir)
     

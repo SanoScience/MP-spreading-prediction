@@ -26,10 +26,9 @@ class DiffusionSimulation:
     def __init__(self, connect_matrix, beta, concentrations=None):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
-        # TODO: write a numerical optimization procedure to find the optimal beta (use heuristics)
         self.beta = beta # As in the Raj et al. papers
         self.rois = 116 # AAL atlas has 116 rois
-        self.t_total = 20000 # total length of the simulation in years
+        self.t_total = 100 # total length of the simulation in years
         self.timestep = 1 # equivalent to 7.3 days per time step
         self.iterations = int(self.t_total / self.timestep) # 200 iterations
         self.cm = connect_matrix
@@ -65,21 +64,18 @@ class DiffusionSimulation:
         return diffusion_init
         
     def calc_laplacian(self, eps=1e-10): 
-        # calculate Laplacian: L = I - D-1/2 @ A @ D-1/2
-        # Normal Laplacian: L = D - A
+        # Laplacian: L = D - A
         # assume: A - adjacency matrix, D - degree matrix, I - identity matrix, L - laplacian matrix
         self.cm = np.asmatrix(self.cm)
         G = nx.from_numpy_matrix(self.cm)
+        # normalized Laplacian: L = I - D-1/2 @ A @ D-1/2
         self.L = nx.normalized_laplacian_matrix(G).toarray()
+        
         # this is not the degree matrix
         #D = np.diag(np.sum(A, axis=1))# total no. of. connections to other vertices
         #I = np.identity(A.shape[0]) # identity matrix
         #D_inv_sqrt = np.linalg.inv(np.sqrt(D)+eps) # add epsilon to avoid getting 0 determinant
-        #self.L = I - (D_inv_sqrt @ A) @ D_inv_sqrt      
-
-        # The matrix decomposition is random-walk laplacian
-        #D_inv = np.linalg.inv(D+eps)
-        #self.L = I - D_inv @ A         
+        #self.L = I - (D_inv_sqrt @ A) @ D_inv_sqrt           
 
         # eigendecomposition
         self.eigvals, self.eigvecs = np.linalg.eig(self.L)
@@ -90,7 +86,7 @@ class DiffusionSimulation:
         # warning: t - elapsed time 
         # x0 is the initial configuration of the disease (baseline)
         #xt = self.eigvecs @ np.diag(np.exp(-self.eigvals * self.beta * t)) @ np.conjugate(self.eigvecs.T) @ x0    
-        assert not np.array_equal(self.eigvals, np.zeros_like(self.eigvals))   
+           
         step = 1/(self.beta * self.eigvals +1e-5) * (1 - np.exp(-self.beta * self.eigvals * t)) * np.linalg.inv(self.eigvecs + 1e-5) * x0 + self.eigvecs
         xt = x0 + np.sum(step, axis=0) 
         return xt
@@ -106,7 +102,16 @@ class DiffusionSimulation:
     
     def integration_step_by_Julien(self, x_prev, timestep):
         # methods proposed by Julien Lefevre during Marseille Brainhack 
-        xt = x_prev - timestep * self.beta * self.L @ x_prev
+        # x(t)/dt = -B * H * x(t)
+        #xt = x_prev - timestep * self.beta * self.L @ x_prev
+        
+        # where x(t) = e^(-B*H*t) * x0
+        #xt = x_prev - timestep * self.beta * self.L @ x_prev
+
+        # where x(t) = U * e^(-lambda*B*t) * U^(-1) * x0
+        step = self.eigvecs * np.exp(-self.eigvals*self.beta*timestep) * np.linalg.inv(self.eigvecs + 1e-10) @ x_prev
+        xt = x_prev - step
+
         return xt
     
     def iterate_spreading_by_Julien(self):
@@ -157,8 +162,8 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
     t0_concentration = load_matrix(t0_concentration_path) 
     t1_concentration = load_matrix(t1_concentration_path)
 
-    beta = 0.001
-    step = 0.001
+    beta = 1
+    step = 1
     min_rmse = -1
     opt_beta = None
     opt_pcc = None

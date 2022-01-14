@@ -32,7 +32,7 @@ def parallelize(dwi_files, num_cores, func, config, general_dir):
                     break
         """
 
-        proc = multiprocessing.Process(target=func, args=(dwi_files[i].split('.')[0], stem_t1, config))
+        proc = multiprocessing.Process(target=func, args=(dwi_files[i].split('.')[0], stem_t1, config, general_dir))
         procs.append(proc)
         proc.start()
 

@@ -27,6 +27,7 @@ def load_atlas(path):
 
 class ConnectivityMatrix():
     def __init__(self, tractogram, atlas_labels, output_dir, take_log):
+        # NOTE: this is a lazy solution that works assuming you are calling the script inside its folder (src/tractography)
         self.streamlines = tractogram.streamlines
         self.affine = tractogram.affine # transformation to align streamlines to atlas 
         self.labels = atlas_labels  
@@ -87,9 +88,11 @@ class ConnectivityMatrix():
 def main():
     logging.basicConfig(level=logging.INFO)
 
-    with open('../config.yaml', 'r') as f:
+    # TODO: move working directory (os.chdir()) to be at the level of config file
+    with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
         
+    os.chdir(os.getcwd() + '/../..')
     output_dir, atlas_path, tractogram_path =  get_paths(config)
     logging.info(f"Loading tractogram from subject: {config['paths']['subject']}")
 
