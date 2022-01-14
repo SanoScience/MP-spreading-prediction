@@ -155,7 +155,7 @@ def generate_tractogram(config, data, affine, hardi_img, gtab,
         logging.error('Provide valid stopping criterion!')
         exit()
 
-    streamlines = remove_short_connections(Streamlines(streamline_generator), cfg['tractogram_config']['stream_max_len'])
+    streamlines = remove_short_connections(Streamlines(streamline_generator), cfg['tractogram_config']['stream_min_len'])
 
     # generate and save tractogram 
     sft = StatefulTractogram(streamlines, hardi_img, Space.RASMM)

@@ -1,6 +1,6 @@
 from distutils.command.config import config
 import os
-from multiprocessing import Process
+import multiprocessing
 import logging
 from tqdm import tqdm
 import re
@@ -12,7 +12,10 @@ def task_completion_info(sound_duration=1, sound_freq=440):
     
 def parallelize(dwi_files, num_cores, func, config, general_dir):
     ''' Run function on multiple subjects in parallel. '''
-    
+
+    if num_cores == -1:
+        num_cores = multiprocessing.cpu_count()
+
     logging.info(f'Parallelization started ({num_cores} cores).')
     
     procs = []
@@ -29,7 +32,7 @@ def parallelize(dwi_files, num_cores, func, config, general_dir):
                     break
         """
 
-        proc = Process(target=func, args=(dwi_files[i].split('.')[0], stem_t1, config))
+        proc = multiprocessing.Process(target=func, args=(dwi_files[i].split('.')[0], stem_t1, config))
         procs.append(proc)
         proc.start()
 
