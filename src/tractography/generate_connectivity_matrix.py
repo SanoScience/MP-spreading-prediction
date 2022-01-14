@@ -10,13 +10,14 @@ from dipy.tracking import utils
 import matplotlib.pyplot as plt
 from numpy.core.fromnumeric import take
 import yaml
+import re
 
 def get_paths(config):
     output_dir = os.path.join(config['paths']['output_dir'], 
                               config['paths']['subject'])
     atlas_path = config['paths']['atlas_path']
-    tractogram_path = os.path.join(output_dir, 
-                                   f"tractogram_{config['paths']['subject']}_ses-1_acq-AP_dwi_ACT.trk")
+
+    tractogram_path = [ t for t in os.walk(output_dir) if re.match(r"tractogram*.trk", t)] 
     return output_dir, atlas_path, tractogram_path
 
 def load_atlas(path):

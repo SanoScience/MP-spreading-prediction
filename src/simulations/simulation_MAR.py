@@ -93,7 +93,7 @@ class MARsimulation:
             # TODO: gradient computation; verify with Alex; grandient values are really high
             # gradient += ((self.final_concentrations - M @ self.init_concentrations) * self.init_concentrations) # according to paper 
             gradient += (M @ self.init_concentrations.T @ self.init_concentrations - self.final_concentrations.T @ self.init_concentrations) # according to matlab code; error gets saturated at 24142 for eta = 5e-12
-            # update rule
+            # update rule TODO: try dynamic learning rate
             M -= self.eta * gradient
             # reinforce where there was no connection at the beginning 
             M *= self.noconn_M

@@ -36,7 +36,7 @@ def extract_regions_means(pet_data, atlas_data):
     means = []
     # do not take atlas region with index=0, which indicates the background
     atlas_labels = [label for label in np.unique(atlas_data) if label!=0]
-    for label in np.sort(atlas_labels):
+    for label in atlas_labels: #np.sort(atlas_labels):
         avg = pet_data[np.where(label == atlas_data)].mean()
         means.append(avg)
     return means
@@ -52,6 +52,7 @@ def run(pet_dir, concentrations_dir, subject, atlas_data):
                                         'ses-*', 'pet', '*_pet.nii'))
 
     for path in pet_files_paths:
+        logging.info(f'Found pet file {path}')
         filename = os.path.basename(path).split('.')[0]
         output_dir = os.path.join(concentrations_dir, subject)
         if not os.path.exists(output_dir):
@@ -64,7 +65,7 @@ def run(pet_dir, concentrations_dir, subject, atlas_data):
         save_concentrations(region_means, output_path)
     
 def main():
-    pet_dir = '../../data/PET'
+    pet_dir = '../../data/ADNI/derivatives/'
     concentrations_dir = '../../data/PET_regions_concentrations'
     atlas_path = '../../data/atlas/aal.nii.gz'
     global pet_all_patients
@@ -76,9 +77,6 @@ def main():
     for subject in patients:
         logging.info(f'Beta-amyloid concentration extraction for subject: {subject}')
         run(pet_dir, concentrations_dir, subject, atlas_data)
-        
-    print('Are values the same for 2 first subjects?')
-    print(np.array_equal(pet_all_patients[:2], pet_all_patients[2:]))
 
 if __name__ == '__main__':
     main()

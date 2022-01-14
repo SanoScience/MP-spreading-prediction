@@ -1,8 +1,8 @@
 paths:
-  dataset_dir: "/home/alexandra/Misfolded-protein-spreading/data/ADNI"
-  output_dir: "/home/alexandra/Misfolded-protein-spreading/data/output/"
-  atlas_path: "/home/alexandra/Misfolded-protein-spreading/data/atlas/aal.nii.gz"
-  subject: null #"sub-AD4009"                                                           # if null (aka None): scripts are run on the whole dataset 
+  dataset_dir: "/data/ADNI/derivatives/"
+  output_dir: "/data/output/"
+  atlas_path: "/data/atlas/aal.nii.gz"
+  subject: "sub-AD4009"                                                                 # if null (aka None): scripts are run on the whole dataset 
 
 tractogram_config:
   stop_method: 'ACT'                                                                    # type of stopping citerion
@@ -13,4 +13,6 @@ tractogram_config:
   stop_thres: 0.25                                                                      # stopping criterion threshold
   step_size: 0.5                                                                        # step size for tracking
   take_log: True                                                                        # take the logarithm of values in connectivity matrix 
-  stream_max_len: 20                                                                    # maximum length of streamlines 
+  stream_min_len: 20                                                                    # minimum length of streamlines 
+
+  cores: 4                                                                              # Cores to use for parallel tractographies 

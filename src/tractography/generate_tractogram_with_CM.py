@@ -3,6 +3,7 @@ Compute and visualize connectivity matrix. '''
 
 import os
 import logging
+import re
 
 from dipy.core.gradients import gradient_table
 from dipy.data import default_sphere
@@ -28,32 +29,25 @@ import numpy as np
 
 from generate_connectivity_matrix import ConnectivityMatrix
 from utils import parallelize
+from glob import glob
 
-def get_paths(config, subject_name):
+def get_paths(stem_dwi, stem_t1, config):
     ''' Generate paths based on configuration file and selected subject. '''
-
-    subject_dir = os.path.join(config['paths']['dataset_dir'], 
-                               subject_name)
-    img_path = os.path.join(subject_dir, 'ses-1', 'dwi', 
-                            subject_name+'_ses-1_acq-AP_dwi.nii.gz')
-    bval_path = os.path.join(subject_dir, 'ses-1', 'dwi', 
-                             subject_name+'_ses-1_acq-AP_dwi.bval')
-    bvec_path = os.path.join(subject_dir, 'ses-1', 'dwi', 
-                             subject_name+'_ses-1_acq-AP_dwi.bvec')
-    output_dir = os.path.join(config['paths']['output_dir'], 
-                              subject_name)
+ 
+    img_path = stem_dwi + '.nii'
+    bval_path = stem_dwi + '.bval'
+    bvec_path = stem_dwi + '.bvec'
+    # output dir is in the derivatives folder (which is also the input folder)
+    output_dir = stem_dwi.removesuffix(stem_dwi.split(os.sep)[-1])
       
     # CerebroSpinal Fluid (CSF) is _pve_0
-    csf_path = os.path.join(subject_dir, 'ses-1', 't1', 
-                            subject_name+'_ses-1_acq-AP_t1_pve_0.nii.gz')
+    csf_path = stem_t1 + '_pve-0.nii'
     
     # Grey Matter is _pve_1
-    gm_path = os.path.join(subject_dir, 'ses-1', 't1', 
-                           subject_name+'_ses-1_acq-AP_t1_pve_1.nii.gz')
+    gm_path = stem_t1 + '_pve-1.nii'
     
     # White Matter is _pve_2
-    wm_path = os.path.join(subject_dir, 'ses-1', 't1', 
-                           subject_name+'_ses-1_acq-AP_t1_pve_2.nii.gz')
+    wm_path = stem_t1 + '_pve-2.nii'
 
     # AAL atlas path
     atlas_path = config['paths']['atlas_path']
@@ -140,6 +134,7 @@ def generate_tractogram(config, data, affine, hardi_img, gtab,
     cfg = config['tractogram_config']
     
     # create binary mask based on the first volume
+    # TODO: pass the binary masks already in 'derivatives/sub*/ses-baseline/anat/
     mask, binary_mask = median_otsu(data[:, :, :, 0]) 
     seed_mask = binary_mask 
     white_matter  = mask 
@@ -160,7 +155,7 @@ def generate_tractogram(config, data, affine, hardi_img, gtab,
         logging.error('Provide valid stopping criterion!')
         exit()
 
-    streamlines = remove_short_connections(Streamlines(streamline_generator, cfg['stream_max_len']))
+    streamlines = remove_short_connections(Streamlines(streamline_generator), cfg['tractogram_config']['stream_max_len'])
 
     # generate and save tractogram 
     sft = StatefulTractogram(streamlines, hardi_img, Space.RASMM)
@@ -168,15 +163,15 @@ def generate_tractogram(config, data, affine, hardi_img, gtab,
 
 def save_tractogram(tractogram, output_dir, image_path):
     file_stem = os.path.basename(image_path).split('.')[0]
-    save_trk(tractogram, os.path.join(output_dir, f"tractogram_{file_stem}_ACT.trk"))
-    logging.info(f"Current tractogram saved as {output_dir}tractogram_{file_stem}_ACT.trk")
+    save_trk(tractogram, os.path.join(output_dir, f"{file_stem}_sc-act.trk"))
+    logging.info(f"Current tractogram saved as {output_dir}{file_stem}_sc-act.trk")
 
-def run(config=None, subject_name=None):
+def run(stem_dwi, stem_t1, config=None):
     ''' Run workflow for selected subject. '''
     
     # get paths
     (img_path, bval_path, bvec_path, output_dir, 
-     csf_path, gm_path, wm_path, atlas_path) = get_paths(config, subject_name)
+     csf_path, gm_path, wm_path, atlas_path) = get_paths(stem_dwi, stem_t1, config)
 
     # load data 
     data, affine, hardi_img = load_nifti(img_path, return_img=True) 
@@ -186,7 +181,7 @@ def run(config=None, subject_name=None):
     gradient_table = get_gradient_table(bval_path, bvec_path)
     
     logging.info(f"Generating tractogram using: {config['tractogram_config']['stop_method']} method")
-    logging.info(f"Processing subject: {subject_name}")
+    logging.info(f"Processing image: {stem_dwi}")
     logging.info(f"No. of volumes: {data.shape[-1]}")
 
     # generate tractogram
@@ -205,15 +200,14 @@ def main():
 
     with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-                    
-    subject_name = config['paths']['subject']
+
+    general_dir = os.getcwd()
+    general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src')
+    dwi_dir = general_dir + config['paths']['dataset_dir'] + config['paths']['subject'] + os.sep + 'ses-*' + os.sep + 'dwi' + os.sep + '*_dwi.nii'
+    dwi_files = glob(dwi_dir)
     
-    if subject_name is not None:
-        run(config, subject_name)
-    else:
-        # run workflow on all subjects 
-        subject_name_list = os.listdir(config['paths']['dataset_dir'])
-        parallelize(subject_name_list, run, config)
+    logging.info(f'{len(dwi_files)} DWI files found ')
+    parallelize(dwi_files, config['tractogram_config']['cores'], run, config, general_dir)
 
 if __name__ == '__main__':
     main()
