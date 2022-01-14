@@ -21,7 +21,7 @@ class MARsimulation:
     def __init__(self, connect_matrix, t0_concentrations, t1_concentrations):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
-        self.brain_par = 116                                                    # no. of brain areas from the atlas
+        self.N_regions = 116                                                    # no. of brain areas from the atlas
         self.maxiter = 5000                                                     # max no. of iterations for the gradient descent
         self.th = 0.016                                                         # acceptable error threshold for the reconstruction error
         self.eta = 5e-12                                                        # learning rate of the gradient descent       
@@ -46,7 +46,11 @@ class MARsimulation:
         return pred_concentrations
  
     def calc_exponent(self):
-        ''' Inverse operation to log1p. '''
+        ''' 
+        Transform the connectivity matrix to get the no. of connections between regions
+        instead of logarithm. 
+        
+        Inverse operation to log1p. '''
         self.cm = np.expm1(self.cm)
         
     def filter_connections(self):
@@ -75,34 +79,34 @@ class MARsimulation:
     def generate_indicator_matrix(self):
         ''' Construct a matrix with only zeros and ones to be used to 
         reinforce the zero connection (this is **B** in our paper).
-        noconn_M has zero elements where no structural connectivity appears. '''
-        self.noconn_M = np.where(self.cm==0, 0, 1).astype('float32')
+        B has zero elements where no structural connectivity appears. '''
+        self.B = np.where(self.cm==0, 0, 1).astype('float32')
         
     def run_gradient_descent(self):
         iter_count = 0  # counter of the current iteration 
-        etem = [] # reconstruction error along iterations
-        error_des = 1e10 # initial error of reconstruction 
-        M = self.cm # the resulting effective matrix; initialized with connectivity matrix 
+        error_buffer = [] # reconstruction error along iterations
+        error_reconstruct = 1e10 # initial error of reconstruction 
+        A = self.cm # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
 
         # loop direct connections until criteria are met 
-        while (error_des > self.th) and (iter_count < self.maxiter):
-            gradient = np.zeros((self.brain_par, self.brain_par))
+        while (error_reconstruct > self.th) and (iter_count < self.maxiter):
+            gradient = np.zeros((self.N_regions, self.N_regions))
             # calculate reconstruction error 
-            error_des = 0.5 * np.linalg.norm(self.final_concentrations - M @ self.init_concentrations)
-            etem.append(error_des)
+            error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - A @ self.init_concentrations)
+            error_buffer.append(error_reconstruct)
             # TODO: gradient computation; verify with Alex; grandient values are really high
-            # gradient += ((self.final_concentrations - M @ self.init_concentrations) * self.init_concentrations) # according to paper 
-            gradient += (M @ self.init_concentrations.T @ self.init_concentrations - self.final_concentrations.T @ self.init_concentrations) # according to matlab code; error gets saturated at 24142 for eta = 5e-12
-            # update rule TODO: try dynamic learning rate
-            M -= self.eta * gradient
+            # gradient += ((self.final_concentrations - A @ self.init_concentrations) * self.init_concentrations) # according to paper 
+            gradient += (A @ self.init_concentrations.T @ self.init_concentrations - self.final_concentrations.T @ self.init_concentrations) # according to matlab code; error gets saturated at 24142 for eta = 5e-12
+            # update rule
+            A -= self.eta * gradient
             # reinforce where there was no connection at the beginning 
-            M *= self.noconn_M
+            A *= self.B
             # TODO: remove negative values?
-            # M *= (M > 0)
+            # A *= (A > 0)
             iter_count += 1
             
-        # print('ERRORS: ', etem)
-        return M
+        # print('ERRORS: ', error_buffer)
+        return A
                    
 def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):    
     ''' Run simulation for single patient. '''
@@ -121,8 +125,8 @@ def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):
     t0_concentration = load_matrix(t0_concentration_path) 
     t1_concentration = load_matrix(t1_concentration_path)
     
-    logging.info(f'Sum of t0 concentration: {np.sum(t0_concentration)}')
-    logging.info(f'Sum of t1 concentration: {np.sum(t1_concentration)}')
+    logging.info(f'Sum of t0 concentration: {np.sum(t0_concentration):.2f}')
+    logging.info(f'Sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     
     if (t0_concentration == t1_concentration).all():
         logging.info('Followup is the same as baseline. Subject skipped.')
