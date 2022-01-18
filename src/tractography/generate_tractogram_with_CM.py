@@ -49,11 +49,15 @@ def get_paths(stem_dwi, stem_t1, config, general_dir):
     # White Matter is _pve_2
     wm_path = stem_t1 + '_pve-2.nii'
 
+    # Mask (and binary one) obtained from t1
+    mask_path = stem_t1 + '.nii'
+    bm_path = stem_t1 + '_mask.nii'
+
     # AAL atlas path
     atlas_path = general_dir + config['paths']['atlas_path']
 
     return (img_path, bval_path, bvec_path, output_dir, 
-            csf_path, gm_path, wm_path, atlas_path)
+            csf_path, gm_path, wm_path, mask_path, bm_path, atlas_path)
     
 
 def get_gradient_table(bval_path, bvec_path):
@@ -127,22 +131,17 @@ def compute_streamline_length(streamline, is_dipy=True):
     return s_length
 
 def generate_tractogram(config, data, affine, hardi_img, gtab, 
-                        data_wm, data_gm, data_csf):
+                        data_wm, data_gm, data_csf, mask, bm):
     
-    # create binary mask based on the first volume
-    # TODO: pass the binary masks already in 'derivatives/sub*/ses-baseline/anat/
-    mask, binary_mask = median_otsu(data[:, :, :, 0]) 
-    seed_mask = binary_mask 
-    white_matter  = mask 
-    seeds = utils.seeds_from_mask(seed_mask, affine, density=config['tractogram_config']['seed_density'])
+    seeds = utils.seeds_from_mask(bm, affine, density=config['tractogram_config']['seed_density'])
 
     response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=config['tractogram_config']['fa_thres'])
 
     csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=config['tractogram_config']['sh_order'])  
-    csd_fit = csd_model.fit(data, mask=white_matter)
+    csd_fit = csd_model.fit(data, mask=mask)
 
     if config['tractogram_config']['stop_method'] == 'FA':
-        streamline_generator = fa_method(config['tractogram_config'], data, white_matter, gtab, 
+        streamline_generator = fa_method(config['tractogram_config'], data, mask, gtab, 
                                          affine, seeds, csd_fit.shm_coeff)  
     elif config['tractogram_config']['stop_method'] == 'ACT':
         streamline_generator = act_method(data_wm, data_gm, data_csf, 
@@ -171,13 +170,15 @@ def run(stem_dwi, stem_t1, config=None, general_dir = ''):
     
     # get paths
     (img_path, bval_path, bvec_path, output_dir, 
-     csf_path, gm_path, wm_path, atlas_path) = get_paths(stem_dwi, stem_t1, config, general_dir)
+     csf_path, gm_path, wm_path, atlas_path, mask_path, bm_path) = get_paths(stem_dwi, stem_t1, config, general_dir)
 
     # load data 
     data, affine, hardi_img = load_nifti(img_path, return_img=True) 
     data_wm = load_nifti_data(wm_path)
     data_gm = load_nifti_data(gm_path)
     data_csf = load_nifti_data(csf_path)
+    mask = load_nifti(mask_path) 
+    bm = load_nifti(bm_path) 
     gradient_table = get_gradient_table(bval_path, bvec_path)
     
     logging.info(f"Generating tractogram using: {config['tractogram_config']['stop_method']} method")
@@ -186,7 +187,7 @@ def run(stem_dwi, stem_t1, config=None, general_dir = ''):
 
     # generate tractogram
     tractogram = generate_tractogram(config, data, affine, hardi_img, 
-                                     gradient_table, data_wm, data_gm, data_csf)
+                                     gradient_table, data_wm, data_gm, data_csf, mask, bm)
     save_tractogram(tractogram, output_dir, img_path)
     
     # generate connectivity matrix
