@@ -20,10 +20,10 @@ def boxplot(data, title=None, xlabel=None, labels=None, figsize=(15, 10)):
     plt.tight_layout()
     plt.show()
 
-def run(concentrations_dir, subjects):
+def run(dataset_dir, subjects):
     # get concentration data (index=0 (background) not included)
-    files_paths = [glob(os.path.join(concentrations_dir, subject, 
-                                        '*.csv')) for subject in subjects]
+    files_paths = [glob(os.path.join(dataset_dir, subject, 'ses*', 'pet', '*.csv'))
+                   for subject in subjects]
     data = np.array([np.genfromtxt(path[0], delimiter=',') for path in files_paths])
 
     region_means = np.mean(data, axis=0)
@@ -35,9 +35,9 @@ def run(concentrations_dir, subjects):
             'patient index', labels=subjects, figsize=(10,10))
     
 def main():
-    concentrations_dir = '../../data/PET_regions_concentrations'   
-    patients = ['sub-AD4009', 'sub-AD4215', 'sub-AD4500', 'sub-AD4892', 'sub-AD6264']
-    run(concentrations_dir, patients)
+    dataset_dir = '../../data/ADNI/derivatives/'
+    patients = ['sub-AD4009', 'sub-AD4215']
+    run(dataset_dir, patients)
 
 if __name__ == '__main__':
     main()

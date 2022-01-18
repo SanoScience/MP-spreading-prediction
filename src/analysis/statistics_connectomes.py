@@ -33,8 +33,8 @@ def count_values_above_mean(array, mean):
 
 def run(connectomes_dir, subjects):
     # get connetomes data (not inverted)
-    files_paths = [glob(os.path.join(connectomes_dir, subject, 
-                                        '*rough.csv')) for subject in subjects]
+    files_paths = [glob(os.path.join(connectomes_dir, subject, 'ses-baseline',
+                                     'dwi', '*rough.csv')) for subject in subjects]
     # load data
     data = np.array([np.genfromtxt(path[0], delimiter=',') for path in files_paths])
     # remove cerebellum and background
@@ -56,8 +56,8 @@ def run(connectomes_dir, subjects):
     print(f'Total mean of counts: {np.mean(buffer)}')
         
 def main():
-    connectomes_dir = '../../data/connectomes'   
-    patients = ['sub-AD4009', 'sub-AD4215', 'sub-AD4500', 'sub-AD4892', 'sub-AD6264']
+    connectomes_dir = '../../data/ADNI/derivatives/'   
+    patients = ['sub-AD4009', 'sub-AD4215']
     run(connectomes_dir, patients)
 
 if __name__ == '__main__':

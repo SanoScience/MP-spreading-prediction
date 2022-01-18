@@ -22,14 +22,14 @@ def find_regions_above_mean(data):
 
 def main():
     output_dir = '../../results'                                                
-    concentrations_dir = '../../data/PET_regions_concentrations'
+    dataset_dir = '../../data/ADNI/derivatives/'
     
     patients = ['sub-AD4215', 'sub-AD4009']
     for subject in patients:
         logging.info(f'\nSimulation for subject: {subject}')
         
         # load ground-truth t1 concentration
-        true_concentrations_paths = glob(os.path.join(concentrations_dir, subject, '*.csv'))                               
+        true_concentrations_paths = glob(os.path.join(dataset_dir, subject, 'ses*', 'pet', '*.csv'))                  
         t1_concentration_path = [path for path in true_concentrations_paths if 'followup' in path][0]            
         t1_concentration = load_matrix(t1_concentration_path)
         
