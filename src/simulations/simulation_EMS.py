@@ -193,12 +193,13 @@ class EMS_Simulation:
             
         return Rmis_all, Pmis_all
     
-def run_simulation(connectomes_dir, concentrations_dir, output_dir, subject):    
-    connectivity_matrix_path = os.path.join(os.path.join(connectomes_dir, subject), 
-                                            'connect_matrix_rough.csv')
-    concentrations_paths = glob(os.path.join(concentrations_dir, subject, '*.csv'))
-    t0_concentration_path = [path for path in concentrations_paths if 'baseline' in path][0]
-    t1_concentration_path = [path for path in concentrations_paths if 'followup' in path][0]
+def run_simulation(dataset_dir, output_dir, subject):    
+    connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
+                                            'ses-baseline', 'dwi', 'connect_matrix_rough.csv'))
+    t0_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
+                                            'ses-baseline', 'pet', '*.csv')))[0]
+    t1_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
+                                            'ses-followup', 'pet', '*.csv')))[0]
     subject_output_dir = os.path.join(output_dir, subject)
     years = 50
 
@@ -250,14 +251,16 @@ def dijkstra(matrix):
     return distance
 
 def main():
-    connectomes_dir = '../../data/connectomes'
-    concentrations_dir = '../../data/PET_regions_concentrations'
+    dataset_dir = '../../data/ADNI/derivatives/'
     output_dir = '../../results' 
     
     patients = ['sub-AD4215', 'sub-AD4009']
     for subject in patients:
         logging.info(f'Simulation for subject: {subject}')
-        run_simulation(connectomes_dir, concentrations_dir, output_dir, subject)
+        try:
+            run_simulation(dataset_dir, output_dir, subject)
+        except ValueError:
+            logging.warning('Simulation interrupted because of NaNs.')
         
         
 if __name__=="__main__":

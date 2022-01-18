@@ -56,9 +56,9 @@ def run(connectomes_dir, subjects):
     print(f'Total mean of counts: {np.mean(buffer)}')
         
 def main():
-    connectomes_dir = '../../data/ADNI/derivatives/'   
+    dataset_dir = '../../data/ADNI/derivatives/'   
     patients = ['sub-AD4009', 'sub-AD4215']
-    run(connectomes_dir, patients)
+    run(dataset_dir, patients)
 
 if __name__ == '__main__':
     main()
