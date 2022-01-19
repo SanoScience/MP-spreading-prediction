@@ -11,10 +11,9 @@ from utils_vis import visualize_diffusion_timeplot
 class DiffusionSimulation:
     def __init__(self, connect_matrix):
         self.beta = 1.5 #As in the Raj et al. papers
-        self.iterations = int(1e3) #1000
+        self.iterations = 2500 #1000
         self.rois = 116 #AAL atlas has 116 rois
-        self.tstar = 10.0
-        self.timestep = self.tstar / self.iterations
+        self.timestep = 1.001
         self.cm = connect_matrix
         
     def run(self, inverse_log=True, downsample=True):
@@ -22,9 +21,10 @@ class DiffusionSimulation:
         if inverse_log: self.calc_exponent()
         self.define_seeds()
         self.calc_laplacian()
+        print(f"time step {self.timestep}")
         self.diffusion_final = self.iterate_spreading()
-        if downsample: 
-            self.diffusion_final = self.downsample_matrix(self.diffusion_final)
+        #if downsample: 
+            #self.diffusion_final = self.downsample_matrix(self.diffusion_final)
         
     def define_seeds(self):
         ''' Define Alzheimer seed regions manually. '''
@@ -38,35 +38,27 @@ class DiffusionSimulation:
         adjacency = self.cm
         degrees = np.sum(adjacency, axis=1) # total no. of. connections to other vertices
         dm12 = np.diag(1.0 / np.sqrt(degrees))
-        laplacian1 = np.eye(adjacency.shape[0]) - (dm12 @ adjacency) @ dm12 
-        
-        adjacency_matrix = self.cm
-        degree_matrix = np.diag(np.sum(adjacency_matrix, axis=1)) # total no. of. connections to other vertices
-        laplacian2= degree_matrix - adjacency_matrix
-        
-        laplacian3 = scipy_laplacian(adjacency, normed=True)
-        
-        print(np.allclose(laplacian1, laplacian2))
-        print(np.allclose(laplacian1, laplacian3))
-        print(np.allclose(laplacian2, laplacian3))
+        laplacian = np.eye(adjacency.shape[0]) - (dm12 @ adjacency) @ dm12 
 
-        self.eigvals, self.eigvecs = np.linalg.eig(laplacian3)
+        self.eigvals, self.eigvecs = np.linalg.eig(laplacian)
     
     def integration_step(self, x0, t):
-        xt = self.eigvecs.T @ x0
-        xt = np.diag(np.exp(-self.beta * t * self.eigvals)) @ xt
+        xt = self.eigvecs.T @ x0 
+        xt = np.diag( (np.ones(len(self.eigvals)) - (np.exp(self.beta * t * -self.eigvals)/(self.beta * self.eigvals)) )) @ xt
         return self.eigvecs @ xt  
+    
     
     def integration_step_vol2(self, x0, t):
         xt = self.eigvecs.T @ x0
         
         # print(np.allclose(np.linalg.inv(self.eigvecs), self.eigvecs.T))
         
-        aux_var = (np.ones(len(self.eigvals[1:])) - np.exp(-self.beta * t * self.eigvals[1:])) / (self.beta * self.eigvals[1:])
+        aux_var = (np.ones(len(self.eigvals[1:])) - np.exp(-self.eigvals[1:] * self.beta * t)) / (self.beta * self.eigvals[1:]) 
         d = np.insert(aux_var, 0, t)
         # print(xt.shape, aux_var.shape, len(d), self.eigvecs.shape)
         d  = np.diag(d) @ xt
         return self.eigvecs @ d 
+    
     
     def iterate_spreading(self):  
         diffusion = [self.diffusion_init]  #List containing all timepoints
@@ -97,7 +89,7 @@ def load_connectivity_matrix(path):
     return data
 
 def main():
-    data_path = '../data/output/sub-AD4009/connect_matrix_filtered.csv'
+    data_path = '../data/output/sub-AD4009/connect_matrix_rough.csv'
     output_path = '../data/output/sub-AD4009/diffusion_matrix.csv'
     
     connect_matrix = load_connectivity_matrix(data_path)
@@ -105,7 +97,7 @@ def main():
     simulation.run()
     simulation.save_matrix(output_path)
     
-    visualize_diffusion_timeplot(simulation.diffusion_final)
+    visualize_diffusion_timeplot(simulation.diffusion_final, simulation.beta, simulation.iterations, simulation.timestep, '../data/output/heat.png')
     
 if __name__ == '__main__':
     main()

@@ -32,7 +32,7 @@ class ConnectivityMatrix():
         self.output_dir = output_dir
         self.take_log = take_log
                        
-    def __create(self, reshuffle=True):
+    def __create(self):
         ''' Get the no. of connections between each pair of brain regions. '''
         M, _ = utils.connectivity_matrix(self.streamlines, 
                                         affine=self.affine, 
@@ -42,24 +42,24 @@ class ConnectivityMatrix():
         # remove background
         M = M[1:, 1:]
 
-        if reshuffle:
-            # make all left areas first 
-            odd_odd = M[::2, ::2]
-            odd_even = M[::2, 1::2]
-            first = np.vstack((odd_odd, odd_even))
-            even_odd = M[1::2, ::2]
-            even_even= M[1::2, 1::2]
-            second = np.vstack((even_odd, even_even))
-            M = np.hstack((first,second))
-
         # remove connections to own regions (inplace)
         np.fill_diagonal(M, 0) 
         if self.take_log: M = np.log1p(M)
 
         self.matrix = M
         
-    def __save(self):
-        np.savetxt(os.path.join(self.output_dir, 'connect_matrix.csv'), 
+    def __revert(self):
+        # make all left areas first 
+        odd_odd = self.matrix[::2, ::2]
+        odd_even = self.matrix[::2, 1::2]
+        first = np.vstack((odd_odd, odd_even))
+        even_odd = self.matrix[1::2, ::2]
+        even_even= self.matrix[1::2, 1::2]
+        second = np.vstack((even_odd, even_even))
+        self.matrix = np.hstack((first,second))
+        
+    def __save(self, name='connect_matrix.csv'):
+        np.savetxt(os.path.join(self.output_dir, name), 
                    self.matrix, delimiter=',')
 
     def __plot(self, savefig=True):
@@ -74,10 +74,13 @@ class ConnectivityMatrix():
         logging.info(f'Shape of connectivity matrix: {self.matrix.shape}. \
         Sum of values: {np.sum(self.matrix)} (after removing background and connections to own regions)')
         
-    def process(self):
+    def process(self, reshuffle = True):
         self.__create()   
         self.__get_info()
-        self.__save()
+        self.__save('connect_matrix_rough.csv') # 'Rough' means 'as it is', without reverting rois
+        if reshuffle:
+            self.__revert() # reverts rois to make rois 'left-to-right' oriented in the matrix 
+            self.__save('connect_matrix_reverted.csv') # 'Reverted' is the matrix meant to be used in BrainNetViewer and manual analysis
         self.__plot()     
 
 def main():
