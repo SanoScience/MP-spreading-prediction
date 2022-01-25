@@ -3,3 +3,6 @@
 __pycache__
 .env
 data/
+results/
+output/
+input/

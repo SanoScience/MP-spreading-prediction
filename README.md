@@ -1,10 +1,7 @@
-# Misfolded proteins spreading 
+# Sano MSc Project: Misfolded protein spreading by autoregressive model
+supervisor: dr Alessandro Crimi
 
-## Simulations
-Methods:
-1) Diffusion model (using heat kernel)
-2) Epidemic Model Spreading
-3) Multivariate Autoregressive Model
+MSc student: Aleksandra Pestka
 
-## Data folder
-Current **data** folder structure is showed [here](data/.structure).
+## Note
+This project is in the **research mode**. 
