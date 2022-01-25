@@ -34,9 +34,9 @@ class EMS_Simulation:
         self.dt = 0.01          # time step (0.01)
         self.T_total = years    # total time 
         self.amy_control = 3    # parameter to control the number of voxels in which beta-amyloid may get synthesized (?)
-        self.prob_stay = 0.5    # the probability of staying in the same region per unit time (0.5)
-        self.trans_rate = 4     # a scalar value, controlling the baseline infectivity
-        self.iter_max = 50      # max no. of iterations
+        self.prob_stay = [0.5 for _ in range(116)]    # the probability of staying in the same region per unit time (0.5)
+        self.trans_rate = 116     # a scalar value, controlling the baseline infectivity
+        self.iter_max = 10000      # max no. of iterations
         self.mu_noise = 0       # mean of the additive noise
         self.sigma_noise = 1    # standard deviation of the additive noise
         self.gini_coeff = 1     # measure of statistical dispersion in a given system, with value 0 reflecting perfect equality and value 1 corresponding to a complete inequality
@@ -52,7 +52,7 @@ class EMS_Simulation:
             self.diffusion_init = self.define_seeds()
         
         self.regions_distances = regions_distances
-        self.connect_matrix = connect_matrix
+        self.connect_matrix = connect_matrix #+ np.where(connect_matrix > 0, 1e-2, 0)  # add noise to connectivity matrix
         
     def define_seeds(self, init_concentration=0.2):
         ''' Define Alzheimer seed regions manually. 
@@ -80,19 +80,20 @@ class EMS_Simulation:
         
         connect = self.connect_matrix
         noise = np.random.normal(self.mu_noise, self.sigma_noise, (self.N_regions, self.N_regions))     
-        beta = 1 - np.exp(self.beta0 * self.prob_stay)  # regional probability receiving MP infectous-like agents
+       
         Epsilon = np.zeros((self.N_regions, self.N_regions))
         
         for i in range(self.N_regions):
+            beta = 1 - np.exp(-self.beta0 * self.prob_stay[i])  # regional probability receiving MP infectous-like agents
             t = 0
             for j in range(self.N_regions):
                 if i != j:
-                    t +=  beta * self.prob_stay * (self.connect_matrix[i, j] * self.gini_coeff + self.connect_matrix[i, i] * (1 - self.gini_coeff))
+                    t +=  beta * self.prob_stay[i] * (self.connect_matrix[i, j] * self.gini_coeff + self.connect_matrix[i, i] * (1 - self.gini_coeff))
             Epsilon[i] = t
             
         # INTRA-BRAIN EPIDEMIC SPREADING MODEL 
-        connect = (1 - self.prob_stay)*Epsilon - self.prob_stay * np.exp(- self.diffusion_init* self.prob_stay) +  noise
-        
+        connect = (1 - self.prob_stay[i])*Epsilon - self.prob_stay * np.exp(- self.diffusion_init* self.prob_stay) +  noise
+            
         # The probability of moving from region i to edge (i,j)
         sum_line = np.sum(connect, axis=1)
         connect /= sum_line
@@ -128,7 +129,7 @@ class EMS_Simulation:
             Rnor = Rnor +  np.transpose(Sum_rows_movOut) * self.dt -  Sum_cols_movDrt
 
             #growth process	
-            precision = 1e-7
+            precision = 1e-15
             Rnor = Rnor -  Rnor * (1 - np.exp(- self.clearance_rate * self.dt)) + (self.synthesis_rate * self.amy_control) * self.dt
             if abs(Rnor - Rtmp).all() < (precision * Rtmp).all():
                 break
@@ -254,7 +255,7 @@ def main():
     dataset_dir = '../../data/ADNI/derivatives/'
     output_dir = '../../results' 
     
-    patients = ['sub-AD4215', 'sub-AD4009']
+    patients = ['sub-AD4009_new_PET']
     for subject in patients:
         logging.info(f'Simulation for subject: {subject}')
         try:

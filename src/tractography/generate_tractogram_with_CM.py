@@ -37,8 +37,9 @@ def get_paths(stem_dwi, stem_t1, config, general_dir):
     img_path = stem_dwi + '.nii'
     bval_path = stem_dwi + '.bval'
     bvec_path = stem_dwi + '.bvec'
+    
     # output dir is in the derivatives folder (which is also the input folder)
-    output_dir = stem_dwi.removesuffix(stem_dwi.split(os.sep)[-1])
+    output_dir = os.path.dirname(stem_dwi)
       
     # CerebroSpinal Fluid (CSF) is _pve_0
     csf_path = stem_t1 + '_pve-0.nii'
@@ -201,14 +202,18 @@ def main():
 
     with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
+  
+    try:
+        # removesuffix is method in str for Python 3.9+
+        general_dir = os.getcwd().removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src')
+    except:
+        general_dir = '../../'
 
-    general_dir = os.getcwd()
-    general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src') + os.sep
-    dwi_dir = general_dir + config['paths']['dataset_dir'] + config['paths']['subject'] + os.sep + 'ses-*' + os.sep + 'dwi' + os.sep + '*_dwi.nii'
-    dwi_files = glob(dwi_dir)
+    dwi_files_paths = glob(os.path.join(general_dir, config['paths']['dataset_dir'], 
+                                        config['paths']['subject'], 'ses-*', 'dwi', '*_dwi.nii'))
     
-    logging.info(f'{len(dwi_files)} DWI files found ')
-    parallelize(dwi_files, config['tractogram_config']['cores'], run, config, general_dir)
+    logging.info(f'{len(dwi_files_paths)} DWI files found ')
+    parallelize(dwi_files_paths, config['tractogram_config']['cores'], run, config, general_dir)
 
 if __name__ == '__main__':
     main()

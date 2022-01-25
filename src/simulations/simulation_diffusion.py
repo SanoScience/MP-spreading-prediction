@@ -45,7 +45,7 @@ class DiffusionSimulation:
         self.calc_laplacian()
         
         self.diffusion_final = self.iterate_spreading_by_Julien()
-        #self.diffusion_final = self.iterate_spreading()
+        # self.diffusion_final = self.iterate_spreading()
         if downsample: 
             self.diffusion_final = self.downsample_matrix(self.diffusion_final)
         return self.diffusion_final[-1]
@@ -157,6 +157,9 @@ def run_simulation(dataset_dir, output_dir, subject):
 
     subject_output_dir = os.path.join(output_dir, subject)
     
+    if not os.path.exists(subject_output_dir):
+        os.makedirs(subject_output_dir)
+    
     # load connectome
     connect_matrix = load_matrix(connectivity_matrix_path)
     # load proteins concentration in brian regions
@@ -206,7 +209,7 @@ def main():
     dataset_dir = '../../data/ADNI/derivatives/'
     output_dir = '../../results' 
     
-    patients = ['sub-AD4009', 'sub-AD4215']
+    patients = ['sub-AD4009_new_PET']
     for subject in patients:
         logging.info(f'Simulation for subject: {subject}')
         run_simulation(dataset_dir, output_dir, subject)
