@@ -7,6 +7,7 @@ A.Crimi et al. "Effective Brain Connectivity Through a Constrained Autoregressiv
 import os
 from glob import glob
 import logging
+import random
 
 from tqdm import tqdm 
 import numpy as np
@@ -25,7 +26,7 @@ class MARsimulation:
         self.N_regions = 116                                                    # no. of brain areas from the atlas
         self.maxiter = 100000                                                     # max no. of iterations for the gradient descent
         self.th = 0.016                                                         # acceptable error threshold for the reconstruction error
-        self.eta = 1e-13                                                        # learning rate of the gradient descent       
+        self.eta = 1e-11                                                        # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -89,11 +90,12 @@ class MARsimulation:
         error_reconstruct = 1e10 # initial error of reconstruction 
         
         # add noise to initial connectivity matrix  
-        A = self.cm + np.where(self.cm > 0, 1e-2, 0) # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
+        A = self.cm # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
+        # np.random.shuffle(A)
 
         A_buffer = []
         gradient = np.zeros((self.N_regions, self.N_regions)) 
-        
+                       
         # loop direct connections until criteria are met 
         while (error_reconstruct > self.th) and (iter_count < self.maxiter):
             # calculate reconstruction error 
@@ -101,20 +103,24 @@ class MARsimulation:
             error_buffer.append(error_reconstruct)
             # TODO: gradient computation; verify with Alex; grandient values are really high
             # gradient += ((self.final_concentrations - A @ self.init_concentrations) * self.init_concentrations) # according to paper 
-            gradient = (0.1)*gradient + ((A @ self.init_concentrations.T @ self.init_concentrations - self.final_concentrations.T @ self.init_concentrations)) + 1e+2 # according to matlab code; error gets saturated at 24142 for eta = 5e-12
-
+            # gradient =  ((A @ self.init_concentrations.T @ self.init_concentrations - self.final_concentrations.T @ self.init_concentrations)) #+ 1e+2 # according to matlab code; error gets saturated at 24142 for eta = 5e-12
+            # gradient = -(self.final_concentrations - (A @ self.B)* self.init_concentrations) * self.init_concentrations @ self.B # Luca's implementation
+            gradient = -(self.final_concentrations - A * self.init_concentrations) * self.init_concentrations.T
+            
             if (iter_count % 10000 == 0 and iter_count > 0):
                 print(f'Gradient norm: {np.linalg.norm(gradient):.2f}')
                 # A -= A/10000
             # update rule
             A -= self.eta * gradient
             # reinforce where there was no connection at the beginning 
-            A *= self.B
+            # A *= self.B
             # TODO: remove negative values?
             # A *= (A > 0)
             iter_count += 1
-            self.eta -= 1e-20
+            self.eta -= 1e-18
+            assert self.eta > 0, 'AIUTO'
             A_buffer.append(A)
+            
             
         print(f'Initial error at iter: {0} value: {error_buffer[0]}')
         best_iter = np.argmin(error_buffer)
@@ -143,6 +149,16 @@ def run_simulation(dataset_dir, output_dir, subject):
     # load proteins concentration in brain regions
     t0_concentration = load_matrix(t0_concentration_path) 
     t1_concentration = load_matrix(t1_concentration_path)
+    
+    # # experiment - set artificial t0 and t1 concentrations
+    # t0_concentration = np.random.randint(0, 600, size=116)
+    # for index in random.sample(range(116), 60):
+    #     t0_concentration[index] = 0
+    # t1_concentration = t0_concentration * 2
+    
+    # experiment
+    t1_concentration = 2*t0_concentration
+    
     
     logging.info(f'Sum of t0 concentration: {np.sum(t0_concentration):.2f}')
     logging.info(f'Sum of t1 concentration: {np.sum(t1_concentration):.2f}')
