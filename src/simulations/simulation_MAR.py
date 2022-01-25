@@ -13,8 +13,8 @@ from tqdm import tqdm
 import numpy as np
 from scipy.stats.stats import pearsonr as pearson_corr_coef
 
-from utils_vis import visualize_terminal_state_comparison, visualize_error
-from utils import load_matrix, calc_rmse, calc_msle, save_terminal_concentration
+from utils_vis import *
+from utils import *
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,10 +23,10 @@ class MARsimulation:
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
         self.N_regions = 116                                                    # no. of brain areas from the atlas
-        self.maxiter = 100000                                                   # max no. of iterations for the gradient descent
-        self.error_th = 0.016                                                   # acceptable error threshold for the reconstruction error
-        self.gradient_th = 0.01                                                 # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-7                                                         # learning rate of the gradient descent       
+        self.maxiter = 100000000                                                 # max no. of iterations for the gradient descent
+        self.error_th = 0.0001                                                   # acceptable error threshold for the reconstruction error
+        self.gradient_th = 0.0001                                           # gradient difference threshold in stopping criteria in GD
+        self.eta = 1e-8                                                         # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -86,22 +86,22 @@ class MARsimulation:
         
     def run_gradient_descent(self):
         iter_count = 0                                                          # counter of the current iteration 
-        error_buffer = []                                                       # reconstruction error along iterations
+        #error_buffer = []                                                       # reconstruction error along iterations
         error_reconstruct = 1e10                                                # initial error of reconstruction 
         gradient_prev = 1e10                                                    # initial gradient 
         gradient_diff = 1e10                                                    # initial gradient difference (difference between 2 consecutive gradients)
         
         A = self.cm                                                             # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
-        A_buffer = []                                                           # list to save the effective matrix in each iteration                                           
+        #A_buffer = []                                                           # list to save the effective matrix in each iteration                                           
         gradient = np.ones((self.N_regions, self.N_regions)) 
         
-        # self.B = np.ones(A.shape)                                             # eliminate B by initializing it with ones 
+        #self.B = np.ones(A.shape)                                             # eliminate B by initializing it with ones 
                                
         # loop direct connections until criteria are met 
-        while (error_reconstruct > self.error_th) and (gradient_diff > self.gradient_th):
+        while (error_reconstruct > self.error_th) and iter_count < self.maxiter: #(gradient_diff > self.gradient_th):
             # calculate reconstruction error 
-            error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
-            error_buffer.append(error_reconstruct)
+            # error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
+            #error_buffer.append(error_reconstruct)
             
             # gradient computation
             # gradient = gradient * 0.7 + 0.3*(-(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B)) # momentum 
@@ -110,8 +110,11 @@ class MARsimulation:
             gradient_diff = abs(np.linalg.norm(gradient) - gradient_prev)
             gradient_prev = np.linalg.norm(gradient)
             
-            if (iter_count % 10000 == 0 and iter_count > 0):
+            if (iter_count % 100000 == 0 and iter_count > 0):
                 print(f'Gradient norm: {np.linalg.norm(gradient):.2f}')
+                if np.linalg.norm(gradient_prev)<np.linalg.norm(gradient):
+                    break
+                self.eta += 1e-8
                 
             # update rule
             A -= self.eta * gradient
@@ -125,15 +128,19 @@ class MARsimulation:
             # self.eta -= 1e-18
             # assert self.eta > 0, 'AIUTO'
             
-            A_buffer.append(A)
+            #A_buffer.append(A)
               
-        print(f'Initial error at iter: {0} value: {error_buffer[0]}')
-        best_iter = np.argmin(error_buffer)
-        print(f'Minimum error at iter: {best_iter} value: {error_buffer[best_iter]}')
-        visualize_error(error_buffer)
+        #print(f'Initial error at iter: {0} value: {error_buffer[0]}')
+        #best_iter = np.argmin(error_buffer)
+        #print(f'Minimum error at iter: {best_iter} value: {error_buffer[best_iter]}')
+        #plt.plot(error_buffer)
 
+        error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
+        logging.info(f"Final reconstruction error: {error_reconstruct}")
+        logging.info(f"Iterations: {iter_count}")
+        return A
         # return A for the best iteration
-        return A_buffer[best_iter]
+        #return A_buffer[best_iter]
                    
 def run_simulation(dataset_dir, output_dir, subject):    
     ''' Run simulation for single patient. '''
@@ -159,8 +166,12 @@ def run_simulation(dataset_dir, output_dir, subject):
     if (t0_concentration == t1_concentration).all():
         logging.info('Followup is the same as baseline. Subject skipped.')
         return
-            
-    simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration)
+    
+    try:
+        simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration)
+    except Exception as e:
+        logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}\nTrying to plot the partial results...")
+
     t1_concentration_pred = simulation.run(norm_opt=2)
     rmse = calc_rmse(t1_concentration, t1_concentration_pred)
     corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
@@ -176,10 +187,13 @@ def main():
     dataset_dir = '../../data/ADNI/derivatives/'
     output_dir = '../../results' 
     
-    patients = ['sub-AD4009_new_PET'] # ['sub-AD4215_new_PET']
+    patients = ['sub-AD4009'] # ['sub-AD4215_new_PET']
     for subject in patients:
         logging.info(f'Simulation for subject: {subject}')
-        run_simulation(dataset_dir, output_dir, subject)
+        try:
+            run_simulation(dataset_dir, output_dir, subject)
+        except Exception as e:
+            logging.error(f"Exception happened for patient {subject}. Traceback:\n{e}")
     
 if __name__ == '__main__':
     main()

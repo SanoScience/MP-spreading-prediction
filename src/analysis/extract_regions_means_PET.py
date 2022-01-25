@@ -69,7 +69,7 @@ def main():
     
     atlas_data = load_atlas(atlas_path)
     
-    patients = ['sub-AD4215_new_PET']
+    patients = ['sub-AD4009']
     for subject in patients:
         logging.info(f'Beta-amyloid concentration extraction for subject: {subject}')
         run(dataset_dir, subject, atlas_data)
