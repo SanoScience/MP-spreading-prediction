@@ -8,6 +8,7 @@ import os
 from glob import glob
 import logging
 import random
+import warnings
 
 from tqdm import tqdm 
 import numpy as np
@@ -23,10 +24,10 @@ class MARsimulation:
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
         self.N_regions = 116                                                    # no. of brain areas from the atlas
-        self.maxiter = int(1e6)                                                 # max no. of iterations for the gradient descent
+        self.maxiter = int(2e6)                                                 # max no. of iterations for the gradient descent
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
-        self.eta = 2.8e-7                                                       # learning rate of the gradient descent       
+        self.eta = 1e-7                                                         # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -86,39 +87,58 @@ class MARsimulation:
         
     def run_gradient_descent(self, vis_error=False):
         iter_count = 0                                                          # counter of the current iteration 
-        error_reconstruct = 1e10                                                # initial error of reconstruction 
-        gradient_prev = 1e10                                                    # initial gradient 
-        gradient_diff = 1e10                                                    # initial gradient difference (difference between 2 consecutive gradients)
+        error_reconstruct = 1e10                                                # initial error of reconstruction gradients)
         if vis_error: error_buffer = []                                         # reconstruction error along iterations
         
         A = self.cm                                                             # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
+        #old_A = self.cm
         gradient = np.ones((self.N_regions, self.N_regions)) 
         
         #self.B = np.ones(A.shape)                                              # eliminate B by initializing it with ones 
                                
-        # loop direct connections until criteria are met 
+        np.seterr(all='warn')
+
         while (error_reconstruct > self.error_th) and iter_count < self.maxiter: #(gradient_diff > self.gradient_th):
             # calculate reconstruction error 
             error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
             if vis_error: error_buffer.append(error_reconstruct)
             
             # gradient computation
-            gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) 
-            norm = np.linalg.norm(gradient)
+            tmp_eta = self.eta
+            overflow = True
+            # update rule
+            while overflow:
+                with warnings.catch_warnings():
+                    warnings.filterwarnings('error')
+                    try:
+                        #TODO: add an optional (= you can turn it completely off putting 'lamba' to 0) L1 penalty corresponding to the sum of the absolute values of the elements of A [+ lambda (sum(abs(Ai))) ]
+                        gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) 
+                        u = A - tmp_eta * gradient 
+                        # reinforce where there was no connection at the beginning 
+                        u *= self.B
+                        norm = np.linalg.norm(gradient)
+                        overflow = False
+                    except Warning as e:
+                        logging.error(e)
+                        '''
+                        TODO find another way to fix overflow
+                        A = old_A
+                        tmp_eta = 1e-12
+                        overflow = True
+                        '''
+
+            #old_A = A
+            A = u
+            if self.eta < 1e-6:
+                self.eta += 1e-10                   
+            
             if norm < self.gradient_th:
                 logging.info(f"Gradient norm: {norm}.\nTermination criterion met, quitting...")
-                break
+                break    
 
-            gradient_diff = abs(np.linalg.norm(gradient) - gradient_prev)
-            gradient_prev = np.linalg.norm(gradient)
-            
             if iter_count % 100000 == 0:
-                print(f'Gradient norm at {iter_count}th iteration: {np.linalg.norm(gradient):.2f}')
-                
-            # update rule
-            A -= self.eta * gradient
-            # reinforce where there was no connection at the beginning 
-            A *= self.B
+                print(f'Gradient norm at {iter_count}th iteration: {norm:.2f}')
+            
             iter_count += 1
             
             # iteratively increase learning rate
@@ -127,7 +147,6 @@ class MARsimulation:
                           
         if vis_error: visualize_error(error_buffer)
 
-        error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
         logging.info(f"Final reconstruction error: {error_reconstruct}")
         logging.info(f"Iterations: {iter_count}")
         
