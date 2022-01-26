@@ -23,10 +23,10 @@ class MARsimulation:
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
         self.N_regions = 116                                                    # no. of brain areas from the atlas
-        self.maxiter = 100000000                                                 # max no. of iterations for the gradient descent
-        self.error_th = 0.0001                                                   # acceptable error threshold for the reconstruction error
-        self.gradient_th = 0.0001                                           # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-8                                                         # learning rate of the gradient descent       
+        self.maxiter = 500000                                                 # max no. of iterations for the gradient descent
+        self.error_th = 0.01                                                   # acceptable error threshold for the reconstruction error
+        self.gradient_th = 0.1                                           # gradient difference threshold in stopping criteria in GD
+        self.eta = 1e-7                                                       # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -100,21 +100,23 @@ class MARsimulation:
         # loop direct connections until criteria are met 
         while (error_reconstruct > self.error_th) and iter_count < self.maxiter: #(gradient_diff > self.gradient_th):
             # calculate reconstruction error 
-            # error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
+            error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
             #error_buffer.append(error_reconstruct)
             
             # gradient computation
             # gradient = gradient * 0.7 + 0.3*(-(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B)) # momentum 
             gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) 
-            
+            norm = np.linalg.norm(gradient)
+            if norm < self.gradient_th:
+                logging.info(f"Gradient norm: {norm}.\nTermination criterion met, quitting...")
+                break
+
             gradient_diff = abs(np.linalg.norm(gradient) - gradient_prev)
             gradient_prev = np.linalg.norm(gradient)
             
-            if (iter_count % 100000 == 0 and iter_count > 0):
-                print(f'Gradient norm: {np.linalg.norm(gradient):.2f}')
-                if np.linalg.norm(gradient_prev)<np.linalg.norm(gradient):
-                    break
-                self.eta += 1e-8
+            if iter_count % 100000 == 0:
+                print(f'Gradient norm at {iter_count}th iteration: {np.linalg.norm(gradient):.2f}')
+                #self.eta = 1e-6
                 
             # update rule
             A -= self.eta * gradient
