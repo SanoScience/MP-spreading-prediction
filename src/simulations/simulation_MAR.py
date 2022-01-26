@@ -23,10 +23,10 @@ class MARsimulation:
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
         self.N_regions = 116                                                    # no. of brain areas from the atlas
-        self.maxiter = 500000                                                 # max no. of iterations for the gradient descent
-        self.error_th = 0.01                                                   # acceptable error threshold for the reconstruction error
-        self.gradient_th = 0.1                                           # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-7                                                       # learning rate of the gradient descent       
+        self.maxiter = int(1e6)                                                 # max no. of iterations for the gradient descent
+        self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
+        self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
+        self.eta = 2.8e-7                                                       # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -84,27 +84,25 @@ class MARsimulation:
         B has zero elements where no structural connectivity appears. '''
         self.B = np.where(self.cm==0, 0, 1).astype('float32')
         
-    def run_gradient_descent(self):
+    def run_gradient_descent(self, vis_error=False):
         iter_count = 0                                                          # counter of the current iteration 
-        #error_buffer = []                                                       # reconstruction error along iterations
         error_reconstruct = 1e10                                                # initial error of reconstruction 
         gradient_prev = 1e10                                                    # initial gradient 
         gradient_diff = 1e10                                                    # initial gradient difference (difference between 2 consecutive gradients)
+        if vis_error: error_buffer = []                                         # reconstruction error along iterations
         
         A = self.cm                                                             # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
-        #A_buffer = []                                                           # list to save the effective matrix in each iteration                                           
         gradient = np.ones((self.N_regions, self.N_regions)) 
         
-        #self.B = np.ones(A.shape)                                             # eliminate B by initializing it with ones 
+        #self.B = np.ones(A.shape)                                              # eliminate B by initializing it with ones 
                                
         # loop direct connections until criteria are met 
         while (error_reconstruct > self.error_th) and iter_count < self.maxiter: #(gradient_diff > self.gradient_th):
             # calculate reconstruction error 
             error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
-            #error_buffer.append(error_reconstruct)
+            if vis_error: error_buffer.append(error_reconstruct)
             
             # gradient computation
-            # gradient = gradient * 0.7 + 0.3*(-(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B)) # momentum 
             gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) 
             norm = np.linalg.norm(gradient)
             if norm < self.gradient_th:
@@ -116,33 +114,24 @@ class MARsimulation:
             
             if iter_count % 100000 == 0:
                 print(f'Gradient norm at {iter_count}th iteration: {np.linalg.norm(gradient):.2f}')
-                #self.eta = 1e-6
                 
             # update rule
             A -= self.eta * gradient
             # reinforce where there was no connection at the beginning 
             A *= self.B
-            # TODO: remove negative values?
-            # A *= (A > 0)
             iter_count += 1
             
-            # iteratively decrease learning rate
-            # self.eta -= 1e-18
+            # iteratively increase learning rate
+            # self.eta += 1e-14
             # assert self.eta > 0, 'AIUTO'
-            
-            #A_buffer.append(A)
-              
-        #print(f'Initial error at iter: {0} value: {error_buffer[0]}')
-        #best_iter = np.argmin(error_buffer)
-        #print(f'Minimum error at iter: {best_iter} value: {error_buffer[best_iter]}')
-        #plt.plot(error_buffer)
+                          
+        if vis_error: visualize_error(error_buffer)
 
         error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
         logging.info(f"Final reconstruction error: {error_reconstruct}")
         logging.info(f"Iterations: {iter_count}")
+        
         return A
-        # return A for the best iteration
-        #return A_buffer[best_iter]
                    
 def run_simulation(dataset_dir, output_dir, subject):    
     ''' Run simulation for single patient. '''
@@ -189,7 +178,7 @@ def main():
     dataset_dir = '../../data/ADNI/derivatives/'
     output_dir = '../../results' 
     
-    patients = ['sub-AD4009'] # ['sub-AD4215_new_PET']
+    patients = ['sub-AD4009'] 
     for subject in patients:
         logging.info(f'Simulation for subject: {subject}')
         try:
