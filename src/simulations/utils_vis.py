@@ -55,3 +55,11 @@ def visualize_terminal_state_comparison(input_vec, output_vec, target_vec,
     if save_dir is not None:
         plt.savefig(os.path.join(save_dir, 'concentration_comparison.png'))
     plt.show()
+    
+def visualize_error(error):
+    plt.figure(figsize=(15, 5))
+    plt.plot(error)
+    plt.yscale('log')
+    plt.xlabel('# iterations')
+    plt.ylabel('reconstruction error')
+    plt.show()
