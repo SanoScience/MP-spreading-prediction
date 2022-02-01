@@ -1,3 +1,7 @@
+''' Vanilla app for getting MP concentration prediction using pretrained MAR model. '''
+
+import io
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -6,12 +10,12 @@ import plotly_express as px
 def upload_new_data(caption):
     file_path = st.file_uploader(caption, type=['.csv'])
     if file_path is not None:
-        data = np.genfromtxt(file_path, delimiter=",")
+        data = np.genfromtxt(file_path, delimiter=',')
         return data
     
 def load_coeff_matrix():
     coeff_path = '../results/MAR/coeff_matrix.csv'
-    data = np.genfromtxt(coeff_path, delimiter=",")
+    data = np.genfromtxt(coeff_path, delimiter=',')
     return data
 
 def visualize_concentration(input_vec, output_vec): 
@@ -26,7 +30,7 @@ def visualize_concentration(input_vec, output_vec):
         yaxis_title='concentration of MP',
         title='MP concentration in each brain region')
 
-    st.plotly_chart(fig)
+    return fig
 
 def run_simulation(t0_concentration):
     coeff_matrix = load_coeff_matrix()
@@ -48,7 +52,7 @@ if __name__ == '__main__':
     st.header('Misfolded proteins spreading')
     
     st.subheader('Data loading')
-    t0_concentration = upload_new_data(caption="Upload CSV file with regions concentration (shape: 1x116)")
+    t0_concentration = upload_new_data(caption='Upload CSV file with regions concentration (shape: 1x116)')
     
     if t0_concentration is not None:
         t1_concentration_pred = run_simulation(t0_concentration)
@@ -67,17 +71,26 @@ if __name__ == '__main__':
         st.code(top_brain_regions)
         
         st.text('Visualization')
-        visualize_concentration(t0_concentration, t1_concentration_pred)
+        fig = visualize_concentration(t0_concentration, t1_concentration_pred)
+        st.plotly_chart(fig)
         
         st.subheader('Download')
-        st.text('Download CSV file with t1 predictions')
-
         st.download_button(
-            "Press to Download",
+            'Download a CSV file with predictions',
             convert_array(t1_concentration_pred),
-            "t1_pred.csv",
-            "text/csv",
+            't1_pred.csv',
+            'text/csv',
             key='download-csv'
             )
         
+        buffer = io.StringIO()
+        fig.write_html(buffer, include_plotlyjs='cdn')
+        html_bytes = buffer.getvalue().encode()
+
+        st.download_button(
+            label='Download figure as HTML',
+            data=html_bytes,
+            file_name='figure.html',
+            mime='text/html'
+        )
         
