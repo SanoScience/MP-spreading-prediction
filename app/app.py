@@ -7,18 +7,16 @@ import pandas as pd
 import streamlit as st
 import plotly_express as px
 
+from utils import (load_coeff_matrix, run_simulation, calc_statistics, 
+                   prepare_atlas_with_concentrations)
+
 def upload_new_data(caption):
     file_path = st.file_uploader(caption, type=['.csv'])
     if file_path is not None:
         data = np.genfromtxt(file_path, delimiter=',')
         return data
     
-def load_coeff_matrix():
-    coeff_path = '../results/MAR/coeff_matrix.csv'
-    data = np.genfromtxt(coeff_path, delimiter=',')
-    return data
-
-def visualize_concentration(input_vec, output_vec): 
+def visualize_concentration_lineplot(input_vec, output_vec): 
     chart_df = pd.DataFrame({
         't0': input_vec,
         't1 pred': output_vec
@@ -32,22 +30,18 @@ def visualize_concentration(input_vec, output_vec):
 
     return fig
 
-def run_simulation(t0_concentration):
-    coeff_matrix = load_coeff_matrix()
-    t1_concentration_pred = coeff_matrix @ t0_concentration
-    return t1_concentration_pred
-
-def calc_statistics(concentration):
-    stats = pd.DataFrame({'concentration': concentration}).describe()
-    total_sum = np.sum(concentration)
-    top_brain_regions = np.argsort(concentration)[::-1][:5]
-    return stats, total_sum, top_brain_regions
+def visualize_concentration_image(brain):
+    brain = np.rot90(brain)
+    fig = px.imshow(brain[:, :, :].T, animation_frame=0, 
+                    color_continuous_scale='Reds',
+                    zmin=0)
+    return fig
 
 @st.cache
 def convert_array(array):
     return pd.DataFrame(array).to_csv().encode('utf-8')
 
-if __name__ == '__main__':
+def main():
     st.title('BrainSpread')
     st.header('Misfolded proteins spreading')
     
@@ -56,12 +50,11 @@ if __name__ == '__main__':
     
     if t0_concentration is not None:
         t1_concentration_pred = run_simulation(t0_concentration)
-    
-        st.subheader('Results')
-        
         stats, total_sum, top_brain_regions = calc_statistics(t1_concentration_pred)
-        
-        st.text('Statistics')
+        region_concentrations = prepare_atlas_with_concentrations(t1_concentration_pred)
+    
+        st.subheader('Results')        
+        st.text('Statistics of t1 predictions')
         st.code(stats)
         
         st.text('Total sum of concentration')
@@ -71,8 +64,11 @@ if __name__ == '__main__':
         st.code(top_brain_regions)
         
         st.text('Visualization')
-        fig = visualize_concentration(t0_concentration, t1_concentration_pred)
-        st.plotly_chart(fig)
+        fig1 = visualize_concentration_lineplot(t0_concentration, t1_concentration_pred)
+        st.plotly_chart(fig1)
+        
+        fig2 = visualize_concentration_image(region_concentrations)
+        st.plotly_chart(fig2)
         
         st.subheader('Download')
         st.download_button(
@@ -84,7 +80,7 @@ if __name__ == '__main__':
             )
         
         buffer = io.StringIO()
-        fig.write_html(buffer, include_plotlyjs='cdn')
+        fig1.write_html(buffer, include_plotlyjs='cdn')
         html_bytes = buffer.getvalue().encode()
 
         st.download_button(
@@ -93,4 +89,7 @@ if __name__ == '__main__':
             file_name='figure.html',
             mime='text/html'
         )
+
+if __name__ == '__main__':
+    main()
         
