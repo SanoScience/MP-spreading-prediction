@@ -13,10 +13,17 @@ def save_diffusion_matrix(save_dir, diffusion_matrix, method_name):
     np.savetxt(os.path.join(save_dir, f'diffusion_matrix_over_time_{method_name}.csv'), 
                             diffusion_matrix, delimiter=",")
     
+def save_coeff_matrix(save_dir, matrix):
+    np.savetxt(os.path.join(save_dir, f'A_matrix_MAR.csv'), 
+                            matrix, delimiter=",")
+    
 def save_terminal_concentration(save_dir, concentration_pred, method_name):
     ''' Save last (terminal) concentration. '''
     np.savetxt(os.path.join(save_dir, f'concentration_pred_{method_name}.csv'),
                 concentration_pred, delimiter=',')
+    
+def drop_negative_predictions(predictions):
+    return np.maximum(predictions, 0)
 
 def calc_rmse(output, target):
     ''' Compare output from simulation with 
