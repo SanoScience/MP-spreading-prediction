@@ -1,30 +1,22 @@
-''' Generate connectivity matrix from tractogram. '''
+''' Generate tractogram using FA threshold or ACT stopping criterion. 
+Compute and visualize connectivity matrix. '''
 
 import os
 import logging
 
-import numpy as np
-from nibabel.streamlines import load
+from dipy.core.gradients import gradient_table
+from dipy.io.gradients import read_bvals_bvecs
+from dipy.io.streamline import load_tractogram
+from dipy.tracking import utils
 import nibabel
-from dipy.tracking import utils 
-import matplotlib.pyplot as plt
-from numpy.core.fromnumeric import take
 import yaml
-import re
+import numpy as np
+import matplotlib.pyplot as plt
 
-def get_paths(config):
-    sub = config['paths']['subject'] if config['paths']['subject'] != 'all' else 'sub-*'
-    output_dir = os.path.join(config['paths']['output_dir'], 
-                              )
-    atlas_path = config['paths']['atlas_path']
 
-    tractogram_path = [ t for t in os.walk(output_dir) if re.match(r"*.trk", t)] 
-    return output_dir, atlas_path, tractogram_path
-
-def load_atlas(path):
-    atlas = nibabel.load(path)
-    labels = atlas.get_fdata().astype(np.uint8)
-    return atlas, labels   
+from generate_connectivity_matrix import ConnectivityMatrix
+from utils import parallelize_CM
+from glob import glob
 
 class ConnectivityMatrix():
     def __init__(self, tractogram, atlas_labels, output_dir, take_log):
@@ -84,27 +76,50 @@ class ConnectivityMatrix():
         if reshuffle:
             self.__revert() # reverts rois to make rois 'left-to-right' oriented in the matrix 
             self.__save('connect_matrix_reverted.csv') # 'Reverted' is the matrix meant to be used in BrainNetViewer and manual analysis
-        self.__plot()     
+        self.__plot() 
 
-def main():
-    logging.basicConfig(level=logging.INFO)
+def get_gradient_table(bval_path, bvec_path):
+    ''' Read .bval and .bec files to build the gradient table'''
+    bvals, bvecs = read_bvals_bvecs(bval_path, bvec_path)
+    gradient_tab = gradient_table(bvals, bvecs)
+    return gradient_tab
 
-    # TODO: move working directory (os.chdir()) to be at the level of config file
-    with open('../../config.yaml', 'r') as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
-        
-    os.chdir(os.getcwd() + '/../..')
-    output_dir, atlas_path, tractogram_path =  get_paths(config)
-    logging.info(f"Loading tractogram from subject: {config['paths']['subject']}")
-
-    tractogram = load(tractogram_path)
-    atlas, labels  = load_atlas(atlas_path)
-    logging.info(f'No. of unique atlas labels: {len(np.unique(labels))}, \
-        min value: {np.min(labels)}, max value: {np.max(labels)}')
+def load_atlas(atlas_path):
     
-    cm = ConnectivityMatrix(tractogram, labels, output_dir, 
+    atlas = nibabel.load(atlas_path)
+    labels = atlas.get_fdata().astype(np.uint8)
+    return atlas, labels   
+
+
+def run(trk_path, config=None, general_dir = '', output_dir = ''):
+    ''' Run workflow for selected subject. '''
+
+    # load data 
+    atlas_path = general_dir + config['paths']['atlas_path']
+    trk = load_tractogram(trk_path, 'same')
+    
+    # generate connectivity matrix
+    atlas, labels  = load_atlas(atlas_path)
+    cm = ConnectivityMatrix(trk, labels, output_dir, 
                             config['tractogram_config']['take_log'])
     cm.process()
+      
+def main():
+    #logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
+
+    with open('../../config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    general_dir = os.getcwd()
+    general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src') + os.sep
+    subject = config['paths']['subject'] if config['paths']['subject'] != 'all' else 'sub-*'
+    trk_dir = general_dir + config['paths']['dataset_dir'] + subject  + os.sep + 'ses-*' + os.sep + 'dwi' + os.sep + '*.trk'
+    trk_files = glob(trk_dir)
+    
+    logging.info(f'{len(trk_files)} TRK files found ')
+    logging.info(trk_files)
+    parallelize_CM(trk_files, config['tractogram_config']['cores'], run, config, general_dir)
 
 if __name__ == '__main__':
     main()

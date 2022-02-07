@@ -24,7 +24,7 @@ class MARsimulation:
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
         self.N_regions = 116                                                    # no. of brain areas from the atlas
-        self.maxiter = int(2e6)                                                 # max no. of iterations for the gradient descent
+        self.maxiter = int(1e6)                                                 # max no. of iterations for the gradient descent
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
         self.eta = 1e-7                                                         # learning rate of the gradient descent       
@@ -91,14 +91,13 @@ class MARsimulation:
         if vis_error: error_buffer = []                                         # reconstruction error along iterations
         
         A = self.cm                                                             # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
-        #old_A = self.cm
         gradient = np.ones((self.N_regions, self.N_regions)) 
         
         #self.B = np.ones(A.shape)                                              # eliminate B by initializing it with ones 
                                
         np.seterr(all='warn')
 
-        while (error_reconstruct > self.error_th) and iter_count < self.maxiter: #(gradient_diff > self.gradient_th):
+        while (error_reconstruct > self.error_th) and iter_count < self.maxiter:
             # calculate reconstruction error 
             error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
             if vis_error: error_buffer.append(error_reconstruct)
@@ -126,11 +125,7 @@ class MARsimulation:
                         tmp_eta = 1e-12
                         overflow = True
                         '''
-
-            #old_A = A
-            A = u
-            if self.eta < 1e-6:
-                self.eta += 1e-10                   
+            A = u                
             
             if norm < self.gradient_th:
                 logging.info(f"Gradient norm: {norm}.\nTermination criterion met, quitting...")
@@ -141,9 +136,6 @@ class MARsimulation:
             
             iter_count += 1
             
-            # iteratively increase learning rate
-            # self.eta += 1e-14
-            # assert self.eta > 0, 'AIUTO'
                           
         if vis_error: visualize_error(error_buffer)
 

@@ -4,6 +4,7 @@ Compute and visualize connectivity matrix. '''
 import os
 import logging
 import re
+from statistics import median
 
 from dipy.core.gradients import gradient_table
 from dipy.data import default_sphere
@@ -37,9 +38,8 @@ def get_paths(stem_dwi, stem_t1, config, general_dir):
     img_path = stem_dwi + '.nii'
     bval_path = stem_dwi + '.bval'
     bvec_path = stem_dwi + '.bvec'
-    
     # output dir is in the derivatives folder (which is also the input folder)
-    output_dir = os.path.dirname(stem_dwi)
+    output_dir = stem_dwi.removesuffix(stem_dwi.split(os.sep)[-1])
       
     # CerebroSpinal Fluid (CSF) is _pve_0
     csf_path = stem_t1 + '_pve-0.nii'
@@ -50,15 +50,11 @@ def get_paths(stem_dwi, stem_t1, config, general_dir):
     # White Matter is _pve_2
     wm_path = stem_t1 + '_pve-2.nii'
 
-    # Mask (and binary one) obtained from t1
-    mask_path = stem_t1 + '.nii'
-    bm_path = stem_t1 + '_mask.nii'
-
     # AAL atlas path
     atlas_path = general_dir + config['paths']['atlas_path']
 
     return (img_path, bval_path, bvec_path, output_dir, 
-            csf_path, gm_path, wm_path, mask_path, bm_path, atlas_path)
+            csf_path, gm_path, wm_path, atlas_path)
     
 
 def get_gradient_table(bval_path, bvec_path):
@@ -113,11 +109,11 @@ def act_method(data_wm, data_gm, data_csf, affine, seeds, shm_coeff):
 def remove_short_connections(streamlines, len_thres):
     ''' Filter streamlines with the length shorter 
     than provided threshold [usually in mm]. '''
-    logging.info(f'No. of streamlines BEFORE length filtering: {len(streamlines)}')
+    #logging.info(f'No. of streamlines BEFORE length filtering: {len(streamlines)}')
     longer_streamlines = [s for s in streamlines
                           if compute_streamline_length(s)>=len_thres]
-    logging.info(f'No. of streamlines AFTER length filtering: {len(longer_streamlines)}')
-    logging.info(f'Percentage of remaining streamlines: {round(len(longer_streamlines)/len(streamlines), 4)*100}')
+    #logging.info(f'No. of streamlines AFTER length filtering: {len(longer_streamlines)}')
+    logging.info(f'Percentage of remaining streamlines after filtering: {round(len(longer_streamlines)/len(streamlines), 4)*100}')
     return longer_streamlines
 
 def compute_streamline_length(streamline, is_dipy=True):
@@ -132,17 +128,17 @@ def compute_streamline_length(streamline, is_dipy=True):
     return s_length
 
 def generate_tractogram(config, data, affine, hardi_img, gtab, 
-                        data_wm, data_gm, data_csf, mask, bm):
-    
-    seeds = utils.seeds_from_mask(bm, affine, density=config['tractogram_config']['seed_density'])
+                        data_wm, data_gm, data_csf):
+    data_bm = median_otsu(data[:,:,:,0])[0]
+    seeds = utils.seeds_from_mask(data_bm, affine, density=config['tractogram_config']['seed_density'])
 
     response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=config['tractogram_config']['fa_thres'])
 
     csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=config['tractogram_config']['sh_order'])  
-    csd_fit = csd_model.fit(data, mask=mask)
+    csd_fit = csd_model.fit(data, mask=data_bm)
 
     if config['tractogram_config']['stop_method'] == 'FA':
-        streamline_generator = fa_method(config['tractogram_config'], data, mask, gtab, 
+        streamline_generator = fa_method(config['tractogram_config'], data, data_bm, gtab, 
                                          affine, seeds, csd_fit.shm_coeff)  
     elif config['tractogram_config']['stop_method'] == 'ACT':
         streamline_generator = act_method(data_wm, data_gm, data_csf, 
@@ -171,49 +167,50 @@ def run(stem_dwi, stem_t1, config=None, general_dir = ''):
     
     # get paths
     (img_path, bval_path, bvec_path, output_dir, 
-     csf_path, gm_path, wm_path, atlas_path, mask_path, bm_path) = get_paths(stem_dwi, stem_t1, config, general_dir)
+     csf_path, gm_path, wm_path, atlas_path) = get_paths(stem_dwi, stem_t1, config, general_dir)
 
     # load data 
     data, affine, hardi_img = load_nifti(img_path, return_img=True) 
     data_wm = load_nifti_data(wm_path)
     data_gm = load_nifti_data(gm_path)
     data_csf = load_nifti_data(csf_path)
-    mask = load_nifti(mask_path) 
-    bm = load_nifti(bm_path) 
     gradient_table = get_gradient_table(bval_path, bvec_path)
     
-    logging.info(f"Generating tractogram using: {config['tractogram_config']['stop_method']} method")
+    #logging.info(f"Generating tractogram using: {config['tractogram_config']['stop_method']} method")
     logging.info(f"Processing image: {stem_dwi}")
-    logging.info(f"No. of volumes: {data.shape[-1]}")
+    #logging.info(f"No. of volumes: {data.shape[-1]}")
 
-    # generate tractogram
-    tractogram = generate_tractogram(config, data, affine, hardi_img, 
-                                     gradient_table, data_wm, data_gm, data_csf, mask, bm)
-    save_tractogram(tractogram, output_dir, img_path)
-    
-    # generate connectivity matrix
-    atlas, labels  = load_atlas(atlas_path)
-    cm = ConnectivityMatrix(tractogram, labels, output_dir, 
-                            config['tractogram_config']['take_log'])
-    cm.process()
+    try:
+        # generate tractogram
+        tractogram = generate_tractogram(config, data, affine, hardi_img, 
+                                        gradient_table, data_wm, data_gm, data_csf)
+        save_tractogram(tractogram, output_dir, img_path)
+        
+        # generate connectivity matrix
+        atlas, labels  = load_atlas(atlas_path)
+        cm = ConnectivityMatrix(tractogram, labels, output_dir, 
+                                config['tractogram_config']['take_log'])
+        cm.process()
+    except Exception as e:
+        logging.error(e)
+        logging.error(stem_dwi)
       
 def main():
-    logging.basicConfig(level=logging.INFO)
+    #logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 
     with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-  
-    try:
-        # removesuffix is method in str for Python 3.9+
-        general_dir = os.getcwd().removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src')
-    except:
-        general_dir = '../../'
 
-    dwi_files_paths = glob(os.path.join(general_dir, config['paths']['dataset_dir'], 
-                                        config['paths']['subject'], 'ses-*', 'dwi', '*_dwi.nii'))
+    general_dir = os.getcwd()
+    general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src') + os.sep
+    subject = config['paths']['subject'] if config['paths']['subject'] != 'all' else 'sub-*'
+    dwi_dir = general_dir + config['paths']['dataset_dir'] + subject  + os.sep + 'ses-*' + os.sep + 'dwi' + os.sep + '*_dwi.nii'
+    dwi_files = glob(dwi_dir)
     
-    logging.info(f'{len(dwi_files_paths)} DWI files found ')
-    parallelize(dwi_files_paths, config['tractogram_config']['cores'], run, config, general_dir)
+    logging.info(f'{len(dwi_files)} DWI files found ')
+    logging.info(dwi_files)
+    parallelize(dwi_files, config['tractogram_config']['cores'], run, config, general_dir)
 
 if __name__ == '__main__':
     main()
