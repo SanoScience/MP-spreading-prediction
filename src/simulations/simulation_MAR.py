@@ -9,6 +9,7 @@ from glob import glob
 import logging
 import random
 import warnings
+import concurrent.futures
 
 from tqdm import tqdm 
 import numpy as np
@@ -44,8 +45,8 @@ class MARsimulation:
             self.filter_connections()
         self.transform_cm(norm_opt)
         self.generate_indicator_matrix()
-        coef_matrix = self.run_gradient_descent() # get the model params
-        pred_concentrations = coef_matrix @ self.init_concentrations # make predictions 
+        self.coef_matrix = self.run_gradient_descent() # get the model params
+        pred_concentrations = self.coef_matrix @ self.init_concentrations # make predictions 
         return pred_concentrations
  
     def calc_exponent(self):
@@ -93,50 +94,27 @@ class MARsimulation:
         A = self.cm                                                             # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
         gradient = np.ones((self.N_regions, self.N_regions)) 
         
-        #self.B = np.ones(A.shape)                                              # eliminate B by initializing it with ones 
-                               
-        np.seterr(all='warn')
-
         while (error_reconstruct > self.error_th) and iter_count < self.maxiter:
             # calculate reconstruction error 
             error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
             if vis_error: error_buffer.append(error_reconstruct)
             
             # gradient computation
-            tmp_eta = self.eta
-            overflow = True
-            # update rule
-            while overflow:
-                with warnings.catch_warnings():
-                    warnings.filterwarnings('error')
-                    try:
-                        #TODO: add an optional (= you can turn it completely off putting 'lamba' to 0) L1 penalty corresponding to the sum of the absolute values of the elements of A [+ lambda (sum(abs(Ai))) ]
-                        gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) 
-                        u = A - tmp_eta * gradient 
-                        # reinforce where there was no connection at the beginning 
-                        u *= self.B
-                        norm = np.linalg.norm(gradient)
-                        overflow = False
-                    except Warning as e:
-                        logging.error(e)
-                        '''
-                        TODO find another way to fix overflow
-                        A = old_A
-                        tmp_eta = 1e-12
-                        overflow = True
-                        '''
-            A = u                
-            
+            gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) 
+            A -= self.eta * gradient 
+            # reinforce where there was no connection at the beginning 
+            A *= self.B
+            norm = np.linalg.norm(gradient)
+                    
             if norm < self.gradient_th:
                 logging.info(f"Gradient norm: {norm}.\nTermination criterion met, quitting...")
                 break    
 
             if iter_count % 100000 == 0:
-                print(f'Gradient norm at {iter_count}th iteration: {norm:.2f}')
+                logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f}')
             
             iter_count += 1
-            
-                          
+                              
         if vis_error: visualize_error(error_buffer)
 
         logging.info(f"Final reconstruction error: {error_reconstruct}")
@@ -144,8 +122,11 @@ class MARsimulation:
         
         return A
                    
-def run_simulation(dataset_dir, output_dir, subject):    
+def run_simulation(subject, plot=True, save_results=False):    
     ''' Run simulation for single patient. '''
+    
+    dataset_dir = '../../data/ADNI/derivatives/'
+    output_dir = '../../results' 
       
     connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
                                             'ses-baseline', 'dwi', 'connect_matrix_rough.csv'))
@@ -175,27 +156,41 @@ def run_simulation(dataset_dir, output_dir, subject):
         logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}\nTrying to plot the partial results...")
 
     t1_concentration_pred = simulation.run(norm_opt=2)
+    t1_concentration_pred = drop_negative_predictions(t1_concentration_pred)
     rmse = calc_rmse(t1_concentration, t1_concentration_pred)
     corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-    visualize_terminal_state_comparison(t0_concentration, 
+    if plot: visualize_terminal_state_comparison(t0_concentration, 
                                         t1_concentration_pred,
                                         t1_concentration,
                                         subject,
                                         rmse, 
                                         corr_coef)
-    save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
+    if save_results:
+        save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
+        save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
     
-def main():
-    dataset_dir = '../../data/ADNI/derivatives/'
-    output_dir = '../../results' 
+    return simulation.coef_matrix
     
-    patients = ['sub-AD4009'] 
-    for subject in patients:
-        logging.info(f'Simulation for subject: {subject}')
-        try:
-            run_simulation(dataset_dir, output_dir, subject)
-        except Exception as e:
-            logging.error(f"Exception happened for patient {subject}. Traceback:\n{e}")
+def parallel_training():   
+    ''' 1st approach: train A matrix for each subject separately.
+    The final matrix is an average matrix. '''
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.ERROR)
+
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        patients = ['sub-AD4009']#, 'sub-AD4215'] 
+        results = executor.map(run_simulation, patients)
+    
+        avg_coeff_matrix = np.mean(results, axis=0)
+        print(avg_coeff_matrix)
+        
+def sequential_training():
+    patients = ['sub-AD4009']#, 'sub-AD4215'] 
+    results = [run_simulation(pat) for pat in patients]
+    
+    avg_coeff_matrix = np.mean(results, axis=0)
+    print(avg_coeff_matrix)
     
 if __name__ == '__main__':
-    main()
+    sequential_training()
