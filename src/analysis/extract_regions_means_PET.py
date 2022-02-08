@@ -25,7 +25,7 @@ def get_atlas_labels_info(atlas):
 def emptiness_test(path, pet, results_file_path="../../results/analysis/empty_pets.txt"):
     ''' Check if loaded PET data contains only zeros. '''
     if np.all(pet == 0): logging.info(f'Zero concentrations for {path}')
-    with open(results_file_path, "a") as f:
+    with open(results_file_path, "a+") as f:
         f.write(f'{path}\n')
     return np.all(pet==0)
 
