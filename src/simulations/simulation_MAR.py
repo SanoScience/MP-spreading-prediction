@@ -24,11 +24,11 @@ class MARsimulation:
     def __init__(self, connect_matrix, t0_concentrations, t1_concentrations):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
-        self.N_regions = 170                                                    # no. of brain areas from the atlas
+        self.N_regions = 166                                                    # no. of brain areas from the atlas
         self.maxiter = int(1e6)                                                 # max no. of iterations for the gradient descent
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-7                                                         # learning rate of the gradient descent       
+        self.eta = 0.5e-7                                                       # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -122,33 +122,33 @@ class MARsimulation:
         
         return A
                    
-def run_simulation(subject, plot=True, save_results=False):    
+def run_simulation(subject, plot=True, save_results=True):    
     ''' Run simulation for single patient. '''
     
     dataset_dir = '../../data/ADNI/derivatives/'
     output_dir = '../../results' 
       
-    connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-baseline', 'dwi', 'connect_matrix_rough.csv'))
-    t0_concentration_path = sorted(glob(os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-baseline', 'pet', '*.csv'))))[0]
-    t1_concentration_path = sorted(glob(os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-followup', 'pet', '*.csv'))))[0]
- 
+    connectivity_matrix_path, t0_concentration_path, t1_concentration_path = get_file_paths_for_subject(dataset_dir, subject)
     subject_output_dir = os.path.join(output_dir, subject)
-    
+    if not os.path.exists(subject_output_dir):
+        os.makedirs(subject_output_dir)
+        
     # load connectome
     connect_matrix = load_matrix(connectivity_matrix_path)
     connect_matrix = drop_data_in_connect_matrix(connect_matrix)
     # load proteins concentration in brain regions
     t0_concentration = load_matrix(t0_concentration_path) 
     t1_concentration = load_matrix(t1_concentration_path)
-        
+                
     logging.info(f'Sum of t0 concentration: {np.sum(t0_concentration):.2f}')
     logging.info(f'Sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     
     if (t0_concentration == t1_concentration).all():
         logging.info('Followup is the same as baseline. Subject skipped.')
+        return
+    
+    if (np.sum(t0_concentration) > np.sum(t1_concentration)):
+        logging.info('Sum of t0 > sum of t1. Subject skipped.')
         return
     
     try:
@@ -180,15 +180,18 @@ def parallel_training():
     logger.setLevel(logging.ERROR)
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        patients = os.listdir(dataset_dir)
+        patients = os.listdir('../../data/ADNI/derivatives/')
         results = executor.map(run_simulation, patients)
     
         avg_coeff_matrix = np.mean(results, axis=0)
         print(avg_coeff_matrix)
         
 def sequential_training():
-    patients = ['sub-CN4350']
+    patients = ['sub-CN4441']
     results = [run_simulation(pat) for pat in patients]
+    
+    avg_coeff_matrix = np.mean(results, axis=0)
+    print(avg_coeff_matrix)
     
 if __name__ == '__main__':
     sequential_training()

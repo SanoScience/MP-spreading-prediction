@@ -6,6 +6,7 @@ from glob import glob
 import logging
 import csv
 import concurrent.futures
+from tqdm import tqdm
 
 import nibabel
 import numpy as np
@@ -24,9 +25,10 @@ def get_atlas_labels_info(atlas):
 
 def emptiness_test(path, pet, results_file_path="../../results/analysis/empty_pets.txt"):
     ''' Check if loaded PET data contains only zeros. '''
-    if np.all(pet == 0): logging.info(f'Zero concentrations for {path}')
-    with open(results_file_path, "a+") as f:
-        f.write(f'{path}\n')
+    if np.all(pet == 0): 
+        logging.info(f'Zero concentrations for {path}')
+        with open(results_file_path, "a+") as f:
+            f.write(f'{path}\n')
     return np.all(pet==0)
 
 def load_pet(path, visualize=False):
@@ -60,7 +62,7 @@ def run(dataset_dir, subject, atlas_data):
     # get the preprocessed PET data
     pet_files_paths = glob(os.path.join(dataset_dir, subject, 
                                         'ses-*', 'pet', '*_pet.nii'))
-
+    
     for path in pet_files_paths:
         # logging.info(f'Found pet file {path}')   
         output_path = path.replace('.nii', '.csv')
@@ -88,7 +90,7 @@ def main():
     #         executor.submit(run, dataset_dir, subj, atlas_data)
     
     patients = os.listdir(dataset_dir)
-    for subj in patients:
+    for subj in tqdm(patients):
         logging.info(f'Beta-amyloid concentration extraction for subject: {subj}')
         run(dataset_dir, subj, atlas_data)
     

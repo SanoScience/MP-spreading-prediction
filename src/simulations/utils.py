@@ -1,6 +1,7 @@
 ''' Utilities funciton for calculation purposes. '''
 
 import os
+from glob import glob
 
 import numpy as np
 from sklearn.metrics import mean_squared_log_error
@@ -8,6 +9,21 @@ from sklearn.metrics import mean_squared_log_error
 def load_matrix(path):
     data = np.genfromtxt(path, delimiter=",")
     return data
+
+def get_file_paths_for_subject(dataset_dir, subject, tracer='av45'):
+    connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
+                                            'ses-baseline', 'dwi', 'connect_matrix_rough.csv'))
+    
+    t0_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
+                                            'ses-baseline', 'pet', f'*baseline*trc-{tracer}_pet.csv')))[0]
+    # extract baseline year 
+    t0_year = int(t0_concentration_path.split('date-')[1][:4])
+    # followup year should be: baseline year + time interval
+    time_interval = 2
+    t1_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
+                                                           'ses-followup', 'pet', 
+                                                           f'*followup*{t0_year+time_interval}*trc-{tracer}_pet.csv')))[0]
+    return connectivity_matrix_path, t0_concentration_path, t1_concentration_path
 
 def drop_data_in_connect_matrix(connect_matrix, missing_labels=[35, 36, 81, 82]):
     index_to_remove = [(label - 1) for label in missing_labels]
