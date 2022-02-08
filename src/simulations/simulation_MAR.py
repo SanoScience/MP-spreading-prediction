@@ -24,7 +24,7 @@ class MARsimulation:
     def __init__(self, connect_matrix, t0_concentrations, t1_concentrations):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
-        self.N_regions = 116                                                    # no. of brain areas from the atlas
+        self.N_regions = 170                                                    # no. of brain areas from the atlas
         self.maxiter = int(1e6)                                                 # max no. of iterations for the gradient descent
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
@@ -130,19 +130,20 @@ def run_simulation(subject, plot=True, save_results=False):
       
     connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
                                             'ses-baseline', 'dwi', 'connect_matrix_rough.csv'))
-    t0_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-baseline', 'pet', '*.csv')))[0]
-    t1_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-followup', 'pet', '*.csv')))[0]
+    t0_concentration_path = sorted(glob(os.path.join(os.path.join(dataset_dir, subject, 
+                                            'ses-baseline', 'pet', '*.csv'))))[0]
+    t1_concentration_path = sorted(glob(os.path.join(os.path.join(dataset_dir, subject, 
+                                            'ses-followup', 'pet', '*.csv'))))[0]
  
     subject_output_dir = os.path.join(output_dir, subject)
     
     # load connectome
     connect_matrix = load_matrix(connectivity_matrix_path)
+    connect_matrix = drop_data_in_connect_matrix(connect_matrix)
     # load proteins concentration in brain regions
     t0_concentration = load_matrix(t0_concentration_path) 
     t1_concentration = load_matrix(t1_concentration_path)
-    
+        
     logging.info(f'Sum of t0 concentration: {np.sum(t0_concentration):.2f}')
     logging.info(f'Sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     
@@ -179,18 +180,15 @@ def parallel_training():
     logger.setLevel(logging.ERROR)
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        patients = ['sub-AD4009']#, 'sub-AD4215'] 
+        patients = os.listdir(dataset_dir)
         results = executor.map(run_simulation, patients)
     
         avg_coeff_matrix = np.mean(results, axis=0)
         print(avg_coeff_matrix)
         
 def sequential_training():
-    patients = ['sub-AD4009']#, 'sub-AD4215'] 
+    patients = ['sub-CN4350']
     results = [run_simulation(pat) for pat in patients]
-    
-    avg_coeff_matrix = np.mean(results, axis=0)
-    print(avg_coeff_matrix)
     
 if __name__ == '__main__':
     sequential_training()

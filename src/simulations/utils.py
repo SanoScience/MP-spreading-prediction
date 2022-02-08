@@ -9,6 +9,12 @@ def load_matrix(path):
     data = np.genfromtxt(path, delimiter=",")
     return data
 
+def drop_data_in_connect_matrix(connect_matrix, missing_labels=[35, 36, 81, 82]):
+    index_to_remove = [(label - 1) for label in missing_labels]
+    connect_matrix = np.delete(connect_matrix, index_to_remove, axis=0)
+    connect_matrix = np.delete(connect_matrix, index_to_remove, axis=1) 
+    return connect_matrix
+
 def save_diffusion_matrix(save_dir, diffusion_matrix, method_name):
     np.savetxt(os.path.join(save_dir, f'diffusion_matrix_over_time_{method_name}.csv'), 
                             diffusion_matrix, delimiter=",")
