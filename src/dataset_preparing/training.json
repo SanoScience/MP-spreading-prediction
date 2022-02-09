@@ -1,0 +1,12 @@
+{
+    "sub-LMCI4888": {
+        "connectome": "../../data/ADNI/derivatives/sub-LMCI4888/ses-baseline/dwi/connect_matrix_rough.csv",
+        "baseline": "../../data/ADNI/derivatives/sub-LMCI4888/ses-baseline/pet/sub-LMCI4888_ses-baseline_acq-AP_date-2012-09-05_trc-av45_pet.csv",
+        "followup": "../../data/ADNI/derivatives/sub-LMCI4888/ses-followup/pet/sub-LMCI4888_ses-baseline_acq-AP_date-2014-08-19_trc-av45_pet.csv"
+    },
+    "sub-CN4441": {
+        "connectome": "../../data/ADNI/derivatives/sub-CN4441/ses-baseline/dwi/connect_matrix_rough.csv",
+        "baseline": "../../data/ADNI/derivatives/sub-CN4441/ses-baseline/pet/sub-CN4441_ses-baseline_acq-AP_date-2012-01-27_trc-av45_pet.csv",
+        "followup": "../../data/ADNI/derivatives/sub-CN4441/ses-followup/pet/sub-CN4441_ses-followup_acq-AP_date-2014-01-24_trc-av45_pet.csv"
+    }
+}

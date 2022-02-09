@@ -10,6 +10,7 @@ import logging
 import random
 import warnings
 import concurrent.futures
+import json
 
 from tqdm import tqdm 
 import numpy as np
@@ -19,16 +20,17 @@ from utils_vis import *
 from utils import *
 
 logging.basicConfig(level=logging.INFO)
+np.seterr(all = 'raise')
 
 class MARsimulation:
     def __init__(self, connect_matrix, t0_concentrations, t1_concentrations):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
         self.N_regions = 166                                                    # no. of brain areas from the atlas
-        self.maxiter = int(1e6)                                                 # max no. of iterations for the gradient descent
+        self.maxiter = int(2e6)                                                 # max no. of iterations for the gradient descent
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
-        self.eta = 0.5e-7                                                       # learning rate of the gradient descent       
+        self.eta = 1e-7                                                       # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -95,26 +97,34 @@ class MARsimulation:
         gradient = np.ones((self.N_regions, self.N_regions)) 
         
         while (error_reconstruct > self.error_th) and iter_count < self.maxiter:
-            # calculate reconstruction error 
-            error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
-            if vis_error: error_buffer.append(error_reconstruct)
-            
-            # gradient computation
-            gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) 
-            A -= self.eta * gradient 
-            # reinforce where there was no connection at the beginning 
-            A *= self.B
-            norm = np.linalg.norm(gradient)
-                    
-            if norm < self.gradient_th:
-                logging.info(f"Gradient norm: {norm}.\nTermination criterion met, quitting...")
-                break    
+            try:
+                # calculate reconstruction error 
+                error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
+                if vis_error: error_buffer.append(error_reconstruct)
+                
+                # gradient computation
+                gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) 
+                A -= self.eta * gradient       
+                
+                # reinforce where there was no connection at the beginning 
+                A *= self.B
+                norm = np.linalg.norm(gradient)
+                        
+                if norm < self.gradient_th:
+                    logging.info(f"Gradient norm: {norm}.\nTermination criterion met, quitting...")
+                    break    
 
-            if iter_count % 100000 == 0:
-                logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f}')
-            
-            iter_count += 1
-                              
+                if iter_count % 100000 == 0:
+                    logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f}')
+                    
+                iter_count += 1
+                
+            except FloatingPointError:   
+                # TODO: handle overflow, decrease eta, keep previuos gradient and A matrix 
+                # self.eta /= 10
+                # logging.info(f'Overflow encountered. Changing starting learning rate to: {self.eta}')
+                pass
+                                          
         if vis_error: visualize_error(error_buffer)
 
         logging.info(f"Final reconstruction error: {error_reconstruct}")
@@ -122,27 +132,25 @@ class MARsimulation:
         
         return A
                    
-def run_simulation(subject, plot=True, save_results=True):    
+def run_simulation(subject, paths, output_dir, plot=True, save_results=True):    
     ''' Run simulation for single patient. '''
-    
-    dataset_dir = '../../data/ADNI/derivatives/'
-    output_dir = '../../results' 
       
-    connectivity_matrix_path, t0_concentration_path, t1_concentration_path = get_file_paths_for_subject(dataset_dir, subject)
     subject_output_dir = os.path.join(output_dir, subject)
     if not os.path.exists(subject_output_dir):
         os.makedirs(subject_output_dir)
         
     # load connectome
-    connect_matrix = load_matrix(connectivity_matrix_path)
+    connect_matrix = load_matrix(paths['connectome'])
     connect_matrix = drop_data_in_connect_matrix(connect_matrix)
+    
     # load proteins concentration in brain regions
-    t0_concentration = load_matrix(t0_concentration_path) 
-    t1_concentration = load_matrix(t1_concentration_path)
+    t0_concentration = load_matrix(paths['baseline']) 
+    t1_concentration = load_matrix(paths['followup'])
                 
     logging.info(f'Sum of t0 concentration: {np.sum(t0_concentration):.2f}')
     logging.info(f'Sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     
+    # this should be done when creating dataset!
     if (t0_concentration == t1_concentration).all():
         logging.info('Followup is the same as baseline. Subject skipped.')
         return
@@ -171,24 +179,18 @@ def run_simulation(subject, plot=True, save_results=True):
         save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
     
     return simulation.coef_matrix
-    
-def parallel_training():   
+           
+def sequential_training():
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
-
-    logger = logging.getLogger()
-    logger.setLevel(logging.ERROR)
-
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        patients = os.listdir('../../data/ADNI/derivatives/')
-        results = executor.map(run_simulation, patients)
     
-        avg_coeff_matrix = np.mean(results, axis=0)
-        print(avg_coeff_matrix)
+    dataset_path = '../dataset_preparing/training.json'
+    output_dir = '../../results'
+    
+    with open(dataset_path, 'r') as f:
+        dataset = json.load(f)
         
-def sequential_training():
-    patients = ['sub-CN4441']
-    results = [run_simulation(pat) for pat in patients]
+    results = [run_simulation(subj, paths, output_dir) for subj, paths in dataset.items()]
     
     avg_coeff_matrix = np.mean(results, axis=0)
     print(avg_coeff_matrix)
