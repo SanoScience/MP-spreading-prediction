@@ -19,7 +19,9 @@ from scipy.stats.stats import pearsonr as pearson_corr_coef
 from utils_vis import *
 from utils import *
 
-logging.basicConfig(level=logging.INFO)
+import multiprocessing
+
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] {%(subject)s} %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 np.seterr(all = 'raise')
 
 class MARsimulation:
@@ -30,7 +32,7 @@ class MARsimulation:
         self.maxiter = int(2e6)                                                 # max no. of iterations for the gradient descent
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-7                                                         # learning rate of the gradient descent       
+        self.eta = 1e-6                                                         # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -96,6 +98,8 @@ class MARsimulation:
         A = self.cm                                                             # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
         gradient = np.ones((self.N_regions, self.N_regions)) 
         
+        prev_A = np.copy(A)
+
         while (error_reconstruct > self.error_th) and iter_count < self.maxiter:
             try:
                 # calculate reconstruction error 
@@ -115,15 +119,20 @@ class MARsimulation:
                     break    
 
                 if iter_count % 100000 == 0:
-                    logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f}')
+                    logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f} (current eta {self.eta})')
                     
                 iter_count += 1
                 
             except FloatingPointError:   
                 # TODO: handle overflow, decrease eta, keep previuos gradient and A matrix 
-                # self.eta /= 10
-                # logging.info(f'Overflow encountered. Changing starting learning rate to: {self.eta}')
-                pass
+                self.eta *= 1e-3
+                A = np.copy(prev_A)
+                logging.warning(f'Overflow encountered at iteration {iter_count}. Changing starting learning rate to: {self.eta}')
+                continue
+            else:
+                self.eta = 1e-6
+                prev_A = np.copy(A)
+
                                           
         if vis_error: visualize_error(error_buffer)
 
@@ -132,7 +141,7 @@ class MARsimulation:
         
         return A
                    
-def run_simulation(subject, paths, output_dir, plot=True, save_results=True):    
+def run_simulation(subject, paths, output_dir, queue, plot=True, save_results=True):    
     ''' Run simulation for single patient. '''
       
     subject_output_dir = os.path.join(output_dir, subject)
@@ -168,23 +177,58 @@ def run_simulation(subject, paths, output_dir, plot=True, save_results=True):
     if save_results:
         save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
         save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
-    
+
+    queue.put(simulation.coef_matrix)
     return simulation.coef_matrix
            
-def sequential_training():
+def parallel_training():
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
     
     dataset_path = '../dataset_preparing/training.json'
     output_dir = '../../results'
     
+    num_cores = input('Cores to use [-1 for all available]: ')
+    if num_cores != '-1':
+        num_cores = int(num_cores)
+    else:
+        # if user just inster Enter it's like '-1'
+        num_cores = multiprocessing.cpu_count()
+
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
         
-    results = [run_simulation(subj, paths, output_dir) for subj, paths in dataset.items()]
-    
-    avg_coeff_matrix = np.mean(results, axis=0)
-    print(avg_coeff_matrix)
+    #results = [run_simulation(subj, paths, output_dir) for subj, paths in dataset.items()]
+    procs = []
+    queues = {}
+
+    for subj, paths in tqdm(dataset.items()):
+        #dispatcher(files[i], atlas_file, img_type)
+        q = multiprocessing.Queue()
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, q, False))
+        p.start()
+        procs.append(p)
+        queues[subj] = q
+        
+        while len(procs)%num_cores == 0 and len(procs) > 0:
+            for p in procs:
+                # wait for 10 seconds to wait process termination
+                p.join(timeout=10)
+                # when a process is done, remove it from processes queue
+                if not p.is_alive():
+                    procs.remove(p)
+        
+        # wait the last chunk            
+        for p in procs:
+            p.join()
+
+        # get scores from queues
+        results = []
+        for q in queues.keys():
+            results.append(queues[q].get())
+        
+        avg_coeff_matrix = np.mean(results, axis=0)
+        print(avg_coeff_matrix)
     
 if __name__ == '__main__':
-    sequential_training()
+    parallel_training()
