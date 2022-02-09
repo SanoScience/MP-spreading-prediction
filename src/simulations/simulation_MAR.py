@@ -21,7 +21,7 @@ from utils import *
 
 import multiprocessing
 
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] {%(subject)s} %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 np.seterr(all = 'raise')
 
 class MARsimulation:
@@ -238,7 +238,7 @@ if __name__ == '__main__':
         dataset = json.load(f)
 
     num_cores = input('Cores to use [-1 for all available]: ')
-    if num_cores != '-1':
+    if num_cores != '-1' and num_cores:
         num_cores = int(num_cores)
     else:
         # if user just inster Enter it's like '-1'
