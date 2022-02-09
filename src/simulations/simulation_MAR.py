@@ -141,7 +141,7 @@ class MARsimulation:
         
         return A
                    
-def run_simulation(subject, paths, output_dir, queue, plot=True, save_results=True):    
+def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results, queue):    
     ''' Run simulation for single patient. '''
       
     subject_output_dir = os.path.join(output_dir, subject)
@@ -149,8 +149,8 @@ def run_simulation(subject, paths, output_dir, queue, plot=True, save_results=Tr
         os.makedirs(subject_output_dir)
         
     # load connectome
-    connect_matrix = load_matrix(paths['connectome'])
-    connect_matrix = drop_data_in_connect_matrix(connect_matrix)
+    if connect_matrix == None:
+        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
     
     # load proteins concentration in brain regions
     t0_concentration = load_matrix(paths['baseline']) 
@@ -168,7 +168,7 @@ def run_simulation(subject, paths, output_dir, queue, plot=True, save_results=Tr
     t1_concentration_pred = drop_negative_predictions(t1_concentration_pred)
     rmse = calc_rmse(t1_concentration, t1_concentration_pred)
     corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-    if plot: visualize_terminal_state_comparison(t0_concentration, 
+    if make_plot: visualize_terminal_state_comparison(t0_concentration, 
                                         t1_concentration_pred,
                                         t1_concentration,
                                         subject,
@@ -178,25 +178,14 @@ def run_simulation(subject, paths, output_dir, queue, plot=True, save_results=Tr
         save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
         save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
 
-    queue.put(simulation.coef_matrix)
+    if queue != None:
+        queue.put(simulation.coef_matrix)
+
     return simulation.coef_matrix
            
-def parallel_training():
+def parallel_training(dataset, output_dir, num_cores = multiprocessing.cpu_count()):
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
-    
-    dataset_path = '../dataset_preparing/training.json'
-    output_dir = '../../results'
-    
-    num_cores = input('Cores to use [-1 for all available]: ')
-    if num_cores != '-1':
-        num_cores = int(num_cores)
-    else:
-        # if user just inster Enter it's like '-1'
-        num_cores = multiprocessing.cpu_count()
-
-    with open(dataset_path, 'r') as f:
-        dataset = json.load(f)
         
     #results = [run_simulation(subj, paths, output_dir) for subj, paths in dataset.items()]
     procs = []
@@ -205,7 +194,7 @@ def parallel_training():
     for subj, paths in tqdm(dataset.items()):
         #dispatcher(files[i], atlas_file, img_type)
         q = multiprocessing.Queue()
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, q, False))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, False, q))
         p.start()
         procs.append(p)
         queues[subj] = q
@@ -222,13 +211,38 @@ def parallel_training():
         for p in procs:
             p.join()
 
-        # get scores from queues
-        results = []
-        for q in queues.keys():
-            results.append(queues[q].get())
-        
-        avg_coeff_matrix = np.mean(results, axis=0)
-        print(avg_coeff_matrix)
+    # get scores from queues
+    results = []
+    for q in queues.keys():
+        results.append(queues[q].get())
+    
+    avg_coeff_matrix = np.mean(results, axis=0)
+    print(avg_coeff_matrix)
+
+    return avg_coeff_matrix
+
+def sequential_training(dataset, output_dir):
+    ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
+
+    connect_matrix = None
+    for subj, paths in tqdm(dataset.items()):
+        connect_matrix = run_simulation(subj, paths, output_dir, connect_matrix, False, False, None)
+    
+    print(connect_matrix)
+    return connect_matrix
     
 if __name__ == '__main__':
-    parallel_training()
+    dataset_path = '../dataset_preparing/training.json'
+    output_dir = '../../results'
+    with open(dataset_path, 'r') as f:
+        dataset = json.load(f)
+
+    num_cores = input('Cores to use [-1 for all available]: ')
+    if num_cores != '-1':
+        num_cores = int(num_cores)
+    else:
+        # if user just inster Enter it's like '-1'
+        num_cores = multiprocessing.cpu_count()
+
+    parallel_training(dataset, output_dir, num_cores)
+    sequential_training(dataset, output_dir)
