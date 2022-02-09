@@ -30,7 +30,7 @@ class MARsimulation:
         self.maxiter = int(2e6)                                                 # max no. of iterations for the gradient descent
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-7                                                       # learning rate of the gradient descent       
+        self.eta = 1e-7                                                         # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -149,15 +149,6 @@ def run_simulation(subject, paths, output_dir, plot=True, save_results=True):
                 
     logging.info(f'Sum of t0 concentration: {np.sum(t0_concentration):.2f}')
     logging.info(f'Sum of t1 concentration: {np.sum(t1_concentration):.2f}')
-    
-    # this should be done when creating dataset!
-    if (t0_concentration == t1_concentration).all():
-        logging.info('Followup is the same as baseline. Subject skipped.')
-        return
-    
-    if (np.sum(t0_concentration) > np.sum(t1_concentration)):
-        logging.info('Sum of t0 > sum of t1. Subject skipped.')
-        return
     
     try:
         simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration)
