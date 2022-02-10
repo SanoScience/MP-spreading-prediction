@@ -5,13 +5,13 @@ import os
 from glob import glob
 import logging
 import csv
-import concurrent.futures
 from tqdm import tqdm
 
 import nibabel
 import numpy as np
 from skimage.util import montage
 import matplotlib.pyplot as plt
+import multiprocessing
 
 logging.basicConfig(level=logging.INFO)
 
@@ -88,11 +88,33 @@ def main():
     #     for subj in patients:
     #         logging.info(f'Beta-amyloid concentration extraction for subject: {subj}')
     #         executor.submit(run, dataset_dir, subj, atlas_data)
-    
+    num_cores = ''
+    try:
+        num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
+    except Exception as e:
+        num_cores = multiprocessing.cpu_count()
+
+    logging.info(f"{num_cores} cores available")
+
     patients = os.listdir(dataset_dir)
+    procs = []
     for subj in tqdm(patients):
         logging.info(f'Beta-amyloid concentration extraction for subject: {subj}')
-        run(dataset_dir, subj, atlas_data)
+        p = multiprocessing.Process(target=run, args=(dataset_dir, subj, atlas_data))
+        p.start()
+        procs.append(p)
+        
+        while len(procs)%num_cores == 0 and len(procs) > 0:
+            for p in procs:
+                # wait for 10 seconds to wait process termination
+                p.join(timeout=10)
+                # when a process is done, remove it from processes queue
+                if not p.is_alive():
+                    procs.remove(p)
+        
+        # wait the last chunk            
+        for p in procs:
+            p.join() 
     
 if __name__ == '__main__':
     main()

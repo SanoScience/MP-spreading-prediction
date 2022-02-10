@@ -8,20 +8,23 @@ import os
 from glob import glob
 import logging
 import random
+from time import time
 import warnings
 import concurrent.futures
 import json
 
 from tqdm import tqdm 
 import numpy as np
+import pandas as pd
 from scipy.stats.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import *
 from utils import *
 
 import multiprocessing
+from sklearn.metrics import mean_squared_log_error
 
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
+logging.basicConfig(filename="../../results/MAR_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 np.seterr(all = 'raise')
 
 class MARsimulation:
@@ -73,16 +76,18 @@ class MARsimulation:
             0 means no normalization, = 1 means binarize, = 2 means divide by the maximum '''
         
         if norm_opt == 0:
-            logging.info('No normalization of the initial matrix')
+            #logging.info('No normalization of the initial matrix')
+            pass
         elif norm_opt == 1:
-            logging.info('Initial matrix binarized')
+            #logging.info('Initial matrix binarized')
             self.cm = np.where(self.cm > 0, 1, 0).astype('float32')
         elif norm_opt == 2:
-            logging.info('Initial matrix normalized according to its largest value')
+            #logging.info('Initial matrix normalized according to its largest value')
             max_val = np.max(self.cm)
             self.cm /= max_val
         else:
-            logging.info('No normalization of the initial matrix')
+            pass
+            #logging.info('No normalization of the initial matrix')
             
     def generate_indicator_matrix(self):
         ''' Construct a matrix with only zeros and ones to be used to 
@@ -112,6 +117,8 @@ class MARsimulation:
                 
                 # reinforce where there was no connection at the beginning 
                 A *= self.B
+
+                '''
                 norm = np.linalg.norm(gradient)
                         
                 if norm < self.gradient_th:
@@ -120,28 +127,28 @@ class MARsimulation:
 
                 if iter_count % 100000 == 0:
                     logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f} (current eta {self.eta})')
-                    
+                '''
+
                 iter_count += 1
+
+                self.eta = min(1e-6, self.eta+1e-9)
+                prev_A = np.copy(A)
                 
             except FloatingPointError:   
-                # TODO: handle overflow, decrease eta, keep previuos gradient and A matrix 
                 self.eta *= 1e-3
                 A = np.copy(prev_A)
                 logging.warning(f'Overflow encountered at iteration {iter_count}. Changing starting learning rate to: {self.eta}')
                 continue
-            else:
-                self.eta = 1e-6
-                prev_A = np.copy(A)
 
                                           
         if vis_error: visualize_error(error_buffer)
 
         logging.info(f"Final reconstruction error: {error_reconstruct}")
-        logging.info(f"Iterations: {iter_count}")
+        #logging.info(f"Iterations: {iter_count}")
         
         return A
                    
-def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results, queue):    
+def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results):    
     ''' Run simulation for single patient. '''
       
     subject_output_dir = os.path.join(output_dir, subject)
@@ -156,8 +163,8 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
     t0_concentration = load_matrix(paths['baseline']) 
     t1_concentration = load_matrix(paths['followup'])
                 
-    logging.info(f'Sum of t0 concentration: {np.sum(t0_concentration):.2f}')
-    logging.info(f'Sum of t1 concentration: {np.sum(t1_concentration):.2f}')
+    logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
+    logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     
     try:
         simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration)
@@ -166,20 +173,18 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
 
     t1_concentration_pred = simulation.run(norm_opt=2)
     t1_concentration_pred = drop_negative_predictions(t1_concentration_pred)
-    rmse = calc_rmse(t1_concentration, t1_concentration_pred)
+    #error = calc_rmse(t1_concentration, t1_concentration_pred)
+    error = mean_squared_log_error(t1_concentration, t1_concentration_pred)
     corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
     if make_plot: visualize_terminal_state_comparison(t0_concentration, 
                                         t1_concentration_pred,
                                         t1_concentration,
                                         subject,
-                                        rmse, 
+                                        error, 
                                         corr_coef)
     if save_results:
         save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
         save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
-
-    if queue != None:
-        queue.put(simulation.coef_matrix)
 
     return simulation.coef_matrix
            
@@ -189,15 +194,12 @@ def parallel_training(dataset, output_dir, num_cores = multiprocessing.cpu_count
         
     #results = [run_simulation(subj, paths, output_dir) for subj, paths in dataset.items()]
     procs = []
-    queues = {}
 
     for subj, paths in tqdm(dataset.items()):
         #dispatcher(files[i], atlas_file, img_type)
-        q = multiprocessing.Queue()
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, False, q))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, True))
         p.start()
         procs.append(p)
-        queues[subj] = q
         
         while len(procs)%num_cores == 0 and len(procs) > 0:
             for p in procs:
@@ -210,39 +212,95 @@ def parallel_training(dataset, output_dir, num_cores = multiprocessing.cpu_count
         # wait the last chunk            
         for p in procs:
             p.join()
-
-    # get scores from queues
-    results = []
-    for q in queues.keys():
-        results.append(queues[q].get())
     
-    avg_coeff_matrix = np.mean(results, axis=0)
-    print(avg_coeff_matrix)
-
-    return avg_coeff_matrix
+    conn_matrices = []
+    # read results saved by "run simulation method"
+    for subj, _ in dataset.items():
+        conn_matrices.append(load_matrix(os.path.join(output_dir, subj, 'A_matrix_MAR.csv')))
+    
+    avg_conn_matrix = np.mean(conn_matrices, axis=0)
+    return avg_conn_matrix
 
 def sequential_training(dataset, output_dir):
     ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
 
     connect_matrix = None
     for subj, paths in tqdm(dataset.items()):
-        connect_matrix = run_simulation(subj, paths, output_dir, connect_matrix, False, False, None)
+        connect_matrix = run_simulation(subj, paths, output_dir, connect_matrix, False, True)
     
-    print(connect_matrix)
     return connect_matrix
+
+def test(conn_matrix, test_set):
+    errors = pd.DataFrame(index=test_set.keys(), columns=['RMSE'])
+    for subj, paths in test_set.items():
+        t0_concentration = load_matrix(paths['baseline'])
+        t1_concentration = load_matrix(paths['followup'])
+        pred = conn_matrix @ t0_concentration
+        errors.loc[subj] = calc_rmse(t1_concentration, pred)
+    
+    logging.info(errors)
+    logging.info(errors.describe())
+
+
     
 if __name__ == '__main__':
-    dataset_path = '../dataset_preparing/training.json'
+
+    # TODO: iterate for all tracers (or ask to the user)
+    dataset_path = '../dataset_preparing/dataset_av45.json'
     output_dir = '../../results'
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
 
-    num_cores = input('Cores to use [-1 for all available]: ')
-    if num_cores != '-1' and num_cores:
-        num_cores = int(num_cores)
-    else:
-        # if user just inster Enter it's like '-1'
+    num_cores = ''
+    try:
+        num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
+    except Exception as e:
         num_cores = multiprocessing.cpu_count()
 
-    parallel_training(dataset, output_dir, num_cores)
-    sequential_training(dataset, output_dir)
+    logging.info(f"{num_cores} cores available")
+
+    train_size = -1
+    while train_size <= 0 or train_size > len(dataset.keys()):
+        try:
+            train_size = int(input(f'Number of training samples [max {len(dataset.keys())}]: '))
+        except Exception as e:
+            logging.error(e)
+            continue
+    logging.info(f"Train set of {train_size} elements")
+
+    N_fold = ''
+    while not isinstance(N_fold, int) or N_fold < 0:
+        try:
+            N_fold = int(input('Folds for cross validations: '))
+        except Exception as e:
+            logging.error(e)
+            continue
+    logging.info(f'Using {N_fold}-fold cross validation sets')
+
+    for i in range(N_fold):   
+        logging.info(f"Fold {i+1}/{N_fold}")
+        train_set = {}
+        while len(train_set.keys()) < train_size:
+            t = random.randint(0, len(dataset.keys())-1)
+            if list(dataset.keys())[t] not in train_set.keys():
+                train_set[list(dataset.keys())[t]] = dataset[list(dataset.keys())[t]]
+
+        test_set = {}
+        for subj, paths in dataset.items():
+            if subj not in train_set:
+                test_set[subj] = paths
+        
+        logging.info(f"Test set of {len(test_set)}")
+
+        start_time = time()
+        par_conn_matrix = parallel_training(train_set, output_dir, num_cores)
+        par_time = time() - start_time
+        logging.info("Parallel Training for {i}-th Fold done in {par_time} seconds")  
+
+        start_time = time()  
+        seq_conn_matrix = sequential_training(train_set, output_dir)
+        seq_time = time() - start_time
+        logging.info("Sequential Training for {i}-th Fold done in {par_time} seconds")
+
+        test(par_conn_matrix, test_set)
+

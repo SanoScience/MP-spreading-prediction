@@ -28,13 +28,18 @@ def get_file_paths_for_subject(dataset_dir, subject, tracer='av45'):
     
     t0_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
                                             'ses-baseline', 'pet', f'*baseline*trc-{tracer}_pet.csv')))[0]
+    
+    if not os.path.isfile(t0_concentration_path): f'No baseline for subject: {subject}'
+    
     # extract baseline year 
     t0_year = int(t0_concentration_path.split('date-')[1][:4])
+
     # followup year should be: baseline year + time interval
     time_interval = 2
     t1_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
                                                            'ses-followup', 'pet', 
-                                                           f'*followup*{t0_year+time_interval}*trc-{tracer}_pet.csv')))[0]
+                                                           f'*{t0_year+time_interval}*trc-{tracer}_pet.csv')))[0]
+    
     results_dict = {
         "connectome": connectivity_matrix_path, 
         "baseline": t0_concentration_path, 
@@ -62,10 +67,12 @@ def save_dataset(dataset, filename):
         json.dump(dataset, f)
 
 if __name__ == '__main__':
-    dataset_filepath = 'training.json'           
+    dataset_filepath = 'dataset_av45.json'           
     dataset_dir = '../../data/ADNI/derivatives'
     
     subjects = os.listdir(dataset_dir)
+    
+    print(f'Initial no. of subjects: {len(subjects)}')
     
     dataset = {}
     for subj in subjects:
@@ -73,6 +80,8 @@ if __name__ == '__main__':
             paths = get_file_paths_for_subject(dataset_dir, subj) 
             if is_concentration_valid:
                 dataset[subj] = paths
+            else:
+                logging.info(f'followup < baseline for: {paths["followup"]}')
         except IndexError:
             logging.info(f'No valid data for subject: {subj}')
             continue 
