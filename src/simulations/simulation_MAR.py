@@ -241,6 +241,8 @@ def test(conn_matrix, test_set):
     logging.info(errors)
     logging.info(errors.describe())
 
+    return errors
+
 
     
 if __name__ == '__main__':
@@ -277,7 +279,10 @@ if __name__ == '__main__':
             continue
     logging.info(f'Using {N_fold}-fold cross validation sets')
 
-    for i in range(N_fold):   
+    performance_par = []
+    performance_seq = []
+
+    for i in tqdm(range(N_fold)):   
         logging.info(f"Fold {i+1}/{N_fold}")
         train_set = {}
         while len(train_set.keys()) < train_size:
@@ -302,5 +307,16 @@ if __name__ == '__main__':
         seq_time = time() - start_time
         logging.info("Sequential Training for {i}-th Fold done in {par_time} seconds")
 
-        test(par_conn_matrix, test_set)
+        performance_par.append(test(par_conn_matrix, test_set))
+        performance_seq.append(test(seq_conn_matrix, test_set))
+    
+    pd_par_tot = pd.concat(performance_par)
+    pd_seq_tot = pd.concat(performance_seq)
 
+    logging.info("Stats on whole dataset")
+    logging.info("Parallel")
+    logging.info(pd_par_tot.describe())
+    logging.info("Sequencial")
+    logging.info(pd_seq_tot.describe())
+
+    #TODO: do it for categories (AD, LMCI, EMCI, CN)
