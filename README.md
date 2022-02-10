@@ -1,7 +1,8 @@
-# Sano MSc Project: Misfolded protein spreading by autoregressive model
-supervisor: dr Alessandro Crimi
+# Spreading of misfolded proteins in Alzheimer’s Disease using Constrained Autoregressive Model
 
-MSc student: Aleksandra Pestka
+### Authors 
+Luca Gherardini <br>
+Alessandro Crimi <br>
+Aleksandra Pestka
 
-## Note
-This project is in the **research mode**. 
+TBC
