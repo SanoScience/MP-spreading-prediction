@@ -29,11 +29,10 @@ logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_
 np.seterr(all = 'raise')
 
 class MARsimulation:
-    def __init__(self, connect_matrix, t0_concentrations, t1_concentrations):
+    def __init__(self, connect_matrix, t0_concentrations, t1_concentrations, maxiter=int(2e6)):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
         self.N_regions = 166                                                    # no. of brain areas from the atlas
-        self.maxiter = int(2e6)                                                 # max no. of iterations for the gradient descent
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
         self.eta = 1e-6                                                         # learning rate of the gradient descent       
@@ -156,7 +155,7 @@ class MARsimulation:
         #logging.info(f"Iterations: {iter_count}")
         return A
                    
-def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results):    
+def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results, maxiter):    
     ''' Run simulation for single patient. '''
       
     subject_output_dir = os.path.join(output_dir, subject)
@@ -178,7 +177,7 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
         logging.error(f"Exception causing abortion of simulation for subject {subject}")
 
     try:
-        simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration)
+        simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration, maxiter)
     except Exception as e:
         logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}\nTrying to plot the partial results...")
 
@@ -198,14 +197,14 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
 
     return simulation.coef_matrix
            
-def parallel_training(dataset, output_dir, num_cores = multiprocessing.cpu_count()):
+def parallel_training(dataset, output_dir, num_cores, maxiter):
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
     procs = []
 
     for subj, paths in tqdm(dataset.items()):
         #dispatcher(files[i], atlas_file, img_type)
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, True))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, True, maxiter))
         p.start()
         procs.append(p)
         
@@ -229,12 +228,12 @@ def parallel_training(dataset, output_dir, num_cores = multiprocessing.cpu_count
     avg_conn_matrix = np.mean(conn_matrices, axis=0)
     return avg_conn_matrix
 
-def sequential_training(dataset, output_dir):
+def sequential_training(dataset, output_dir, maxiter):
     ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
 
     connect_matrix = None
     for subj, paths in tqdm(dataset.items()):
-        connect_matrix = run_simulation(subj, paths, output_dir, connect_matrix, False, True)
+        connect_matrix = run_simulation(subj, paths, output_dir, connect_matrix, False, True, maxiter)
     
     return connect_matrix
 
@@ -258,7 +257,6 @@ if __name__ == '__main__':
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
 
-    num_cores = ''
     try:
         num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
     except Exception as e:
@@ -273,6 +271,14 @@ if __name__ == '__main__':
             logging.error(e)
             continue
     logging.info(f"Train set of {train_size} elements")
+
+    try:
+        maxiter = int(input(f'Number of maximum iterations for each simulation [default {int(2e6)}]: '))
+    except Exception as e:
+        logging.error(e)
+        maxiter = int(2e6)
+
+    logging.info(f"Maximum iterations for each simulation: {maxiter}")
 
     N_fold = ''
     while not isinstance(N_fold, int) or N_fold < 0:
@@ -301,12 +307,12 @@ if __name__ == '__main__':
         logging.info(f"Test set of {len(test_set)} elements")
 
         start_time = time()
-        par_conn_matrix = parallel_training(train_set, output_dir, num_cores)
+        par_conn_matrix = parallel_training(train_set, output_dir, num_cores, maxiter)
         par_time = time() - start_time
         logging.info("Parallel Training for {i}-th Fold done in {par_time} seconds")  
 
         start_time = time()  
-        seq_conn_matrix = sequential_training(train_set, output_dir)
+        seq_conn_matrix = sequential_training(train_set, output_dir, maxiter)
         seq_time = time() - start_time
         logging.info(f"Sequential Training for {i}-th Fold done in {par_time} seconds")
 
