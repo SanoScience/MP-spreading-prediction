@@ -33,6 +33,7 @@ class MARsimulation:
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
         self.N_regions = 166                                                    # no. of brain areas from the atlas
+        self.maxiter = maxiter
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
         self.eta = 1e-6                                                         # learning rate of the gradient descent       
