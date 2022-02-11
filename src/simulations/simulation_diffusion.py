@@ -10,6 +10,8 @@ import multiprocessing
 import os
 import logging
 from glob import glob
+import random
+from time import time
 from turtle import shape
 
 from tqdm import tqdm 
@@ -17,6 +19,7 @@ import numpy as np
 from scipy.sparse.csgraph import laplacian as scipy_laplacian
 from scipy.stats.stats import pearsonr as pearson_corr_coef
 from sklearn.metrics import mean_squared_log_error
+from simulations.simulation_MAR import N_fold
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
 from utils import load_matrix, calc_rmse, calc_msle
@@ -151,7 +154,7 @@ class DiffusionSimulation:
         np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
                    self.diffusion_final[-1, :], delimiter=',')
 
-def run_simulation(subject, paths, output_dir):    
+def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue=None):    
     ''' Run simulation for single patient. '''
 
     subject_output_dir = os.path.join(output_dir, subject)
@@ -164,13 +167,11 @@ def run_simulation(subject, paths, output_dir):
     logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
     logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
 
-    beta = 1
-    step = 1
     min_msle = -1
     opt_beta = None
     opt_pcc = None
     min_t1_concentration_pred = None
-    for _ in range(100):
+    for _ in range(N_runs):
         simulation = DiffusionSimulation(connect_matrix, beta, t0_concentration)
         t1_concentration_pred = simulation.run()
         simulation.save_diffusion_matrix(subject_output_dir)
@@ -183,7 +184,7 @@ def run_simulation(subject, paths, output_dir):
         '''
         msle = mean_squared_log_error(t1_concentration_pred, t1_concentration)
         corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        if msle < min_rmse or min_rmse == -1:
+        if msle < min_msle or min_msle == -1:
             min_msle = msle 
             opt_pcc = corr_coef
             min_t1_concentration_pred = t1_concentration_pred
@@ -192,16 +193,18 @@ def run_simulation(subject, paths, output_dir):
         beta += step
 
     logging.info(f'Optimal beta was {opt_beta}')
-    logging.info(f'Minimum MSE for subject {subject} is: {min_rmse:.2f}')
+    logging.info(f'Minimum MSLE for subject {subject} is: {min_msle:.2f}')
     logging.info(f'Corresponding Pearson correlation coefficient for subject {subject} is: {opt_pcc:.2f}')
     
     visualize_terminal_state_comparison(t0_concentration, 
                                         min_t1_concentration_pred,
                                         t1_concentration,
                                         subject,
-                                        min_rmse,
+                                        min_msle,
                                         opt_pcc,
                                         save_dir=subject_output_dir)
+    if queue:
+        queue.put([opt_beta, min_msle])
     
 def main():
     dataset_path = '../dataset_preparing/dataset_av45.json'
@@ -218,38 +221,111 @@ def main():
     logging.info(f"{num_cores} cores available")
 
     N_runs = ''
-    while not isinstance(N_fold, int) or N_fold < 0:
+    while not isinstance(N_runs, int) or N_runs < 0:
         try:
-            N_fold = int(input('Number of iterations for Beta optimization: '))
+            N_runs = int(input('Number of iterations for Beta optimization: '))
         except Exception as e:
             logging.error(e)
             continue
     logging.info(f'Doing {N_runs} Beta optimization steps')
-    
-    procs = []
-    queue = multiprocessing.Queue()
-    for subj, paths in dataset.items():
-        logging.info(f"Patient {subj}")
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, queue))
-        p.start()
-        procs.append(p)
 
-        while len(procs)%num_cores == 0 and len(procs) > 0:
-            for p in procs:
-                p.join(timeout=10)
-                if not p.is_alive():
-                    procs.remove(p)
-        
+    train_size = -1
+    while train_size <= 0 or train_size > len(dataset.keys()):
+        try:
+            train_size = int(input(f'Number of training samples [max {len(dataset.keys())}]: '))
+        except Exception as e:
+            logging.error(e)
+            continue
+    logging.info(f"Train set of {train_size} elements")
+
+    N_fold = ''
+    while not isinstance(N_fold, int) or N_fold < 0:
+        try:
+            N_runs = int(input('Number of folds for cross validation of results: '))
+        except Exception as e:
+            logging.error(e)
+            continue
+    logging.info(f'Using {N_fold}-fold cross validation steps')
+    
+
+    train_beta = []
+    train_msle = []
+    test_msle = []
+    for i in tqdm(range(N_fold)):
+        logging.info(f"Fold {i+1}/{N_fold}")
+
+        train_set = {}
+        while len(train_set.keys()) < train_size:
+            t = random.randint(0, len(dataset.keys())-1)
+            if list(dataset.keys())[t] not in train_set.keys():
+                train_set[list(dataset.keys())[t]] = dataset[list(dataset.keys())[t]]
+
+        test_set = {}
+        for subj, paths in dataset.items():
+            if subj not in train_set:
+                test_set[subj] = paths
+        logging.info(f"Test set of {len(test_set)} elements")
+
+        # Training ('beta' in increased of 'step' for 'N_runs' iterations)
+        procs = []
+        start_time = time()
+        queue = multiprocessing.Queue()
+        for subj, paths in train_set.items():
+            logging.info(f"Patient {subj}")
+            p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, 1, 1, N_runs, queue))
+            p.start()
+            procs.append(p)
+
+            while len(procs)%num_cores == 0 and len(procs) > 0:
+                for p in procs:
+                    p.join(timeout=10)
+                    if not p.is_alive():
+                        procs.remove(p)
+            
         for p in procs:
             p.join()
-    
-    errors = []
-    for val in queue:
-        errors.append(val)
-    
-    avg_error = np.mean(errors, axis=0)
-    logging.info(f"avg_error: {avg_error}")
 
+        train_time = time() - start_time
+        logging.info(f"Training for {i}-th Fold done in {train_time} seconds")  
+    
+        # [opt_beta, min_msle]
+        for b, err in queue:
+            train_beta.append(b)
+            train_msle.append(err)
+
+        avg_beta = np.mean(train_beta, axis=0)
+        train_msle = np.mean(train_msle, axis=0)
+
+        logging.info(f"Average Beta from training set: {avg_beta}")
+        logging.info(f"Average MSLE on training set: {train_msle}")
+    
+        # Testing (use the learned 'avg_beta' without changing it)
+        procs = []
+        start_time = time()
+        queue = multiprocessing.Queue()
+        for subj, paths in test_set.items():
+            logging.info(f"Patient {subj}")
+            p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, avg_beta, 0, 1, queue))
+            p.start()
+            procs.append(p)
+
+            while len(procs)%num_cores == 0 and len(procs) > 0:
+                for p in procs:
+                    p.join(timeout=10)
+                    if not p.is_alive():
+                        procs.remove(p)
+            
+        for p in procs:
+            p.join()
+
+        test_time = time() - start_time
+        logging.info(f"Testing for {i}-th Fold done in {test_time} seconds")  
+    
+        # [opt_beta, min_msle]
+        for _, err in queue:
+            test_msle.append(err)
+        test_msle = np.mean(test_msle, axis=0)
+        logging.info(f"Average MSLE on test set (with beta={avg_beta}): {train_msle}")
     
 if __name__ == '__main__':
     main()

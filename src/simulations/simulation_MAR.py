@@ -151,8 +151,8 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
     if not os.path.exists(subject_output_dir):
         os.makedirs(subject_output_dir)
         
-    # load connectome
-    if connect_matrix == None:
+    # load connectome ('is' works also with objects, '==' doesn't)
+    if connect_matrix is None:
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
     
     # load proteins concentration in brain regions
@@ -283,7 +283,7 @@ if __name__ == '__main__':
         for subj, paths in dataset.items():
             if subj not in train_set:
                 test_set[subj] = paths
-        logging.info(f"Test set of {len(test_set)}")
+        logging.info(f"Test set of {len(test_set)} elements")
 
         start_time = time()
         par_conn_matrix = parallel_training(train_set, output_dir, num_cores)
@@ -293,7 +293,7 @@ if __name__ == '__main__':
         start_time = time()  
         seq_conn_matrix = sequential_training(train_set, output_dir)
         seq_time = time() - start_time
-        logging.info("Sequential Training for {i}-th Fold done in {par_time} seconds")
+        logging.info(f"Sequential Training for {i}-th Fold done in {par_time} seconds")
 
         performance_par.append(test(par_conn_matrix, test_set))
         performance_seq.append(test(seq_conn_matrix, test_set))

@@ -23,11 +23,20 @@ import numpy as np
 logging.basicConfig(level=logging.INFO)
 
 def get_file_paths_for_subject(dataset_dir, subject, tracer='av45'):
-    connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
+
+    try:
+        connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
                                             'ses-baseline', 'dwi', 'connect_matrix_rough.csv'))
+    except Exception as e:
+        logging.error(e)
+        logging.error(f"Missing connectivity matrix for subject {subject}")
     
-    t0_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
+    try:
+        t0_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
                                             'ses-baseline', 'pet', f'*baseline*trc-{tracer}_pet.csv')))[0]
+    except Exception as e:
+        logging.error(e)
+        logging.error(f"Error with t0 pet of patient {subject}")
     
     if not os.path.isfile(t0_concentration_path): f'No baseline for subject: {subject}'
     
@@ -36,9 +45,15 @@ def get_file_paths_for_subject(dataset_dir, subject, tracer='av45'):
 
     # followup year should be: baseline year + time interval
     time_interval = 2
-    t1_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
+
+    # TODO: iterate over all the pet csv files of the patient and check it the current pet is 2 years after the previous one, otherwise reiter until the end of available pets
+    try:
+        t1_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
                                                            'ses-followup', 'pet', 
                                                            f'*{t0_year+time_interval}*trc-{tracer}_pet.csv')))[0]
+    except Exception as e:
+        logging.error(e)
+        logging.error(f"Error with t1 pet of patient {subject}")
     
     results_dict = {
         "connectome": connectivity_matrix_path, 
