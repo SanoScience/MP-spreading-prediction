@@ -20,15 +20,14 @@ import numpy as np
 from scipy.sparse.csgraph import laplacian as scipy_laplacian
 from scipy.stats.stats import pearsonr as pearson_corr_coef
 from sklearn.metrics import mean_squared_log_error
-from simulations.simulation_MAR import N_fold
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
-from utils import load_matrix, calc_rmse, calc_msle
+from utils import load_matrix, calc_rmse, calc_rmse
 from datetime import datetime
 
 import networkx as nx
 
-logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_HKD_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
+logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_HKD_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
 class DiffusionSimulation:
     def __init__(self, connect_matrix, beta, concentrations=None):
@@ -63,7 +62,7 @@ class DiffusionSimulation:
             return self.diffusion_final[-1]
 
         except Exception as e:
-            logging.error(e)
+            print(e)
         
     def define_seeds(self, init_concentration=1):
         ''' Define Alzheimer seed regions manually. 
@@ -173,10 +172,10 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
         logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
         logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     except Exception as e:
-        logging.error(e)
+        print(e)
         return
 
-    min_msle = -1
+    min_rmse = -1
     opt_beta = None
     opt_pcc = None
     min_t1_concentration_pred = None
@@ -187,7 +186,7 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
             simulation.save_diffusion_matrix(subject_output_dir)
             simulation.save_terminal_concentration(subject_output_dir)
         except Exception as e:
-            logging.error(e)
+            print(e)
             continue
         '''
         visualize_diffusion_timeplot(simulation.diffusion_final.T, 
@@ -195,10 +194,10 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
                                     simulation.t_total,
                                     save_dir=subject_output_dir)
         '''
-        msle = mean_squared_log_error(t1_concentration_pred, t1_concentration)
+        rmse = calc_rmse(t1_concentration_pred, t1_concentration)
         corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        if msle < min_msle or min_msle == -1:
-            min_msle = msle 
+        if rmse < min_rmse or min_rmse == -1:
+            min_rmse = rmse 
             opt_pcc = corr_coef
             min_t1_concentration_pred = t1_concentration_pred
             opt_beta = beta
@@ -206,18 +205,18 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
         beta += step
 
     logging.info(f'Optimal beta was {opt_beta}')
-    logging.info(f'Minimum MSLE for subject {subject} is: {min_msle:.2f}')
+    logging.info(f'Minimum rmse for subject {subject} is: {min_rmse:.2f}')
     logging.info(f'Corresponding Pearson correlation coefficient for subject {subject} is: {opt_pcc:.2f}')
     
     visualize_terminal_state_comparison(t0_concentration, 
                                         min_t1_concentration_pred,
                                         t1_concentration,
                                         subject,
-                                        min_msle,
+                                        min_rmse,
                                         opt_pcc,
                                         save_dir=subject_output_dir)
     if queue:
-        queue.put([subject, opt_beta, min_msle])
+        queue.put([subject, opt_beta, min_rmse])
     
 def main():
     dataset_path = '../dataset_preparing/dataset_av45.json'
@@ -238,7 +237,7 @@ def main():
         try:
             N_runs = int(input('Number of iterations for Beta optimization: '))
         except Exception as e:
-            logging.error(e)
+            print(e)
             continue
     logging.info(f'Doing {N_runs} Beta optimization steps')
 
@@ -247,22 +246,22 @@ def main():
         try:
             train_size = int(input(f'Number of training samples [max {len(dataset.keys())}]: '))
         except Exception as e:
-            logging.error(e)
+            print(e)
             continue
     logging.info(f"Train set of {train_size} elements")
 
     N_fold = ''
     while not isinstance(N_fold, int) or N_fold < 0:
         try:
-            N_runs = int(input('Number of folds for cross validation of results: '))
+            N_fold = int(input('Number of folds for cross validation of results: '))
         except Exception as e:
-            logging.error(e)
+            print(e)
             continue
     logging.info(f'Using {N_fold}-fold cross validation steps')
     
     train_beta = []
-    train_msle = []
-    test_msle = []
+    train_rmse = []
+    test_rmse = []
     for i in tqdm(range(N_fold)):
         logging.info(f"Fold {i+1}/{N_fold}")
 
@@ -300,17 +299,17 @@ def main():
         train_time = time() - start_time
         logging.info(f"Training for {i}-th Fold done in {train_time} seconds")  
     
-        # [subject, opt_beta, min_msle]
+        # [subject, opt_beta, min_rmse]
         for subj, b, err in queue:
             train_beta.append(b)
-            train_msle.append(err)
+            train_rmse.append(err)
 
         avg_beta = np.mean(train_beta, axis=0)
-        train_avg_msle = np.mean(train_msle, axis=0)
+        train_avg_rmse = np.mean(train_rmse, axis=0)
 
         logging.info(f"Average Beta from training set: {avg_beta}")
-        logging.info(f"MSLE values on training set:\n{train_msle}")
-        logging.info(f"Average MSLE on training set: {train_avg_msle}")
+        logging.info(f"rmse values on training set:\n{train_rmse}")
+        logging.info(f"Average rmse on training set: {train_avg_rmse}")
     
         # Testing (use the learned 'avg_beta' without changing it)
         procs = []
@@ -334,12 +333,12 @@ def main():
         test_time = time() - start_time
         logging.info(f"Testing for {i}-th Fold done in {test_time} seconds")  
     
-        # [opt_beta, min_msle]
+        # [opt_beta, min_rmse]
         for subj, _, err in queue:
-            test_msle.append(err)
-        test_avg_msle = np.mean(test_msle, axis=0)
-        logging.info(f"Average MSLE on test set (with beta={avg_beta}): {test_avg_msle}")
-        logging.info(f"MSLE values on test set:\n{test_msle}")
+            test_rmse.append(err)
+        test_avg_rmse = np.mean(test_rmse, axis=0)
+        logging.info(f"Average rmse on test set (with beta={avg_beta}): {test_avg_rmse}")
+        logging.info(f"rmse values on test set:\n{test_rmse}")
     
 if __name__ == '__main__':
     main()

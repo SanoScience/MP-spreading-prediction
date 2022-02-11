@@ -288,11 +288,11 @@ if __name__ == '__main__':
     N_fold = ''
     while not isinstance(N_fold, int) or N_fold < 0:
         try:
-            N_fold = int(input('Folds for cross validations: '))
+            N_fold = int(input('Folds for cross validation: '))
         except Exception as e:
             logging.error(e)
             continue
-    logging.info(f'Using {N_fold}-fold cross validation sets')
+    logging.info(f'Using {N_fold}-folds')
 
     performance_par = []
     performance_seq = []

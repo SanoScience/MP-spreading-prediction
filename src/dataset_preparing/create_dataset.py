@@ -24,7 +24,6 @@ import re
 logging.basicConfig(level=logging.INFO)
 
 def get_file_paths_for_subject(dataset_dir, subject, tracer='av45'):
-    # TODO: test this in the glob search to get multiple tracers at once
     tracer= ['av45','fbb','pib']
     pets_list = []
     try:
@@ -36,7 +35,7 @@ def get_file_paths_for_subject(dataset_dir, subject, tracer='av45'):
             pets_list = pets_list + glob(os.path.join(os.path.join(dataset_dir, subject, 
                                             'ses-*', 'pet', f'*trc-{t}_pet.csv')))
         time_interval = 2
-        # note: if tracer is a list containing several tracers, the pairs are 
+        # note: if 'tracer' is a list containing several tracers, the pairs can be made of heterogeneous tracers
         for i in range(len(pets_list)-1):
             for j in range(i+1, len(pets_list)):
                 year = int(pets_list[i].split('date-')[1][:4])
@@ -68,13 +67,12 @@ def load_matrix(path):
     data = np.genfromtxt(path, delimiter=",")
     return data
 
-def is_concentration_valid(paths):
+def is_concentration_valid(paths, threshold = 10):
     ''' Check if sum(t1 concentration) is greater than sum(t0 concentration). '''
-    
     t0_concentration = load_matrix(paths['baseline']) 
     t1_concentration = load_matrix(paths['followup'])
                 
-    if sum(t1_concentration) > sum(t0_concentration):
+    if sum(t1_concentration) > sum(t0_concentration) + threshold:
         return True
     
     return False
