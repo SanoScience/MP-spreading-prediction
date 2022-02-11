@@ -23,7 +23,7 @@ import re
 
 logging.basicConfig(level=logging.INFO)
 
-def get_file_paths_for_subject(dataset_dir, subject, tracer='av45'):
+def get_file_paths_for_subject(dataset_dir, subject, tracer='av45', threshold = 100):
     tracer= ['av45','fbb','pib']
     pets_list = []
     try:
@@ -43,7 +43,10 @@ def get_file_paths_for_subject(dataset_dir, subject, tracer='av45'):
                 if year == year_next - time_interval:
                     t0_concentration_path = pets_list[i]
                     t1_concentration_path = pets_list[j]
-                    break # this exits only the inner loop
+                    t0_concentration = load_matrix(paths['baseline']) 
+                    t1_concentration = load_matrix(paths['followup'])
+                    if sum(t1_concentration) > sum(t0_concentration) + threshold:
+                        break # this exits only the inner loop
             else:
                 # this means that inner loop has been completed without break statements, so the outer loop must continue
                 continue
@@ -67,16 +70,6 @@ def load_matrix(path):
     data = np.genfromtxt(path, delimiter=",")
     return data
 
-def is_concentration_valid(paths, threshold = 10):
-    ''' Check if sum(t1 concentration) is greater than sum(t0 concentration). '''
-    t0_concentration = load_matrix(paths['baseline']) 
-    t1_concentration = load_matrix(paths['followup'])
-                
-    if sum(t1_concentration) > sum(t0_concentration) + threshold:
-        return True
-    
-    return False
-
 def save_dataset(dataset, filename):
     with open(filename, 'w+') as f:
         json.dump(dataset, f, indent=4)
@@ -93,7 +86,6 @@ if __name__ == '__main__':
     for subj in subjects:
         try:
             paths = get_file_paths_for_subject(dataset_dir, subj) 
-            if not is_concentration_valid(paths): raise Exception(f'followup < baseline for: {paths["followup"]}')
             if paths['connectome'] is None: raise Exception(f'connectivity matrix not found for {subj}')
             dataset[subj] = paths            
         except Exception:
