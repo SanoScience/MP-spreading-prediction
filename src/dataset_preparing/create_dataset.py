@@ -19,41 +19,43 @@ import json
 import logging
 
 import numpy as np
+import re
 
 logging.basicConfig(level=logging.INFO)
 
 def get_file_paths_for_subject(dataset_dir, subject, tracer='av45'):
-
+    # TODO: test this in the glob search to get multiple tracers at once
+    tracer= ['av45','fbb','pib']
+    pets_list = []
     try:
         connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
                                             'ses-baseline', 'dwi', 'connect_matrix_rough.csv'))
-    except Exception as e:
-        logging.error(e)
-        logging.error(f"Missing connectivity matrix for subject {subject}")
-    
-    try:
-        t0_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-baseline', 'pet', f'*baseline*trc-{tracer}_pet.csv')))[0]
-    except Exception as e:
-        logging.error(e)
-        logging.error(f"Error with t0 pet of patient {subject}")
-    
-    if not os.path.isfile(t0_concentration_path): f'No baseline for subject: {subject}'
-    
-    # extract baseline year 
-    t0_year = int(t0_concentration_path.split('date-')[1][:4])
+        if not os.path.isfile(connectivity_matrix_path): raise Exception(f"{connectivity_matrix_path} doesn't exist")
 
-    # followup year should be: baseline year + time interval
-    time_interval = 2
-
-    # TODO: iterate over all the pet csv files of the patient and check it the current pet is 2 years after the previous one, otherwise reiter until the end of available pets
-    try:
-        t1_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
-                                                           'ses-followup', 'pet', 
-                                                           f'*{t0_year+time_interval}*trc-{tracer}_pet.csv')))[0]
+        for t in tracer:
+            pets_list = pets_list + glob(os.path.join(os.path.join(dataset_dir, subject, 
+                                            'ses-*', 'pet', f'*trc-{t}_pet.csv')))
+        time_interval = 2
+        # note: if tracer is a list containing several tracers, the pairs are 
+        for i in range(len(pets_list)-1):
+            for j in range(i+1, len(pets_list)):
+                year = int(pets_list[i].split('date-')[1][:4])
+                year_next = int(pets_list[j].split('date-')[1][:4])
+                if year == year_next - time_interval:
+                    t0_concentration_path = pets_list[i]
+                    t1_concentration_path = pets_list[j]
+                    break # this exits only the inner loop
+            else:
+                # this means that inner loop has been completed without break statements, so the outer loop must continue
+                continue
+            # if the previous continue statement has not been hit, it means the inner loop has been interrupted because a pair of valid PET has been found, then we can exit
+            break
+        else:
+            # this 'else' means: 'if the for ended without finding a valid couple'
+            raise Exception(f"{subject} doesn't have PET images with a {time_interval} years gap")
     except Exception as e:
         logging.error(e)
-        logging.error(f"Error with t1 pet of patient {subject}")
+        return None   
     
     results_dict = {
         "connectome": connectivity_matrix_path, 
@@ -93,12 +95,11 @@ if __name__ == '__main__':
     for subj in subjects:
         try:
             paths = get_file_paths_for_subject(dataset_dir, subj) 
-            if is_concentration_valid:
-                dataset[subj] = paths
-            else:
-                logging.info(f'followup < baseline for: {paths["followup"]}')
-        except IndexError:
-            logging.info(f'No valid data for subject: {subj}')
+            if not is_concentration_valid(paths): raise Exception(f'followup < baseline for: {paths["followup"]}')
+            if paths['connectome'] is None: raise Exception(f'connectivity matrix not found for {subj}')
+            dataset[subj] = paths            
+        except Exception:
+            logging.error(f'No valid data for subject: {subj}')
             continue 
         
     save_dataset(dataset, dataset_filepath)

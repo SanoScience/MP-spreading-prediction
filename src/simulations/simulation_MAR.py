@@ -23,7 +23,6 @@ from utils import *
 from datetime import datetime
 
 import multiprocessing
-from sklearn.metrics import mean_squared_log_error
 
 logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 np.seterr(all = 'raise')
@@ -36,7 +35,7 @@ class MARsimulation:
         self.maxiter = maxiter
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-6                                                         # learning rate of the gradient descent       
+        self.eta = 1e-8                                                         # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
@@ -141,7 +140,7 @@ class MARsimulation:
                 '''
 
                 iter_count += 1
-                self.eta+=1e-9
+                self.eta+=1e-12
                 prev_A = np.copy(A)
                 
             except FloatingPointError:   
@@ -179,22 +178,22 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
 
     try:
         simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration, maxiter)
-    except Exception as e:
-        logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}\nTrying to plot the partial results...")
+        t1_concentration_pred = drop_negative_predictions(simulation.run(norm_opt=2))
 
-    t1_concentration_pred = drop_negative_predictions(simulation.run(norm_opt=2))
-    #error = calc_rmse(t1_concentration, t1_concentration_pred)
-    error = mean_squared_log_error(t1_concentration, t1_concentration_pred)
-    corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-    if make_plot: visualize_terminal_state_comparison(t0_concentration, 
-                                        t1_concentration_pred,
-                                        t1_concentration,
-                                        subject,
-                                        error, 
-                                        corr_coef)
-    if save_results:
-        save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
-        save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
+        error = calc_rmse(t1_concentration, t1_concentration_pred)
+        corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+        if make_plot: visualize_terminal_state_comparison(t0_concentration, 
+                                            t1_concentration_pred,
+                                            t1_concentration,
+                                            subject,
+                                            error, 
+                                            corr_coef)
+        if save_results:
+            save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
+            save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
+    except Exception as e:
+        logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}") 
+        return None       
 
     return simulation.coef_matrix
            
@@ -203,7 +202,7 @@ def parallel_training(dataset, output_dir, num_cores, maxiter):
     The final matrix is an average matrix. '''
     procs = []
 
-    for subj, paths in tqdm(dataset.items()):
+    for subj, paths in dataset.items():
         #dispatcher(files[i], atlas_file, img_type)
         p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, True, maxiter))
         p.start()
@@ -233,21 +232,26 @@ def sequential_training(dataset, output_dir, maxiter):
     ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
 
     connect_matrix = None
-    for subj, paths in tqdm(dataset.items()):
-        connect_matrix = run_simulation(subj, paths, output_dir, connect_matrix, False, True, maxiter)
+    for subj, paths in dataset.items():
+        tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, True, maxiter)
+        connect_matrix = tmp if tmp is not None else connect_matrix
     
     return connect_matrix
 
 def test(conn_matrix, test_set):
-    errors = pd.DataFrame(index=test_set.keys(), columns=['MSLE'])
+    errors = pd.DataFrame(index=test_set.keys(), columns=['RMSE'])
     for subj, paths in test_set.items():
-        t0_concentration = load_matrix(paths['baseline'])
-        t1_concentration = load_matrix(paths['followup'])
-        pred = conn_matrix @ t0_concentration
-        errors.loc[subj] = mean_squared_log_error(t1_concentration, pred)
+        try:
+            t0_concentration = load_matrix(paths['baseline'])
+            t1_concentration = load_matrix(paths['followup'])
+            pred = conn_matrix @ t0_concentration
+            errors.loc[subj] = calc_rmse(t1_concentration, pred)
+        except Exception as e:
+            logging.error(e)
+            logging.error(f"Error in loading data from patient {subj}, skipping...")
     
     logging.info(errors)
-    logging.info(errors.describe())
+    logging.info(f"Average error on test samples for this fold: {errors['RMSE'].mean()}")
 
     return errors
 
@@ -323,10 +327,8 @@ if __name__ == '__main__':
     pd_par_tot = pd.concat(performance_par)
     pd_seq_tot = pd.concat(performance_seq)
 
-    logging.info("Stats on whole dataset")
-    logging.info("Parallel")
-    logging.info(pd_par_tot.describe())
-    logging.info("Sequencial")
-    logging.info(pd_seq_tot.describe())
+    logging.info("Mean RMSE on the whole dataset")
+    logging.info(f"Parallel: {pd_par_tot['RMSE'].mean()}")
+    logging.info(f"Sequencial: {pd_seq_tot['RMSE'].mean()}")
 
     #TODO: do it for distinct categories (AD, LMCI, EMCI, CN)
