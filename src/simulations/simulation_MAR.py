@@ -20,11 +20,12 @@ from scipy.stats.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import *
 from utils import *
+from datetime import datetime
 
 import multiprocessing
 from sklearn.metrics import mean_squared_log_error
 
-logging.basicConfig(filename="../../results/MAR_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
+logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 np.seterr(all = 'raise')
 
 class MARsimulation:
@@ -42,8 +43,8 @@ class MARsimulation:
         self.final_concentrations = t1_concentrations
 
     def run(self, norm_opt, inverse_log=True):
-        ''' Run simulation. 
-        
+        ''' 
+        Run simulation. 
         Args:
             norm_opt (int): normalize option for connectivity matrix
             inverse_log (boolean): if True use normal values instead of logarithmic in connectivity matrix '''
@@ -99,10 +100,8 @@ class MARsimulation:
         iter_count = 0                                                          # counter of the current iteration 
         error_reconstruct = 1e10                                                # initial error of reconstruction gradients)
         if vis_error: error_buffer = []                                         # reconstruction error along iterations
-        
         A = self.cm                                                             # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
         gradient = np.ones((self.N_regions, self.N_regions)) 
-        
         prev_A = np.copy(A)
 
         while (error_reconstruct > self.error_th) and iter_count < self.maxiter:
@@ -114,7 +113,6 @@ class MARsimulation:
                 # gradient computation
                 gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) 
                 A -= self.eta * gradient       
-                
                 # reinforce where there was no connection at the beginning 
                 A *= self.B
 
@@ -130,7 +128,6 @@ class MARsimulation:
                 '''
 
                 iter_count += 1
-
                 self.eta = min(1e-6, self.eta+1e-9)
                 prev_A = np.copy(A)
                 
@@ -139,7 +136,6 @@ class MARsimulation:
                 A = np.copy(prev_A)
                 logging.warning(f'Overflow encountered at iteration {iter_count}. Changing starting learning rate to: {self.eta}')
                 continue
-
                                           
         if vis_error: visualize_error(error_buffer)
 
@@ -162,7 +158,6 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
     # load proteins concentration in brain regions
     t0_concentration = load_matrix(paths['baseline']) 
     t1_concentration = load_matrix(paths['followup'])
-                
     logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
     logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     
@@ -191,8 +186,6 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
 def parallel_training(dataset, output_dir, num_cores = multiprocessing.cpu_count()):
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
-        
-    #results = [run_simulation(subj, paths, output_dir) for subj, paths in dataset.items()]
     procs = []
 
     for subj, paths in tqdm(dataset.items()):
@@ -243,10 +236,7 @@ def test(conn_matrix, test_set):
 
     return errors
 
-
-    
 if __name__ == '__main__':
-
     # TODO: iterate for all tracers (or ask to the user)
     dataset_path = '../dataset_preparing/dataset_av45.json'
     output_dir = '../../results'
@@ -258,7 +248,6 @@ if __name__ == '__main__':
         num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
     except Exception as e:
         num_cores = multiprocessing.cpu_count()
-
     logging.info(f"{num_cores} cores available")
 
     train_size = -1
@@ -294,7 +283,6 @@ if __name__ == '__main__':
         for subj, paths in dataset.items():
             if subj not in train_set:
                 test_set[subj] = paths
-        
         logging.info(f"Test set of {len(test_set)}")
 
         start_time = time()

@@ -5,6 +5,8 @@ Ashish Raj, Amy Kuceyeski, Michael Weiner,
 "A Network Diffusion Model of Disease Progression in Dementia"
 '''
 
+import json
+import multiprocessing
 import os
 import logging
 from glob import glob
@@ -14,22 +16,24 @@ from tqdm import tqdm
 import numpy as np
 from scipy.sparse.csgraph import laplacian as scipy_laplacian
 from scipy.stats.stats import pearsonr as pearson_corr_coef
+from sklearn.metrics import mean_squared_log_error
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
 from utils import load_matrix, calc_rmse, calc_msle
+from datetime import datetime
 
 import networkx as nx
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_HKD_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 
 class DiffusionSimulation:
     def __init__(self, connect_matrix, beta, concentrations=None):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
-        self.beta = beta # As in the Raj et al. papers
-        self.rois = 116 # AAL atlas has 116 rois
-        self.t_total = 100 # total length of the simulation in years
-        self.timestep = 1 # equivalent to 7.3 days per time step
+        self.beta = beta 
+        self.rois = 166 
+        self.t_total = 2 # total length of the simulation in years
+        self.timestep = 0.01 # equivalent to 7.3 days per time step
         self.iterations = int(self.t_total / self.timestep) # 200 iterations
         self.cm = connect_matrix
         if concentrations is not None: 
@@ -41,7 +45,10 @@ class DiffusionSimulation:
                     
     def run(self, inverse_log=True, downsample=False):
         ''' Run simulation. '''
+
+        # if values in the connectivity matrix were obtained through logarithm, revert it with an exponential 
         if inverse_log: self.calc_exponent()
+
         self.calc_laplacian()
         
         self.diffusion_final = self.iterate_spreading_by_Julien()
@@ -144,35 +151,26 @@ class DiffusionSimulation:
         np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
                    self.diffusion_final[-1, :], delimiter=',')
 
-def run_simulation(dataset_dir, output_dir, subject):    
+def run_simulation(subject, paths, output_dir):    
     ''' Run simulation for single patient. '''
-      
-    connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-baseline', 'dwi', 'connect_matrix_rough.csv'))
-    t0_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-baseline', 'pet', '*.csv')))[0]
-     # TODO: make it compatible with multiple followup sessions
-    t1_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-followup', 'pet', '*.csv')))[0]
 
     subject_output_dir = os.path.join(output_dir, subject)
-    
     if not os.path.exists(subject_output_dir):
         os.makedirs(subject_output_dir)
-    
-    # load connectome
-    connect_matrix = load_matrix(connectivity_matrix_path)
-    # load proteins concentration in brian regions
-    t0_concentration = load_matrix(t0_concentration_path) 
-    t1_concentration = load_matrix(t1_concentration_path)
+      
+    connect_matrix = load_matrix(paths['connectome'])
+    t0_concentration = load_matrix(paths['baseline'])
+    t1_concentration = load_matrix(paths['followup'])
+    logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
+    logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
 
     beta = 1
     step = 1
-    min_rmse = -1
+    min_msle = -1
     opt_beta = None
     opt_pcc = None
     min_t1_concentration_pred = None
-    for _ in tqdm(range(100)):
+    for _ in range(100):
         simulation = DiffusionSimulation(connect_matrix, beta, t0_concentration)
         t1_concentration_pred = simulation.run()
         simulation.save_diffusion_matrix(subject_output_dir)
@@ -183,10 +181,10 @@ def run_simulation(dataset_dir, output_dir, subject):
                                     simulation.t_total,
                                     save_dir=subject_output_dir)
         '''
-        rmse = calc_rmse(t1_concentration_pred, t1_concentration)
+        msle = mean_squared_log_error(t1_concentration_pred, t1_concentration)
         corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        if rmse < min_rmse or min_rmse == -1:
-            min_rmse = rmse 
+        if msle < min_rmse or min_rmse == -1:
+            min_msle = msle 
             opt_pcc = corr_coef
             min_t1_concentration_pred = t1_concentration_pred
             opt_beta = beta
@@ -206,13 +204,52 @@ def run_simulation(dataset_dir, output_dir, subject):
                                         save_dir=subject_output_dir)
     
 def main():
-    dataset_dir = '../../data/ADNI/derivatives/'
+    dataset_path = '../dataset_preparing/dataset_av45.json'
     output_dir = '../../results' 
+
+    with open(dataset_path, 'r') as f:
+        dataset = json.load(f)
     
-    patients = ['sub-AD4009_new_PET']
-    for subject in patients:
-        logging.info(f'Simulation for subject: {subject}')
-        run_simulation(dataset_dir, output_dir, subject)
+    num_cores = ''
+    try:
+        num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
+    except Exception as e:
+        num_cores = multiprocessing.cpu_count()
+    logging.info(f"{num_cores} cores available")
+
+    N_runs = ''
+    while not isinstance(N_fold, int) or N_fold < 0:
+        try:
+            N_fold = int(input('Number of iterations for Beta optimization: '))
+        except Exception as e:
+            logging.error(e)
+            continue
+    logging.info(f'Doing {N_runs} Beta optimization steps')
+    
+    procs = []
+    queue = multiprocessing.Queue()
+    for subj, paths in dataset.items():
+        logging.info(f"Patient {subj}")
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, queue))
+        p.start()
+        procs.append(p)
+
+        while len(procs)%num_cores == 0 and len(procs) > 0:
+            for p in procs:
+                p.join(timeout=10)
+                if not p.is_alive():
+                    procs.remove(p)
+        
+        for p in procs:
+            p.join()
+    
+    errors = []
+    for val in queue:
+        errors.append(val)
+    
+    avg_error = np.mean(errors, axis=0)
+    logging.info(f"avg_error: {avg_error}")
+
     
 if __name__ == '__main__':
     main()

@@ -64,7 +64,7 @@ def is_concentration_valid(paths):
 
 def save_dataset(dataset, filename):
     with open(filename, 'w+') as f:
-        json.dump(dataset, f)
+        json.dump(dataset, f, indent=4)
 
 if __name__ == '__main__':
     dataset_filepath = 'dataset_av45.json'           
