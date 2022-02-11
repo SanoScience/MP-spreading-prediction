@@ -13,6 +13,7 @@ from glob import glob
 import random
 from time import time
 from turtle import shape
+import pandas as pd
 
 from tqdm import tqdm 
 import numpy as np
@@ -204,7 +205,7 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
                                         opt_pcc,
                                         save_dir=subject_output_dir)
     if queue:
-        queue.put([opt_beta, min_msle])
+        queue.put([subject, opt_beta, min_msle])
     
 def main():
     dataset_path = '../dataset_preparing/dataset_av45.json'
@@ -247,7 +248,6 @@ def main():
             continue
     logging.info(f'Using {N_fold}-fold cross validation steps')
     
-
     train_beta = []
     train_msle = []
     test_msle = []
@@ -288,16 +288,17 @@ def main():
         train_time = time() - start_time
         logging.info(f"Training for {i}-th Fold done in {train_time} seconds")  
     
-        # [opt_beta, min_msle]
-        for b, err in queue:
+        # [subject, opt_beta, min_msle]
+        for subj, b, err in queue:
             train_beta.append(b)
             train_msle.append(err)
 
         avg_beta = np.mean(train_beta, axis=0)
-        train_msle = np.mean(train_msle, axis=0)
+        train_avg_msle = np.mean(train_msle, axis=0)
 
         logging.info(f"Average Beta from training set: {avg_beta}")
-        logging.info(f"Average MSLE on training set: {train_msle}")
+        logging.info(f"MSLE values on training set:\n{train_msle}")
+        logging.info(f"Average MSLE on training set: {train_avg_msle}")
     
         # Testing (use the learned 'avg_beta' without changing it)
         procs = []
@@ -322,10 +323,11 @@ def main():
         logging.info(f"Testing for {i}-th Fold done in {test_time} seconds")  
     
         # [opt_beta, min_msle]
-        for _, err in queue:
+        for subj, _, err in queue:
             test_msle.append(err)
-        test_msle = np.mean(test_msle, axis=0)
-        logging.info(f"Average MSLE on test set (with beta={avg_beta}): {train_msle}")
+        test_avg_msle = np.mean(test_msle, axis=0)
+        logging.info(f"Average MSLE on test set (with beta={avg_beta}): {test_avg_msle}")
+        logging.info(f"MSLE values on test set:\n{test_msle}")
     
 if __name__ == '__main__':
     main()

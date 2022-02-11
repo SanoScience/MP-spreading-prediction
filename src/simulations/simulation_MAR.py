@@ -224,12 +224,12 @@ def sequential_training(dataset, output_dir):
     return connect_matrix
 
 def test(conn_matrix, test_set):
-    errors = pd.DataFrame(index=test_set.keys(), columns=['RMSE'])
+    errors = pd.DataFrame(index=test_set.keys(), columns=['MSLE'])
     for subj, paths in test_set.items():
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])
         pred = conn_matrix @ t0_concentration
-        errors.loc[subj] = calc_rmse(t1_concentration, pred)
+        errors.loc[subj] = mean_squared_log_error(t1_concentration, pred)
     
     logging.info(errors)
     logging.info(errors.describe())
