@@ -49,12 +49,21 @@ class MARsimulation:
             norm_opt (int): normalize option for connectivity matrix
             inverse_log (boolean): if True use normal values instead of logarithmic in connectivity matrix '''
         if inverse_log: 
-            self.calc_exponent()
-            self.filter_connections()
+            try:
+                self.calc_exponent()
+                self.filter_connections()
+            except Exception as e:
+                logging.error(e)
+        
         self.transform_cm(norm_opt)
         self.generate_indicator_matrix()
-        self.coef_matrix = self.run_gradient_descent() # get the model params
-        pred_concentrations = self.coef_matrix @ self.init_concentrations # make predictions 
+        pred_concentrations = None
+        try:
+            self.coef_matrix = self.run_gradient_descent() # get the model params
+            pred_concentrations = self.coef_matrix @ self.init_concentrations # make predictions 
+        except Exception as e:
+            logging.error(e)
+
         return pred_concentrations
  
     def calc_exponent(self):
@@ -63,7 +72,11 @@ class MARsimulation:
         instead of logarithm. 
         
         Inverse operation to log1p. '''
-        self.cm = np.expm1(self.cm)
+        try:
+            self.cm = np.expm1(self.cm)
+        except FloatingPointError as e:
+            logging.error(e)
+            logging.error("Overflow encountered, using the inaltered matrix...")
         
     def filter_connections(self):
         ''' Filter out all connections with less than n fiber reaching. '''
@@ -128,11 +141,11 @@ class MARsimulation:
                 '''
 
                 iter_count += 1
-                self.eta = min(1e-6, self.eta+1e-9)
+                self.eta+=1e-9
                 prev_A = np.copy(A)
                 
             except FloatingPointError:   
-                self.eta *= 1e-3
+                self.eta = 1e-10
                 A = np.copy(prev_A)
                 logging.warning(f'Overflow encountered at iteration {iter_count}. Changing starting learning rate to: {self.eta}')
                 continue
@@ -141,7 +154,6 @@ class MARsimulation:
 
         logging.info(f"Final reconstruction error: {error_reconstruct}")
         #logging.info(f"Iterations: {iter_count}")
-        
         return A
                    
 def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results):    
@@ -150,24 +162,27 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
     subject_output_dir = os.path.join(output_dir, subject)
     if not os.path.exists(subject_output_dir):
         os.makedirs(subject_output_dir)
+    
+    try:
+        # load connectome ('is' works also with objects, '==' doesn't)
+        if connect_matrix is None:
+            connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
         
-    # load connectome ('is' works also with objects, '==' doesn't)
-    if connect_matrix is None:
-        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
-    
-    # load proteins concentration in brain regions
-    t0_concentration = load_matrix(paths['baseline']) 
-    t1_concentration = load_matrix(paths['followup'])
-    logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
-    logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
-    
+        # load proteins concentration in brain regions
+        t0_concentration = load_matrix(paths['baseline']) 
+        t1_concentration = load_matrix(paths['followup'])
+        logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
+        logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
+    except Exception as e:
+        logging.error(e)
+        logging.error(f"Exception causing abortion of simulation for subject {subject}")
+
     try:
         simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration)
     except Exception as e:
         logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}\nTrying to plot the partial results...")
 
-    t1_concentration_pred = simulation.run(norm_opt=2)
-    t1_concentration_pred = drop_negative_predictions(t1_concentration_pred)
+    t1_concentration_pred = drop_negative_predictions(simulation.run(norm_opt=2))
     #error = calc_rmse(t1_concentration, t1_concentration_pred)
     error = mean_squared_log_error(t1_concentration, t1_concentration_pred)
     corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
@@ -307,4 +322,4 @@ if __name__ == '__main__':
     logging.info("Sequencial")
     logging.info(pd_seq_tot.describe())
 
-    #TODO: do it for categories (AD, LMCI, EMCI, CN)
+    #TODO: do it for distinct categories (AD, LMCI, EMCI, CN)

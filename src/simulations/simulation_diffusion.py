@@ -51,15 +51,19 @@ class DiffusionSimulation:
         ''' Run simulation. '''
 
         # if values in the connectivity matrix were obtained through logarithm, revert it with an exponential 
-        if inverse_log: self.calc_exponent()
+        try:
+            if inverse_log: self.calc_exponent()
 
-        self.calc_laplacian()
-        
-        self.diffusion_final = self.iterate_spreading_by_Julien()
-        # self.diffusion_final = self.iterate_spreading()
-        if downsample: 
-            self.diffusion_final = self.downsample_matrix(self.diffusion_final)
-        return self.diffusion_final[-1]
+            self.calc_laplacian()        
+            self.diffusion_final = self.iterate_spreading_by_Julien()
+
+            # self.diffusion_final = self.iterate_spreading()
+            if downsample: 
+                self.diffusion_final = self.downsample_matrix(self.diffusion_final)
+            return self.diffusion_final[-1]
+
+        except Exception as e:
+            logging.error(e)
         
     def define_seeds(self, init_concentration=1):
         ''' Define Alzheimer seed regions manually. 
@@ -162,11 +166,15 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
     if not os.path.exists(subject_output_dir):
         os.makedirs(subject_output_dir)
       
-    connect_matrix = load_matrix(paths['connectome'])
-    t0_concentration = load_matrix(paths['baseline'])
-    t1_concentration = load_matrix(paths['followup'])
-    logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
-    logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
+    try:
+        connect_matrix = load_matrix(paths['connectome'])
+        t0_concentration = load_matrix(paths['baseline'])
+        t1_concentration = load_matrix(paths['followup'])
+        logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
+        logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
+    except Exception as e:
+        logging.error(e)
+        return
 
     min_msle = -1
     opt_beta = None
@@ -174,9 +182,13 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
     min_t1_concentration_pred = None
     for _ in range(N_runs):
         simulation = DiffusionSimulation(connect_matrix, beta, t0_concentration)
-        t1_concentration_pred = simulation.run()
-        simulation.save_diffusion_matrix(subject_output_dir)
-        simulation.save_terminal_concentration(subject_output_dir)
+        try:
+            t1_concentration_pred = simulation.run()
+            simulation.save_diffusion_matrix(subject_output_dir)
+            simulation.save_terminal_concentration(subject_output_dir)
+        except Exception as e:
+            logging.error(e)
+            continue
         '''
         visualize_diffusion_timeplot(simulation.diffusion_final.T, 
                                     simulation.timestep,
