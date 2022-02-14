@@ -35,7 +35,7 @@ class MARsimulation:
         self.maxiter = maxiter
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-8                                                         # learning rate of the gradient descent       
+        self.eta = 1e-10                                                         # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
         self.init_concentrations = t0_concentrations
