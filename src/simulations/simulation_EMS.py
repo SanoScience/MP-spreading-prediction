@@ -7,10 +7,14 @@ in Aging and Associated Neurodegenerative Disorders"
 Authors: Yasser Iturria-Medina ,Roberto C. Sotero,Paule J. Toussaint,Alan C. Evans 
 '''
 
-from glob import glob 
+from datetime import datetime
+from glob import glob
+import json
+import multiprocessing 
 import os
 import logging
 import sys
+from time import time
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,26 +27,26 @@ from scipy.stats.stats import pearsonr as pearson_corr_coef
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
 from utils import load_matrix, calc_rmse, calc_msle, save_terminal_concentration
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
 class EMS_Simulation:
     ''' A class to simulate the spread of misfolded beta_amyloid. '''
 
-    def __init__(self, connect_matrix, regions_distances, years, concentrations=None):
-        self.N_regions = 116    # number of brain regions 
+    def __init__(self, connect_matrix, regions_distances, years, concentrations=None, iter_max=10000):
+        self.N_regions = 166    # number of brain regions 
         self.speed = 1          # propagation velocity
-        self.dt = 0.01          # time step (0.01)
+        self.dt = 0.0001          # time step (keep it very small to avoid overflows)
         self.T_total = years    # total time 
         self.amy_control = 3    # parameter to control the number of voxels in which beta-amyloid may get synthesized (?)
-        self.prob_stay = [0.5 for _ in range(116)]    # the probability of staying in the same region per unit time (0.5)
+        self.prob_stay = [0.5 for _ in range(166)]    # the probability of staying in the same region per unit time (0.5)
         self.trans_rate = 116     # a scalar value, controlling the baseline infectivity
-        self.iter_max = 10000      # max no. of iterations
+        self.iter_max = iter_max      # max no. of iterations
         self.mu_noise = 0       # mean of the additive noise
         self.sigma_noise = 1    # standard deviation of the additive noise
         self.gini_coeff = 1     # measure of statistical dispersion in a given system, with value 0 reflecting perfect equality and value 1 corresponding to a complete inequality
         self.clearance_rate = np.ones(self.N_regions)   
         self.synthesis_rate = np.ones(self.N_regions)  
-        self.beta0 = 1 * self.trans_rate / self.N_regions
+        self.beta0 = 0.1 # TODO: numerical analysis as for NDM simulation
         
         if concentrations is not None: 
             logging.info(f'Loading concentration from PET files.')
@@ -108,7 +112,7 @@ class EMS_Simulation:
         movOut = np.zeros((self.N_regions, self.N_regions))
 
         # moving process
-        for t in tqdm(range(self.iter_max)):  
+        for _ in range(self.iter_max):  
             # movDrt stores the number of proteins towards each region. 
             # i.e. element in kth row lth col denotes the number of proteins in region k moving towards l
             movDrt = Rnor * connect * self.dt
@@ -194,45 +198,56 @@ class EMS_Simulation:
             
         return Rmis_all, Pmis_all
     
-def run_simulation(dataset_dir, output_dir, subject):    
-    connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-baseline', 'dwi', 'connect_matrix_rough.csv'))
-    t0_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-baseline', 'pet', '*.csv')))[0]
-    t1_concentration_path = glob(os.path.join(os.path.join(dataset_dir, subject, 
-                                            'ses-followup', 'pet', '*.csv')))[0]
-    subject_output_dir = os.path.join(output_dir, subject)
-    years = 50
+def drop_data_in_connect_matrix(connect_matrix, missing_labels=[35, 36, 81, 82]):
+    index_to_remove = [(label - 1) for label in missing_labels]
+    connect_matrix = np.delete(connect_matrix, index_to_remove, axis=0)
+    connect_matrix = np.delete(connect_matrix, index_to_remove, axis=1) 
+    return connect_matrix
 
-    # load connectome
-    connectivity_matrix = load_matrix(connectivity_matrix_path)
-    # load proteins concentration in brain regions
-    t0_concentration = load_matrix(t0_concentration_path)
-    t1_concentration = load_matrix(t1_concentration_path)
+def run_simulation(paths, output_dir, subject, iter_max, queue = None):    
+    subject_output_dir = os.path.join(output_dir, subject)
+    if not os.path.exists(subject_output_dir):
+        os.makedirs(subject_output_dir)
+      
+    try:
+        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
+        t0_concentration = load_matrix(paths['baseline'])
+        t1_concentration = load_matrix(paths['followup'])
+        logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
+        logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
+    except Exception as e:
+        print(e)
+        return
+
+    years = 50
     
-    logging.info(f'Sum of t0 concentration: {np.sum(t0_concentration)}')
-    logging.info(f'Sum of t1 concentration: {np.sum(t1_concentration)}')
-    
-    regions_distances = dijkstra(connectivity_matrix)
+    regions_distances = dijkstra(connect_matrix)
         
-    simulation = EMS_Simulation(connectivity_matrix, regions_distances, years, concentrations=t0_concentration)
+    simulation = EMS_Simulation(connect_matrix, regions_distances, years, concentrations=t0_concentration, iter_max=iter_max)
     connect = simulation.calculate_connect()
     Rnor, Pnor = simulation.calculate_Rnor_Pnor(connect)
     Rmis_all, Pmis_all = simulation.calculate_Rmis_Pmis(connect, Rnor, Pnor)
 
-    visualize_diffusion_timeplot(Rmis_all, simulation.dt, simulation.T_total)
+    #visualize_diffusion_timeplot(Rmis_all, simulation.dt, simulation.T_total)
 
     # predicted vs real plot; take results from the last step
     t1_concentration_pred = Rmis_all[:, years-1]
     rmse = calc_rmse(t1_concentration, t1_concentration_pred)
     corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+    '''
     visualize_terminal_state_comparison(t0_concentration, 
                                         t1_concentration_pred, 
                                         t1_concentration, 
                                         subject,
                                         rmse,
                                         corr_coef)
+    '''
     save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'EMS')
+    if queue:
+        queue.put([rmse, corr_coef])
+    
+    return
+
 
 def dijkstra(matrix):
     # calculate distance matrix using Dijkstra algorithm 
@@ -252,17 +267,58 @@ def dijkstra(matrix):
     return distance
 
 def main():
-    dataset_dir = '../../data/ADNI/derivatives/'
+    dataset_path = '../dataset_preparing/dataset_av45.json'
     output_dir = '../../results' 
+
+    with open(dataset_path, 'r') as f:
+        dataset = json.load(f)
     
-    patients = ['sub-AD4009_new_PET']
-    for subject in patients:
-        logging.info(f'Simulation for subject: {subject}')
-        try:
-            run_simulation(dataset_dir, output_dir, subject)
-        except ValueError:
-            logging.warning('Simulation interrupted because of NaNs.')
+    num_cores = ''
+    try:
+        num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
+    except Exception as e:
+        num_cores = multiprocessing.cpu_count()
+    logging.info(f"{num_cores} cores available")
+
+    iter_max = ''
+    try:
+        iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 10\'000]: '))
+    except Exception as e:
+        iter_max = 10000
+    logging.info(f"{num_cores} cores available")
+
+    procs = []
+    start_time = time()
+    queue = multiprocessing.Queue()
+    for subj, paths in tqdm(dataset.items()):
+        logging.info(f"Patient {subj}")
+        p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, iter_max, queue))
+        p.start()
+        procs.append(p)
+
+        while len(procs)%num_cores == 0 and len(procs) > 0:
+            for p in procs:
+                p.join(timeout=10)
+                if not p.is_alive():
+                    procs.remove(p)
         
+    for p in procs:
+        p.join()
+
+    elapsed_time = time() - start_time
+    logging.info(f"Simulation done in {elapsed_time} seconds")
+
+    rmse_list = []
+    pcc_list = []
+    while queue.not_empty():
+        err, pcc = queue.get()
+        rmse_list.append(err)
+        pcc_list.append(pcc)
+    
+    avg_rmse = np.mean(rmse_list, axis=0)
+    avg_pcc = np.mean(pcc_list, axis=0)
+    logging.info(f"Average RMSE on dataset: {avg_rmse}")      
+    logging.info(f"Average Pearson Correlation Coefficient on dataset: {avg_pcc}")      
         
 if __name__=="__main__":
     main()

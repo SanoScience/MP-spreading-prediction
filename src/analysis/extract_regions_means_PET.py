@@ -48,6 +48,8 @@ def extract_regions_means(pet_data, atlas_data):
     # however, in AAL3v1_1mm there is no label = 0 
     # instead, there are 166 unique labels (35, 36, 81, 82 are missing)
     atlas_labels = [label for label in np.unique(atlas_data) if label!=0]
+    assert len(atlas_labels) == 166
+    
     for label in atlas_labels:
         avg = pet_data[np.where(label == atlas_data)].mean()
         means.append(avg)

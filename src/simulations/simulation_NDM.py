@@ -27,7 +27,7 @@ from datetime import datetime
 
 import networkx as nx
 
-logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_HKD_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
 class DiffusionSimulation:
     def __init__(self, connect_matrix, beta, concentrations=None):
@@ -158,6 +158,12 @@ class DiffusionSimulation:
         np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
                    self.diffusion_final[-1, :], delimiter=',')
 
+def drop_data_in_connect_matrix(connect_matrix, missing_labels=[35, 36, 81, 82]):
+    index_to_remove = [(label - 1) for label in missing_labels]
+    connect_matrix = np.delete(connect_matrix, index_to_remove, axis=0)
+    connect_matrix = np.delete(connect_matrix, index_to_remove, axis=1) 
+    return connect_matrix
+
 def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue=None):    
     ''' Run simulation for single patient. '''
 
@@ -166,7 +172,7 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
         os.makedirs(subject_output_dir)
       
     try:
-        connect_matrix = load_matrix(paths['connectome'])
+        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])
         logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
@@ -208,6 +214,7 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
     logging.info(f'Minimum rmse for subject {subject} is: {min_rmse:.2f}')
     logging.info(f'Corresponding Pearson correlation coefficient for subject {subject} is: {opt_pcc:.2f}')
     
+    '''
     visualize_terminal_state_comparison(t0_concentration, 
                                         min_t1_concentration_pred,
                                         t1_concentration,
@@ -215,9 +222,12 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
                                         min_rmse,
                                         opt_pcc,
                                         save_dir=subject_output_dir)
+    '''
     if queue:
-        queue.put([subject, opt_beta, min_rmse])
+        queue.put([opt_beta, min_rmse, opt_pcc])
     
+### MULTIPROCESSING ###
+
 def main():
     dataset_path = '../dataset_preparing/dataset_av45.json'
     output_dir = '../../results' 
@@ -261,7 +271,9 @@ def main():
     
     train_beta = []
     train_rmse = []
+    train_pcc = []
     test_rmse = []
+    test_pcc = []
     for i in tqdm(range(N_fold)):
         logging.info(f"Fold {i+1}/{N_fold}")
 
@@ -300,16 +312,19 @@ def main():
         logging.info(f"Training for {i}-th Fold done in {train_time} seconds")  
     
         # [subject, opt_beta, min_rmse]
-        for subj, b, err in queue:
+        for subj, b, err, pcc in queue:
             train_beta.append(b)
             train_rmse.append(err)
+            train_pcc.append(pcc)
 
         avg_beta = np.mean(train_beta, axis=0)
         train_avg_rmse = np.mean(train_rmse, axis=0)
+        train_avg_pcc = np.mean(train_pcc, axis=0)
 
         logging.info(f"Average Beta from training set: {avg_beta}")
         logging.info(f"rmse values on training set:\n{train_rmse}")
         logging.info(f"Average rmse on training set: {train_avg_rmse}")
+        logging.info(f"Average Pearson Correlation Coefficient on training set: {train_avg_pcc}")
     
         # Testing (use the learned 'avg_beta' without changing it)
         procs = []
@@ -334,11 +349,13 @@ def main():
         logging.info(f"Testing for {i}-th Fold done in {test_time} seconds")  
     
         # [opt_beta, min_rmse]
-        for subj, _, err in queue:
+        for subj, _, err, pcc in queue:
             test_rmse.append(err)
+            test_pcc.append(pcc)
         test_avg_rmse = np.mean(test_rmse, axis=0)
+        test_avg_pcc = np.mean(test_pcc, axis=0)
         logging.info(f"Average rmse on test set (with beta={avg_beta}): {test_avg_rmse}")
-        logging.info(f"rmse values on test set:\n{test_rmse}")
-    
+        logging.info(f"Average Pearson Correlation Coefficient on test set (with beta={avg_beta}): {test_avg_pcc}")
+
 if __name__ == '__main__':
     main()

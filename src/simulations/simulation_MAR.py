@@ -9,19 +9,14 @@ from glob import glob
 import logging
 import random
 from time import time
-import warnings
-import concurrent.futures
 import json
-
 from tqdm import tqdm 
 import numpy as np
 import pandas as pd
 from scipy.stats.stats import pearsonr as pearson_corr_coef
-
 from utils_vis import *
 from utils import *
 from datetime import datetime
-
 import multiprocessing
 
 logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
@@ -29,8 +24,6 @@ np.seterr(all = 'raise')
 
 class MARsimulation:
     def __init__(self, connect_matrix, t0_concentrations, t1_concentrations, maxiter=int(2e6)):
-        ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
-        Otherwise: manually choose initial seeds and concentrations. '''
         self.N_regions = 166                                                    # no. of brain areas from the atlas
         self.maxiter = maxiter
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
@@ -127,7 +120,6 @@ class MARsimulation:
                 A -= self.eta * gradient       
                 # reinforce where there was no connection at the beginning 
                 A *= self.B
-
                 '''
                 norm = np.linalg.norm(gradient)
                         
@@ -138,11 +130,9 @@ class MARsimulation:
                 if iter_count % 100000 == 0:
                     logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f} (current eta {self.eta})')
                 '''
-
                 iter_count += 1
                 self.eta+=1e-12
                 prev_A = np.copy(A)
-                
             except FloatingPointError:   
                 self.eta = 1e-10
                 A = np.copy(prev_A)
@@ -154,7 +144,7 @@ class MARsimulation:
         logging.info(f"Final reconstruction error: {error_reconstruct}")
         #logging.info(f"Iterations: {iter_count}")
         return A
-                   
+                  
 def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results, maxiter):    
     ''' Run simulation for single patient. '''
       
@@ -179,15 +169,14 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
     try:
         simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration, maxiter)
         t1_concentration_pred = drop_negative_predictions(simulation.run(norm_opt=2))
-
         error = calc_rmse(t1_concentration, t1_concentration_pred)
         corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        if make_plot: visualize_terminal_state_comparison(t0_concentration, 
-                                            t1_concentration_pred,
-                                            t1_concentration,
-                                            subject,
-                                            error, 
-                                            corr_coef)
+        if make_plot: visualize_terminal_state_comparison(  t0_concentration, 
+                                                            t1_concentration_pred,
+                                                            t1_concentration,
+                                                            subject,
+                                                            error, 
+                                                            corr_coef)
         if save_results:
             save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
             save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
@@ -197,26 +186,21 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
 
     return simulation.coef_matrix
            
+### MULTIPROCESSING ###        
+
 def parallel_training(dataset, output_dir, num_cores, maxiter):
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
     procs = []
-
     for subj, paths in dataset.items():
-        #dispatcher(files[i], atlas_file, img_type)
         p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, True, maxiter))
         p.start()
-        procs.append(p)
-        
+        procs.append(p)        
         while len(procs)%num_cores == 0 and len(procs) > 0:
             for p in procs:
-                # wait for 10 seconds to wait process termination
                 p.join(timeout=10)
-                # when a process is done, remove it from processes queue
                 if not p.is_alive():
-                    procs.remove(p)
-        
-        # wait the last chunk            
+                    procs.remove(p)         
         for p in procs:
             p.join()
     
@@ -230,7 +214,6 @@ def parallel_training(dataset, output_dir, num_cores, maxiter):
 
 def sequential_training(dataset, output_dir, maxiter):
     ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
-
     connect_matrix = None
     for subj, paths in dataset.items():
         tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, True, maxiter)
@@ -256,7 +239,6 @@ def test(conn_matrix, test_set):
     return errors
 
 if __name__ == '__main__':
-    # TODO: iterate for all tracers (or ask to the user)
     dataset_path = '../dataset_preparing/dataset_av45.json'
     output_dir = '../../results'
     with open(dataset_path, 'r') as f:
