@@ -24,10 +24,11 @@ from sklearn.metrics import mean_squared_log_error
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
 from utils import load_matrix, calc_rmse, calc_rmse
 from datetime import datetime
+from prettytable import PrettyTable
 
 import networkx as nx
 
-logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
 class DiffusionSimulation:
     def __init__(self, connect_matrix, beta, concentrations=None):
@@ -93,26 +94,6 @@ class DiffusionSimulation:
 
         # eigendecomposition
         self.eigvals, self.eigvecs = np.linalg.eig(self.L)
-        
-    def integration_step(self, x0, t):
-        # persistent mode of propagation
-        # x(t) = U exp(-lambda * beta * t) U_conjugate x(0)
-        # warning: t - elapsed time 
-        # x0 is the initial configuration of the disease (baseline)
-        #xt = self.eigvecs @ np.diag(np.exp(-self.eigvals * self.beta * t)) @ np.conjugate(self.eigvecs.T) @ x0    
-           
-        step = 1/(self.beta * self.eigvals +1e-5) * (1 - np.exp(-self.beta * self.eigvals * t)) * np.linalg.inv(self.eigvecs + 1e-5) * x0 + self.eigvecs
-        xt = x0 + np.sum(step, axis=0) 
-        return xt
-    
-    def iterate_spreading(self):  
-        diffusion = [self.diffusion_init]  #List containing all timepoints
-
-        for i in range(self.iterations):
-            next_step = self.integration_step(diffusion[i], self.timestep)
-            diffusion.append(next_step)  
-            
-        return np.asarray(diffusion)   
     
     def integration_step_by_Julien(self, x_prev, timestep):
         # methods proposed by Julien Lefevre during Marseille Brainhack 
@@ -123,7 +104,7 @@ class DiffusionSimulation:
         #xt = x_prev - timestep * self.beta * self.L @ x_prev
 
         # where x(t) = U * e^(-lambda*B*t) * U^(-1) * x0
-        step = self.eigvecs * np.exp(-self.eigvals*self.beta*timestep) * np.linalg.inv(self.eigvecs + 1e-10) @ x_prev
+        step = self.eigvecs * np.exp(-self.eigvals @ self.beta @ timestep) * np.linalg.inv(self.eigvecs + 1e-10) @ x_prev
         xt = x_prev - step
 
         return xt
@@ -184,7 +165,6 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
     min_rmse = -1
     opt_beta = None
     opt_pcc = None
-    min_t1_concentration_pred = None
     for _ in range(N_runs):
         simulation = DiffusionSimulation(connect_matrix, beta, t0_concentration)
         try:
@@ -205,7 +185,6 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
         if rmse < min_rmse or min_rmse == -1:
             min_rmse = rmse 
             opt_pcc = corr_coef
-            min_t1_concentration_pred = t1_concentration_pred
             opt_beta = beta
 
         beta += step
@@ -231,6 +210,8 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
 def main():
     dataset_path = '../dataset_preparing/dataset_av45.json'
     output_dir = '../../results' 
+    pt_avg = PrettyTable()
+    pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson Correlation", "SD Pearson Correlation"]
 
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
@@ -274,6 +255,7 @@ def main():
     train_pcc = []
     test_rmse = []
     test_pcc = []
+    train_time = 0
     for i in tqdm(range(N_fold)):
         logging.info(f"Fold {i+1}/{N_fold}")
 
@@ -308,8 +290,7 @@ def main():
         for p in procs:
             p.join()
 
-        train_time = time() - start_time
-        logging.info(f"Training for {i}-th Fold done in {train_time} seconds")  
+        train_time += time() - start_time
     
         # [subject, opt_beta, min_rmse]
         for subj, b, err, pcc in queue:
@@ -328,7 +309,6 @@ def main():
     
         # Testing (use the learned 'avg_beta' without changing it)
         procs = []
-        start_time = time()
         queue = multiprocessing.Queue()
         for subj, paths in test_set.items():
             logging.info(f"Patient {subj}")
@@ -344,9 +324,6 @@ def main():
             
         for p in procs:
             p.join()
-
-        test_time = time() - start_time
-        logging.info(f"Testing for {i}-th Fold done in {test_time} seconds")  
     
         # [opt_beta, min_rmse]
         for subj, _, err, pcc in queue:
@@ -356,6 +333,15 @@ def main():
         test_avg_pcc = np.mean(test_pcc, axis=0)
         logging.info(f"Average rmse on test set (with beta={avg_beta}): {test_avg_rmse}")
         logging.info(f"Average Pearson Correlation Coefficient on test set (with beta={avg_beta}): {test_avg_pcc}")
+
+        out_file= open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_performance.txt", 'w')
+        out_file.write(f"Cores: {num_cores}\n")
+        out_file.write(f"Subjects: {len(dataset.keys())}\n")
+        out_file.write(f"Iterations for Patients: {N_runs}\n")
+        out_file.write(f"Training set size: {train_size}\n")
+        out_file.write(f"Testing set size: {len(dataset.keys()) - train_size}\n")
+        out_file.write(f"Folds: {N_fold}\n")
+        out_file.write(f"Elapsed time for training (s): {train_time}\n")
 
 if __name__ == '__main__':
     main()

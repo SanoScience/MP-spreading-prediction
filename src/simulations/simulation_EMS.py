@@ -15,6 +15,7 @@ import os
 import logging
 import sys
 from time import time
+from prettytable import PrettyTable
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,7 +28,7 @@ from scipy.stats.stats import pearsonr as pearson_corr_coef
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
 from utils import load_matrix, calc_rmse, calc_msle, save_terminal_concentration
 
-logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_EMS_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
 class EMS_Simulation:
     ''' A class to simulate the spread of misfolded beta_amyloid. '''
@@ -49,10 +50,10 @@ class EMS_Simulation:
         self.beta0 = 0.1 # TODO: numerical analysis as for NDM simulation
         
         if concentrations is not None: 
-            logging.info(f'Loading concentration from PET files.')
+            #logging.info(f'Loading concentration from PET files.')
             self.diffusion_init = concentrations
         else:
-            logging.info(f'Loading concentration manually.')
+            #logging.info(f'Loading concentration manually.')
             self.diffusion_init = self.define_seeds()
         
         self.regions_distances = regions_distances
@@ -213,8 +214,8 @@ def run_simulation(paths, output_dir, subject, iter_max, queue = None):
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])
-        logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
-        logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
+        #logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
+        #logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     except Exception as e:
         print(e)
         return
@@ -244,7 +245,7 @@ def run_simulation(paths, output_dir, subject, iter_max, queue = None):
     '''
     save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'EMS')
     if queue:
-        queue.put([rmse, corr_coef])
+        queue.put([subject, rmse, corr_coef])
     
     return
 
@@ -270,6 +271,9 @@ def main():
     dataset_path = '../dataset_preparing/dataset_av45.json'
     output_dir = '../../results' 
 
+    pt_avg = PrettyTable()
+    pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
     
@@ -278,14 +282,14 @@ def main():
         num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
     except Exception as e:
         num_cores = multiprocessing.cpu_count()
-    logging.info(f"{num_cores} cores available")
+    #logging.info(f"{num_cores} cores available")
 
     iter_max = ''
     try:
         iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 10\'000]: '))
     except Exception as e:
         iter_max = 10000
-    logging.info(f"{num_cores} cores available")
+    #logging.info(f"{iter_max} iterations per simulation")
 
     procs = []
     start_time = time()
@@ -310,15 +314,22 @@ def main():
 
     rmse_list = []
     pcc_list = []
-    while queue.not_empty():
-        err, pcc = queue.get()
+    while not queue.empty():
+        subj, err, pcc = queue.get()
         rmse_list.append(err)
         pcc_list.append(pcc)
     
     avg_rmse = np.mean(rmse_list, axis=0)
     avg_pcc = np.mean(pcc_list, axis=0)
-    logging.info(f"Average RMSE on dataset: {avg_rmse}")      
-    logging.info(f"Average Pearson Correlation Coefficient on dataset: {avg_pcc}")      
+
+    pt_avg.add_row([avg_rmse, "", avg_pcc, ""])     
+    out_file = open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_EMS_performance.txt", 'w')
+    out_file.write(f"Cores: {num_cores}\n")
+    out_file.write(f"Subjects: {len(dataset.keys())}\n")
+    out_file.write(f"Iterations per patient: {iter_max}\n")
+    out_file.write(f"Elapsed time for training (s): {elapsed_time}\n")
+    out_file.write(pt_avg.get_string())
+    out_file.close()
         
 if __name__=="__main__":
     main()

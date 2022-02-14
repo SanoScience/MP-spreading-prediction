@@ -4,12 +4,14 @@ Based on publication:
 A.Crimi et al. "Effective Brain Connectivity Through a Constrained Autoregressive Model" MICCAI 2016
 '''
 
+from audioop import rms
 import os
 from glob import glob
 import logging
 import random
 from time import time
 import json
+from black import out
 from tqdm import tqdm 
 import numpy as np
 import pandas as pd
@@ -18,8 +20,9 @@ from utils_vis import *
 from utils import *
 from datetime import datetime
 import multiprocessing
+from prettytable import PrettyTable
 
-logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 np.seterr(all = 'raise')
 
 class MARsimulation:
@@ -145,7 +148,7 @@ class MARsimulation:
         #logging.info(f"Iterations: {iter_count}")
         return A
                   
-def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results, maxiter):    
+def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results, maxiter, q = None):    
     ''' Run simulation for single patient. '''
       
     subject_output_dir = os.path.join(output_dir, subject)
@@ -222,25 +225,33 @@ def sequential_training(dataset, output_dir, maxiter):
     return connect_matrix
 
 def test(conn_matrix, test_set):
-    errors = pd.DataFrame(index=test_set.keys(), columns=['RMSE'])
+    rmse_list = []
+    pcc_list = []
     for subj, paths in test_set.items():
         try:
             t0_concentration = load_matrix(paths['baseline'])
             t1_concentration = load_matrix(paths['followup'])
             pred = conn_matrix @ t0_concentration
-            errors.loc[subj] = calc_rmse(t1_concentration, pred)
+            rmse_list.append(calc_rmse(t1_concentration, pred))
+            pcc_list.append(pearson_corr_coef(t1_concentration, pred))[0]
         except Exception as e:
             logging.error(e)
             logging.error(f"Error in loading data from patient {subj}, skipping...")
     
-    logging.info(errors)
-    logging.info(f"Average error on test samples for this fold: {errors['RMSE'].mean()}")
+    avg_rmse = np.mean(rmse_list, axis=0)
+    avg_pcc = np.mean(pcc_list, axis=0)
+    logging.info(f"Average error on test samples for this fold: {avg_rmse}")
+    logging.info(f"Average Pearson correlation on test samples for this fold: {avg_pcc}")
 
-    return errors
+    return avg_rmse, avg_pcc
 
 if __name__ == '__main__':
     dataset_path = '../dataset_preparing/dataset_av45.json'
     output_dir = '../../results'
+
+    pt_avg = PrettyTable()
+    pt_avg.field_names = ["Type", "Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
 
@@ -279,6 +290,8 @@ if __name__ == '__main__':
     performance_par = []
     performance_seq = []
 
+    par_time = 0
+    seq_time = 0
     for i in tqdm(range(N_fold)):   
         logging.info(f"Fold {i+1}/{N_fold}")
         train_set = {}
@@ -295,22 +308,39 @@ if __name__ == '__main__':
 
         start_time = time()
         par_conn_matrix = parallel_training(train_set, output_dir, num_cores, maxiter)
-        par_time = time() - start_time
+        par_time += time() - start_time
         logging.info("Parallel Training for {i}-th Fold done in {par_time} seconds")  
 
         start_time = time()  
         seq_conn_matrix = sequential_training(train_set, output_dir, maxiter)
-        seq_time = time() - start_time
+        seq_time += time() - start_time
         logging.info(f"Sequential Training for {i}-th Fold done in {par_time} seconds")
 
         performance_par.append(test(par_conn_matrix, test_set))
         performance_seq.append(test(seq_conn_matrix, test_set))
     
-    pd_par_tot = pd.concat(performance_par)
-    pd_seq_tot = pd.concat(performance_seq)
+    avg_rmse_par = np.mean(np.array(performance_par)[:,0], axis=0)
+    avg_pcc_par = np.mean(np.array(performance_par)[:,1], axis=0)
+
+    avg_rmse_seq = np.mean(np.array(performance_seq)[:,0], axis=0)
+    avg_pcc_seq = np.mean(np.array(performance_seq)[:,1], axis=0)
+
+    pt_avg.add_row(["Parallel", avg_rmse_par, "", avg_pcc_par, ""])
+    pt_avg.add_row(["Sequential", avg_rmse_seq, "", avg_pcc_seq, ""])
 
     logging.info("Mean RMSE on the whole dataset")
-    logging.info(f"Parallel: {pd_par_tot['RMSE'].mean()}")
-    logging.info(f"Sequencial: {pd_seq_tot['RMSE'].mean()}")
+    logging.info(f"Parallel: {avg_rmse_par}")
+    logging.info(f"Sequencial: {avg_rmse_seq}")
+    out_file = open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_performance.txt", 'w')
+    out_file.write(f"Cores: {num_cores}\n")
+    out_file.write(f"Subjects: {len(dataset.keys())}\n")
+    out_file.write(f"Iterations per patient: {maxiter}\n")
+    out_file.write(f"Training set size: {train_size}\n")
+    out_file.write(f"Testing set size: {len(dataset.keys())-train_size}\n")
+    out_file.write(f"Folds: {N_fold}\n")
+    out_file.write(f"Elapsed time for \'Parallel\' training (s): {par_time}\n")
+    out_file.write(f"Elapsed time for \'Sequential\' training (s): {seq_time}\n")
+    out_file.write(pt_avg.get_string())
+    out_file.close()
 
     #TODO: do it for distinct categories (AD, LMCI, EMCI, CN)
