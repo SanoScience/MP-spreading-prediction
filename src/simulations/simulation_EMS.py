@@ -27,7 +27,7 @@ from scipy.stats.stats import pearsonr as pearson_corr_coef
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
 from utils import load_matrix, calc_rmse, calc_msle, save_terminal_concentration
 
-logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(filename=f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_EMS_performance.txt", filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
 class EMS_Simulation:
     ''' A class to simulate the spread of misfolded beta_amyloid. '''
