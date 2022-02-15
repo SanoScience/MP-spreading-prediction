@@ -341,6 +341,10 @@ if __name__ == '__main__':
     avg_rmse_seq = np.mean(total_rmse_seq, axis=0)
     avg_pcc_seq = np.mean(total_pcc_seq, axis=0)
 
+    # Note, these are the matrices from the last training phase (not the 'best of best')
+    np.savetxt("../../results/A_matrix_par", par_conn_matrix, delimiter=',')
+    np.savetxt("../../results/A_matrix_seq", seq_conn_matrix, delimiter=',')
+
     pt_avg.add_row(["Parallel", format(avg_rmse_par, '.2f'), "", format(avg_pcc_par, '.2f'), ""])
     pt_avg.add_row(["Sequential", format(avg_rmse_seq, '.2f'), "", format(avg_pcc_seq, '.2f'), ""])
 
