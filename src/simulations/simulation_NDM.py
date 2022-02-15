@@ -303,7 +303,7 @@ def main():
     
         # [subject, opt_beta, min_rmse]
         while not queue.empty():
-            subj, b, err, pcc = queue.get()
+            b, err, pcc = queue.get()
             train_beta.append(b)
             train_rmse.append(err)
             train_pcc.append(pcc)
@@ -337,7 +337,7 @@ def main():
     
         # [opt_beta, min_rmse]
         while not queue.empty():
-            subj, _, err, pcc = queue.get()
+            _, err, pcc = queue.get()
             test_rmse.append(err)
             test_pcc.append(pcc)
 
