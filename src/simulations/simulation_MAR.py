@@ -233,11 +233,14 @@ def test(conn_matrix, test_set):
             t0_concentration = load_matrix(paths['baseline'])
             t1_concentration = load_matrix(paths['followup'])
             pred = conn_matrix @ t0_concentration
-            rmse_list.append(calc_rmse(t1_concentration, pred))
-            pcc_list.append(pearson_corr_coef(t1_concentration, pred))[0]
+            rmse = calc_rmse(t1_concentration, pred)
+            pcc = pearson_corr_coef(t1_concentration, pred)[0]
         except Exception as e:
             logging.error(e)
             logging.error(f"Error in loading data from patient {subj}, skipping...")
+        else:
+            rmse_list.append(rmse)
+            pcc_list.append(pcc)
     
     avg_rmse = np.mean(rmse_list, axis=0)
     avg_pcc = np.mean(pcc_list, axis=0)
@@ -284,8 +287,8 @@ if __name__ == '__main__':
         logging.error(e)
         maxiter = int(2e6)
 
-    N_fold = ''
-    while not isinstance(N_fold, int) or N_fold < 0:
+    N_fold = -1
+    while N_fold < 1:
         try:
             N_fold = int(input('Folds for cross validation: '))
         except Exception as e:
@@ -338,22 +341,22 @@ if __name__ == '__main__':
     avg_rmse_seq = np.mean(total_rmse_seq, axis=0)
     avg_pcc_seq = np.mean(total_pcc_seq, axis=0)
 
-    pt_avg.add_row(["Parallel", avg_rmse_par, "", avg_pcc_par, ""])
-    pt_avg.add_row(["Sequential", avg_rmse_seq, "", avg_pcc_seq, ""])
+    pt_avg.add_row(["Parallel", format(avg_rmse_par, '.2f'), "", format(avg_pcc_par, '.2f'), ""])
+    pt_avg.add_row(["Sequential", format(avg_rmse_seq, '.2f'), "", format(avg_pcc_seq, '.2f'), ""])
 
     logging.info("Mean RMSE on the whole dataset")
-    logging.info(f"Parallel: {avg_rmse_par}")
-    logging.info(f"Sequencial: {avg_rmse_seq}")
+    logging.info(f"Parallel: {format(avg_rmse_par, '.2f')}")
+    logging.info(f"Sequencial: {format(avg_rmse_seq, '.2f')}")
     out_file = open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_{category}.txt", 'w')
-    out_file.write(f"Cores: {num_cores}\n")
     out_file.write(f"Category: {category}\n")
+    out_file.write(f"Cores: {num_cores}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
-    out_file.write(f"Iterations per patient: {maxiter}\n")
     out_file.write(f"Training set size: {train_size}\n")
     out_file.write(f"Testing set size: {len(dataset.keys())-train_size}\n")
+    out_file.write(f"Iterations per patient: {maxiter}\n")
     out_file.write(f"Folds: {N_fold}\n")
-    out_file.write(f"Elapsed time for \'Parallel\' training (s): {par_time}\n")
-    out_file.write(f"Elapsed time for \'Sequential\' training (s): {seq_time}\n")
+    out_file.write(f"Elapsed time for \'Parallel\' training (s): {format(par_time, '.2f')}\n")
+    out_file.write(f"Elapsed time for \'Sequential\' training (s): {format(seq_time, '.2f')}\n")
     out_file.write(pt_avg.get_string())
     out_file.close()
 

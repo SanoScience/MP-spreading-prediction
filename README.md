@@ -10,7 +10,7 @@ Recent advancements in Magnetic Resonance Images acquisition have provided bette
 
 ### Methodology 
 Simulations and models used for predicting th progression of Alzheimer disease:
-- Multivariate Autoregressive Model (MAR)
+- Constrained Multivariate Autoregressive Model (CMAR)
 - Network Diffusion Model (NDM)
 - Epidemic Model Spreading (EMS)
 

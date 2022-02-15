@@ -236,18 +236,18 @@ def main():
         num_cores = multiprocessing.cpu_count()
         logging.info(f"{num_cores} cores available")
 
-    N_runs = ''
-    while not isinstance(N_runs, int) or N_runs < 0:
-        try:
-            N_runs = int(input('Number of iterations for Beta optimization: '))
-        except Exception as e:
-            print(e)
-            continue
-
     train_size = -1
     while train_size <= 0 or train_size > len(dataset.keys()):
         try:
             train_size = int(input(f'Number of training samples [max {len(dataset.keys())}]: '))
+        except Exception as e:
+            print(e)
+            continue
+
+    N_runs = ''
+    while not isinstance(N_runs, int) or N_runs < 0:
+        try:
+            N_runs = int(input('Number of iterations for Beta optimization: '))
         except Exception as e:
             print(e)
             continue
@@ -343,18 +343,19 @@ def main():
 
         test_avg_rmse = np.mean(test_rmse, axis=0)
         test_avg_pcc = np.mean(test_pcc, axis=0)
-        logging.info(f"Average rmse on test set (with beta={avg_beta}): {test_avg_rmse}")
-        logging.info(f"Average Pearson Correlation Coefficient on test set (with beta={avg_beta}): {test_avg_pcc}")
+        logging.info(f"Average rmse on test set (with beta={avg_beta}): {format(test_avg_rmse, '.2f')}")
+        logging.info(f"Average Pearson Correlation Coefficient on test set (with beta={avg_beta}): {format(test_avg_pcc, '.2f')}")
+        pt_avg.add_row([format(test_avg_rmse, '.2f'), "", format(test_avg_pcc, '.2f'), ""])
 
         out_file= open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_{category}.txt", 'w')
-        out_file.write(f"Cores: {num_cores}\n")
         out_file.write(f"Category: {category}\n")
+        out_file.write(f"Cores: {num_cores}\n")
         out_file.write(f"Subjects: {len(dataset.keys())}\n")
-        out_file.write(f"Iterations for Patients: {N_runs}\n")
         out_file.write(f"Training set size: {train_size}\n")
         out_file.write(f"Testing set size: {len(dataset.keys()) - train_size}\n")
+        out_file.write(f"Iterations for Beta estimation: {N_runs}\n")
         out_file.write(f"Folds: {N_fold}\n")
-        out_file.write(f"Elapsed time for training (s): {train_time}\n")
+        out_file.write(f"Elapsed time for training (s): {format(train_time, '.2f')}\n")
 
 if __name__ == '__main__':
     main()

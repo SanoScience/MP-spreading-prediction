@@ -25,6 +25,7 @@ import numpy as np
 import re
 
 logging.basicConfig(level=logging.INFO)
+wrong_pet_values = []
 
 class datasetThread(threading.Thread):
    def __init__(self, threadID, dataset_dir, subject, queue, tracers= ['av45','fbb','pib'], threshold = 10):
@@ -63,6 +64,8 @@ class datasetThread(threading.Thread):
                         t1_concentration = load_matrix(t1_concentration_path)
                         if sum(t1_concentration) >= (sum(t0_concentration) + self.threshold):
                             break # this exits only the inner loop
+                        elif year < year_next and sum(t1_concentration) < sum(t0_concentration):
+                            wrong_pet_values.append(t1_concentration_path)
                 else:
                     # this means that inner loop has been completed without break statements, so the outer loop must continue
                     continue
@@ -136,3 +139,5 @@ if __name__ == '__main__':
         
         save_dataset(dataset, dataset_filepath.format(c))
         logging.info(f'Size of the dataset \'{dataset_filepath.format(c)}\': {len(dataset)}')
+    logging.info(f"{len(wrong_pet_values)} \'wrong\' pets")
+    logging.info(wrong_pet_values)

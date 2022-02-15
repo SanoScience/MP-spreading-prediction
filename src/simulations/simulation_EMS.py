@@ -13,6 +13,7 @@ import json
 import multiprocessing 
 import os
 import logging
+import random
 import sys
 from time import time
 from prettytable import PrettyTable
@@ -33,7 +34,7 @@ logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [
 class EMS_Simulation:
     ''' A class to simulate the spread of misfolded beta_amyloid. '''
 
-    def __init__(self, connect_matrix, regions_distances, years, concentrations=None, iter_max=10000):
+    def __init__(self, connect_matrix, regions_distances, years, concentrations=None, iter_max=10000, beta0=0.1):
         self.N_regions = 166    # number of brain regions 
         self.speed = 1          # propagation velocity
         self.dt = 0.0001          # time step (keep it very small to avoid overflows)
@@ -47,7 +48,7 @@ class EMS_Simulation:
         self.gini_coeff = 1     # measure of statistical dispersion in a given system, with value 0 reflecting perfect equality and value 1 corresponding to a complete inequality
         self.clearance_rate = np.ones(self.N_regions)   
         self.synthesis_rate = np.ones(self.N_regions)  
-        self.beta0 = 0.1 # TODO: numerical analysis as for NDM simulation
+        self.beta0 = beta0
         
         if concentrations is not None: 
             #logging.info(f'Loading concentration from PET files.')
@@ -205,7 +206,7 @@ def drop_data_in_connect_matrix(connect_matrix, missing_labels=[35, 36, 81, 82])
     connect_matrix = np.delete(connect_matrix, index_to_remove, axis=1) 
     return connect_matrix
 
-def run_simulation(paths, output_dir, subject, iter_max, queue = None):    
+def run_simulation(paths, output_dir, subject, iter_max, beta0_iter, beta0=0.1, queue = None):    
     subject_output_dir = os.path.join(output_dir, subject)
     if not os.path.exists(subject_output_dir):
         os.makedirs(subject_output_dir)
@@ -214,38 +215,50 @@ def run_simulation(paths, output_dir, subject, iter_max, queue = None):
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])
-        #logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
-        #logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     except Exception as e:
-        print(e)
+        logging.error(e)
         return
 
     years = 50
     
     regions_distances = dijkstra(connect_matrix)
-        
-    simulation = EMS_Simulation(connect_matrix, regions_distances, years, concentrations=t0_concentration, iter_max=iter_max)
-    connect = simulation.calculate_connect()
-    Rnor, Pnor = simulation.calculate_Rnor_Pnor(connect)
-    Rmis_all, Pmis_all = simulation.calculate_Rmis_Pmis(connect, Rnor, Pnor)
+    beta_step = 0.0001
+    opt_beta0 = opt_rmse = opt_pcc = -1
+    for _ in range(beta0_iter):
+        simulation = EMS_Simulation(connect_matrix, regions_distances, years, concentrations=t0_concentration, iter_max=iter_max, beta0=beta0)
+        beta0 += beta_step
+        connect = simulation.calculate_connect()
+        Rnor, Pnor = simulation.calculate_Rnor_Pnor(connect)
+        Rmis_all, Pmis_all = simulation.calculate_Rmis_Pmis(connect, Rnor, Pnor)
 
-    #visualize_diffusion_timeplot(Rmis_all, simulation.dt, simulation.T_total)
+        #visualize_diffusion_timeplot(Rmis_all, simulation.dt, simulation.T_total)
 
-    # predicted vs real plot; take results from the last step
-    t1_concentration_pred = Rmis_all[:, years-1]
-    rmse = calc_rmse(t1_concentration, t1_concentration_pred)
-    corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-    '''
-    visualize_terminal_state_comparison(t0_concentration, 
-                                        t1_concentration_pred, 
-                                        t1_concentration, 
-                                        subject,
-                                        rmse,
-                                        corr_coef)
-    '''
-    save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'EMS')
+        # predicted vs real plot; take results from the last step
+        t1_concentration_pred = Rmis_all[:, years-1]
+        try:
+            rmse = calc_rmse(t1_concentration, t1_concentration_pred)
+            corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+            assert rmse != 'nan' and rmse != 'inf'
+            assert corr_coef != 'nan' and corr_coef != 'inf'
+        except Exception as e:
+            logging.error(e)
+            continue
+        else:
+            if opt_rmse == -1 or rmse < opt_rmse:
+                opt_rmse = rmse 
+                opt_pcc = corr_coef
+                opt_beta0 = beta0
+        '''
+        visualize_terminal_state_comparison(t0_concentration, 
+                                            t1_concentration_pred, 
+                                            t1_concentration, 
+                                            subject,
+                                            rmse,
+                                            corr_coef)
+        '''
+        #save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'EMS')
     if queue:
-        queue.put([subject, rmse, corr_coef])
+        queue.put([opt_beta0, opt_rmse, opt_pcc])
     
     return
 
@@ -291,51 +304,121 @@ def main():
         num_cores = multiprocessing.cpu_count()
         logging.info(f"{num_cores} cores available")
 
-    iter_max = ''
-    try:
-        iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 10\'000]: '))
-    except Exception as e:
-        iter_max = 10000
-    #logging.info(f"{iter_max} iterations per simulation")
+    train_size = -1
+    while train_size <= 0 or train_size > len(dataset.keys()):
+        try:
+            train_size = int(input(f'Number of training samples [max {len(dataset.keys())}]: '))
+        except Exception as e:
+            logging.error(e)
+
+    iter_max = -1
+    while iter_max <= 0:
+        try:
+            iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 10\'000]: '))
+        except Exception as e:
+            iter_max = 10000
+
+    beta0_iter = -1
+    while beta0_iter <= 0 :
+        try:
+            beta0_iter = int(input('Insert the number of iterations for beta0 estimation: '))
+        except Exception as e:
+            logging.error(e)
+
+    N_fold = -1
+    while N_fold < 1:
+        try:
+            N_fold = int(input('Folds for cross validation: '))
+        except Exception as e:
+            logging.error(e)
+            continue
 
     procs = []
-    start_time = time()
     queue = multiprocessing.Queue()
-    for subj, paths in tqdm(dataset.items()):
-        logging.info(f"Patient {subj}")
-        p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, iter_max, queue))
-        p.start()
-        procs.append(p)
+    train_time = 0
+    train_b0s = []
+    total_rmse = []
+    total_pcc = []
+    for i in tqdm(range(N_fold)):   
+        logging.info(f"Fold {i+1}/{N_fold}")
+        train_set = {}
+        while len(train_set.keys()) < train_size:
+            t = random.randint(0, len(dataset.keys())-1)
+            if list(dataset.keys())[t] not in train_set.keys():
+                train_set[list(dataset.keys())[t]] = dataset[list(dataset.keys())[t]]
 
-        while len(procs)%num_cores == 0 and len(procs) > 0:
-            for p in procs:
-                p.join(timeout=10)
-                if not p.is_alive():
-                    procs.remove(p)
-        
-    for p in procs:
-        p.join()
-
-    elapsed_time = time() - start_time
-    logging.info(f"Simulation done in {elapsed_time} seconds")
-
-    rmse_list = []
-    pcc_list = []
-    while not queue.empty():
-        subj, err, pcc = queue.get()
-        rmse_list.append(err)
-        pcc_list.append(pcc)
+        test_set = {}
+        for subj, paths in dataset.items():
+            if subj not in train_set:
+                test_set[subj] = paths
+        logging.info(f"Test set of {len(test_set)} elements")
     
-    avg_rmse = np.mean(rmse_list, axis=0)
-    avg_pcc = np.mean(pcc_list, axis=0)
+        start_time = time()
+        for subj, paths in train_set.items():
+            logging.info(f"Patient {subj}")
+            p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, iter_max, beta0_iter, 0.1, queue))
+            p.start()
+            procs.append(p)
 
-    pt_avg.add_row([avg_rmse, "", avg_pcc, ""])     
+            while len(procs)%num_cores == 0 and len(procs) > 0:
+                for p in procs:
+                    p.join(timeout=10)
+                    if not p.is_alive():
+                        procs.remove(p)
+        for p in procs:
+            p.join()
+
+        beta0_list = []
+        while not queue.empty():
+            beta0, _, _ = queue.get()
+            beta0_list.append(beta0)
+        
+        avg_beta0 = np.mean(beta0_list, axis=0)
+        train_b0s.append(avg_beta0)
+
+        train_time += time() - start_time
+
+        for subj, paths in test_set.items():
+            logging.info(f"Patient {subj}")
+            p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, iter_max, 1, avg_beta0, queue))
+            p.start()
+            procs.append(p)
+
+            while len(procs)%num_cores == 0 and len(procs) > 0:
+                for p in procs:
+                    p.join(timeout=10)
+                    if not p.is_alive():
+                        procs.remove(p)
+        for p in procs:
+            p.join()
+
+        test_rmse_list = []
+        test_pcc_list = []
+        while not queue.empty():
+            _, rmse, pcc = queue.get()
+            test_rmse_list.append(rmse)
+            test_pcc_list.append(pcc)
+        
+        total_rmse.append(np.mean(test_rmse_list, axis=0))
+        total_pcc.append(np.mean(test_pcc_list, axis=0))
+
+    logging.info(f"Training done in {train_time} seconds")
+   
+    avg_rmse = np.mean(total_rmse, axis=0)
+    avg_pcc = np.mean(total_pcc, axis=0)
+
+    pt_avg.add_row([format(avg_rmse, '.2f'), "", format(avg_pcc, '.2f'), ""])     
     out_file = open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_EMS_{category}.txt", 'w')
-    out_file.write(f"Cores: {num_cores}\n")
     out_file.write(f"Category: {category}\n")
+    out_file.write(f"Cores: {num_cores}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
+    out_file.write(f"Training set size: {train_size}\n")
+    out_file.write(f"Testing set size: {len(dataset.keys())-train_size}\n")
     out_file.write(f"Iterations per patient: {iter_max}\n")
-    out_file.write(f"Elapsed time for training (s): {elapsed_time}\n")
+    out_file.write(f"Iterations per beta0: {beta0_iter}\n")
+    out_file.write(f"Folds: {N_fold}\n")
+    out_file.write(f"Elapsed time for training (s): {format(train_time, '.2f')}\n")
+    out_file.write(f"Average b0: {np.mean(train_b0s, axis=0)}\n")
     out_file.write(pt_avg.get_string())
     out_file.close()
         
