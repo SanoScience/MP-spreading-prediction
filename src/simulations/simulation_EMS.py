@@ -27,7 +27,7 @@ from networkx.algorithms.shortest_paths.weighted import _dijkstra
 from scipy.stats.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
-from utils import load_matrix, calc_rmse, calc_msle, save_terminal_concentration
+from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_msle, save_terminal_concentration
 
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
@@ -199,12 +199,6 @@ class EMS_Simulation:
             Pmis_all[:, :, t] = Pmis # paths
             
         return Rmis_all, Pmis_all
-    
-def drop_data_in_connect_matrix(connect_matrix, missing_labels=[35, 36, 81, 82]):
-    index_to_remove = [(label - 1) for label in missing_labels]
-    connect_matrix = np.delete(connect_matrix, index_to_remove, axis=0)
-    connect_matrix = np.delete(connect_matrix, index_to_remove, axis=1) 
-    return connect_matrix
 
 def run_simulation(paths, output_dir, subject, iter_max, beta_iter, beta0=0.1, queue = None):    
     subject_output_dir = os.path.join(output_dir, subject)
@@ -280,7 +274,7 @@ def dijkstra(matrix):
                 
     return distance
 
-def main():
+if __name__=="__main__":
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
         try:
@@ -420,6 +414,3 @@ def main():
     out_file.write(pt_avg.get_string())
     out_file.close()
     logging.info(f"Results saved in {filename}")
-        
-if __name__=="__main__":
-    main()

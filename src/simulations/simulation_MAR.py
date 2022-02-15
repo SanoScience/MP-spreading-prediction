@@ -358,5 +358,3 @@ if __name__ == '__main__':
     out_file.write(pt_avg.get_string())
     out_file.close()
     logging.info(f"Results saved in {filename}")
-
-    #TODO: do it for distinct categories (AD, LMCI, EMCI, CN)

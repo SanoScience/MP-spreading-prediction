@@ -23,7 +23,7 @@ from scipy.stats.stats import pearsonr as pearson_corr_coef
 from sklearn.metrics import mean_squared_log_error
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
-from utils import load_matrix, calc_rmse, calc_rmse
+from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_rmse
 from datetime import datetime
 from prettytable import PrettyTable
 
@@ -144,12 +144,6 @@ class DiffusionSimulation:
         np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
                    self.diffusion_final[-1, :], delimiter=',')
 
-def drop_data_in_connect_matrix(connect_matrix, missing_labels=[35, 36, 81, 82]):
-    index_to_remove = [(label - 1) for label in missing_labels]
-    connect_matrix = np.delete(connect_matrix, index_to_remove, axis=0)
-    connect_matrix = np.delete(connect_matrix, index_to_remove, axis=1) 
-    return connect_matrix
-
 def run_simulation(subject, paths, output_dir, beta=1, step=1, beta_iter=100, queue=None):    
     ''' Run simulation for single patient. '''
 
@@ -207,7 +201,7 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, beta_iter=100, qu
     
 ### MULTIPROCESSING ###
 
-def main():
+if __name__ == '__main__':
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
         try:
@@ -345,6 +339,3 @@ def main():
         out_file.write(f"Elapsed time for training (s): {format(train_time, '.2f')}\n")
         out_file.close()
         logging.info(f"Results saved in {filename}")
-
-if __name__ == '__main__':
-    main()
