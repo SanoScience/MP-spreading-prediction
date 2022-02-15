@@ -9,6 +9,7 @@ import os
 from glob import glob
 import logging
 import random
+import sys
 from time import time
 import json
 from black import out
@@ -26,9 +27,9 @@ logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [
 np.seterr(all = 'raise')
 
 class MARsimulation:
-    def __init__(self, connect_matrix, t0_concentrations, t1_concentrations, maxiter=int(2e6)):
+    def __init__(self, connect_matrix, t0_concentrations, t1_concentrations, iter_max=int(2e6)):
         self.N_regions = 166                                                    # no. of brain areas from the atlas
-        self.maxiter = maxiter
+        self.iter_max = iter_max
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
         self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
         self.eta = 1e-10                                                         # learning rate of the gradient descent       
@@ -112,7 +113,7 @@ class MARsimulation:
         gradient = np.ones((self.N_regions, self.N_regions)) 
         prev_A = np.copy(A)
 
-        while (error_reconstruct > self.error_th) and iter_count < self.maxiter:
+        while (error_reconstruct > self.error_th) and iter_count < self.iter_max:
             try:
                 # calculate reconstruction error 
                 error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
@@ -148,7 +149,7 @@ class MARsimulation:
         #logging.info(f"Iterations: {iter_count}")
         return A
                   
-def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results, maxiter, q = None):    
+def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results, iter_max, q = None):    
     ''' Run simulation for single patient. '''
       
     subject_output_dir = os.path.join(output_dir, subject)
@@ -170,7 +171,7 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
         logging.error(f"Exception causing abortion of simulation for subject {subject}")
 
     try:
-        simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration, maxiter)
+        simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration, iter_max)
         t1_concentration_pred = drop_negative_predictions(simulation.run(norm_opt=2))
         error = calc_rmse(t1_concentration, t1_concentration_pred)
         corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
@@ -191,12 +192,12 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
            
 ### MULTIPROCESSING ###        
 
-def parallel_training(dataset, output_dir, num_cores, maxiter):
+def parallel_training(dataset, output_dir, num_cores, iter_max):
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
     procs = []
     for subj, paths in dataset.items():
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, True, maxiter))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, True, iter_max))
         p.start()
         procs.append(p)        
         while len(procs)%num_cores == 0 and len(procs) > 0:
@@ -215,12 +216,12 @@ def parallel_training(dataset, output_dir, num_cores, maxiter):
     avg_conn_matrix = np.mean(conn_matrices, axis=0)
     return avg_conn_matrix
 
-def sequential_training(dataset, output_dir, maxiter):
+def sequential_training(dataset, output_dir, iter_max):
     ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
     connect_matrix = None
     for subj, paths in dataset.items():
         tmp = None
-        tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, True, maxiter)
+        tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, True, iter_max)
         connect_matrix = tmp if tmp is not None else connect_matrix
     
     return connect_matrix
@@ -250,13 +251,14 @@ def test(conn_matrix, test_set):
     return avg_rmse, avg_pcc
 
 if __name__ == '__main__':
-
-    try:
-        category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
-    except Exception as e:
-        logging.error(e)
-        category = 'ALL'
-    if len(category) < 2: category = 'ALL'
+    category = sys.argv[1] if len(sys.argv) > 1 else ''
+    while category == '':
+        try:
+            category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
+        except Exception as e:
+            logging.error(e)
+            category = 'ALL'
+        category = 'ALL' if category == '' else category
 
     dataset_path = f'../dataset_preparing/dataset_{category}.json'
     output_dir = '../../results'
@@ -267,27 +269,29 @@ if __name__ == '__main__':
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
 
-    try:
-        num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
-    except Exception as e:
-        num_cores = multiprocessing.cpu_count()
-        logging.info(f"{num_cores} cores available")
+    num_cores = sys.argv[2] if len(sys.argv) > 2 else -1
+    while num_cores < 1:
+        try:
+            num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
+        except Exception as e:
+            num_cores = multiprocessing.cpu_count()
+            logging.info(f"{num_cores} cores available")
 
-    train_size = -1
+    train_size = sys.argv[3] if len(sys.argv) > 3 else -1
     while train_size <= 0 or train_size > len(dataset.keys()):
         try:
             train_size = int(input(f'Number of training samples [max {len(dataset.keys())}]: '))
         except Exception as e:
             logging.error(e)
-            continue
 
-    try:
-        maxiter = int(input(f'Number of maximum iterations for each simulation [default {int(2e6)}]: '))
-    except Exception as e:
-        logging.error(e)
-        maxiter = int(2e6)
+    iter_max = sys.argv[4] if len(sys.argv) > 4 else -1
+    while iter_max <= 0:
+        try:
+            iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 10\'000]: '))
+        except Exception as e:
+            iter_max = 10000
 
-    N_fold = -1
+    N_fold = sys.argv[5] if len(sys.argv) > 5 else -1
     while N_fold < 1:
         try:
             N_fold = int(input('Folds for cross validation: '))
@@ -304,7 +308,6 @@ if __name__ == '__main__':
     par_time = 0
     seq_time = 0
     for i in tqdm(range(N_fold)):   
-        logging.info(f"Fold {i+1}/{N_fold}")
         train_set = {}
         while len(train_set.keys()) < train_size:
             t = random.randint(0, len(dataset.keys())-1)
@@ -315,17 +318,14 @@ if __name__ == '__main__':
         for subj, paths in dataset.items():
             if subj not in train_set:
                 test_set[subj] = paths
-        logging.info(f"Test set of {len(test_set)} elements")
 
         start_time = time()
-        par_conn_matrix = parallel_training(train_set, output_dir, num_cores, maxiter)
+        par_conn_matrix = parallel_training(train_set, output_dir, num_cores, iter_max)
         par_time += time() - start_time
-        logging.info("Parallel Training for {i}-th Fold done in {par_time} seconds")  
 
         start_time = time()  
-        seq_conn_matrix = sequential_training(train_set, output_dir, maxiter)
+        seq_conn_matrix = sequential_training(train_set, output_dir, iter_max)
         seq_time += time() - start_time
-        logging.info(f"Sequential Training for {i}-th Fold done in {par_time} seconds")
 
         rmse_par, pcc_par = test(par_conn_matrix, test_set)
         total_rmse_par.append(rmse_par)
@@ -344,20 +344,19 @@ if __name__ == '__main__':
     pt_avg.add_row(["Parallel", format(avg_rmse_par, '.2f'), "", format(avg_pcc_par, '.2f'), ""])
     pt_avg.add_row(["Sequential", format(avg_rmse_seq, '.2f'), "", format(avg_pcc_seq, '.2f'), ""])
 
-    logging.info("Mean RMSE on the whole dataset")
-    logging.info(f"Parallel: {format(avg_rmse_par, '.2f')}")
-    logging.info(f"Sequencial: {format(avg_rmse_seq, '.2f')}")
-    out_file = open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_{category}.txt", 'w')
+    filename = f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_{category}.txt"
+    out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
     out_file.write(f"Training set size: {train_size}\n")
     out_file.write(f"Testing set size: {len(dataset.keys())-train_size}\n")
-    out_file.write(f"Iterations per patient: {maxiter}\n")
+    out_file.write(f"Iterations per patient: {iter_max}\n")
     out_file.write(f"Folds: {N_fold}\n")
     out_file.write(f"Elapsed time for \'Parallel\' training (s): {format(par_time, '.2f')}\n")
     out_file.write(f"Elapsed time for \'Sequential\' training (s): {format(seq_time, '.2f')}\n")
     out_file.write(pt_avg.get_string())
     out_file.close()
+    logging.info(f"Results saved in {filename}")
 
     #TODO: do it for distinct categories (AD, LMCI, EMCI, CN)

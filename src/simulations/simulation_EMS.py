@@ -206,7 +206,7 @@ def drop_data_in_connect_matrix(connect_matrix, missing_labels=[35, 36, 81, 82])
     connect_matrix = np.delete(connect_matrix, index_to_remove, axis=1) 
     return connect_matrix
 
-def run_simulation(paths, output_dir, subject, iter_max, beta0_iter, beta0=0.1, queue = None):    
+def run_simulation(paths, output_dir, subject, iter_max, beta_iter, beta0=0.1, queue = None):    
     subject_output_dir = os.path.join(output_dir, subject)
     if not os.path.exists(subject_output_dir):
         os.makedirs(subject_output_dir)
@@ -224,7 +224,7 @@ def run_simulation(paths, output_dir, subject, iter_max, beta0_iter, beta0=0.1, 
     regions_distances = dijkstra(connect_matrix)
     beta_step = 0.0001
     opt_beta0 = opt_rmse = opt_pcc = -1
-    for _ in range(beta0_iter):
+    for _ in range(beta_iter):
         simulation = EMS_Simulation(connect_matrix, regions_distances, years, concentrations=t0_concentration, iter_max=iter_max, beta0=beta0)
         beta0 += beta_step
         connect = simulation.calculate_connect()
@@ -281,12 +281,14 @@ def dijkstra(matrix):
     return distance
 
 def main():
-    try:
-        category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
-    except Exception as e:
-        logging.error(e)
-        category = 'ALL'
-    if len(category) < 2: category = 'ALL'
+    category = sys.argv[1] if len(sys.argv) > 1 else ''
+    while category == '':
+        try:
+            category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
+        except Exception as e:
+            logging.error(e)
+            category = 'ALL'
+        category = 'ALL' if category == '' else category
 
     dataset_path = f'../dataset_preparing/dataset_{category}.json'
     output_dir = '../../results'
@@ -297,35 +299,36 @@ def main():
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
     
-    num_cores = ''
-    try:
-        num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
-    except Exception as e:
-        num_cores = multiprocessing.cpu_count()
-        logging.info(f"{num_cores} cores available")
+    num_cores = sys.argv[2] if len(sys.argv) > 2 else -1
+    while num_cores < 1:
+        try:
+            num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
+        except Exception as e:
+            num_cores = multiprocessing.cpu_count()
+            logging.info(f"{num_cores} cores available")
 
-    train_size = -1
+    train_size = sys.argv[3] if len(sys.argv) > 3 else -1
     while train_size <= 0 or train_size > len(dataset.keys()):
         try:
             train_size = int(input(f'Number of training samples [max {len(dataset.keys())}]: '))
         except Exception as e:
             logging.error(e)
 
-    iter_max = -1
+    iter_max = sys.argv[4] if len(sys.argv) > 4 else -1
     while iter_max <= 0:
         try:
             iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 10\'000]: '))
         except Exception as e:
             iter_max = 10000
 
-    beta0_iter = -1
-    while beta0_iter <= 0 :
+    beta_iter = sys.argv[5] if len(sys.argv) > 5 else -1
+    while beta_iter <= 0 :
         try:
-            beta0_iter = int(input('Insert the number of iterations for beta0 estimation: '))
+            beta_iter = int(input('Insert the number of iterations for beta0 estimation: '))
         except Exception as e:
             logging.error(e)
 
-    N_fold = -1
+    N_fold = sys.argv[6] if len(sys.argv) > 6 else -1
     while N_fold < 1:
         try:
             N_fold = int(input('Folds for cross validation: '))
@@ -340,7 +343,6 @@ def main():
     total_rmse = []
     total_pcc = []
     for i in tqdm(range(N_fold)):   
-        logging.info(f"Fold {i+1}/{N_fold}")
         train_set = {}
         while len(train_set.keys()) < train_size:
             t = random.randint(0, len(dataset.keys())-1)
@@ -351,12 +353,10 @@ def main():
         for subj, paths in dataset.items():
             if subj not in train_set:
                 test_set[subj] = paths
-        logging.info(f"Test set of {len(test_set)} elements")
     
         start_time = time()
         for subj, paths in train_set.items():
-            logging.info(f"Patient {subj}")
-            p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, iter_max, beta0_iter, 0.1, queue))
+            p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, iter_max, beta_iter, 0.1, queue))
             p.start()
             procs.append(p)
 
@@ -379,7 +379,6 @@ def main():
         train_time += time() - start_time
 
         for subj, paths in test_set.items():
-            logging.info(f"Patient {subj}")
             p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, iter_max, 1, avg_beta0, queue))
             p.start()
             procs.append(p)
@@ -401,26 +400,26 @@ def main():
         
         total_rmse.append(np.mean(test_rmse_list, axis=0))
         total_pcc.append(np.mean(test_pcc_list, axis=0))
-
-    logging.info(f"Training done in {train_time} seconds")
    
     avg_rmse = np.mean(total_rmse, axis=0)
     avg_pcc = np.mean(total_pcc, axis=0)
 
     pt_avg.add_row([format(avg_rmse, '.2f'), "", format(avg_pcc, '.2f'), ""])     
-    out_file = open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_EMS_{category}.txt", 'w')
+    filename = f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_EMS_{category}.txt"
+    out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
     out_file.write(f"Training set size: {train_size}\n")
     out_file.write(f"Testing set size: {len(dataset.keys())-train_size}\n")
     out_file.write(f"Iterations per patient: {iter_max}\n")
-    out_file.write(f"Iterations per beta0: {beta0_iter}\n")
+    out_file.write(f"Iterations per beta0: {beta_iter}\n")
     out_file.write(f"Folds: {N_fold}\n")
     out_file.write(f"Elapsed time for training (s): {format(train_time, '.2f')}\n")
     out_file.write(f"Average b0: {np.mean(train_b0s, axis=0)}\n")
     out_file.write(pt_avg.get_string())
     out_file.close()
+    logging.info(f"Results saved in {filename}")
         
 if __name__=="__main__":
     main()

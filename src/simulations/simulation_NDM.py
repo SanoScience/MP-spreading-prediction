@@ -11,6 +11,7 @@ import os
 import logging
 from glob import glob
 import random
+import sys
 from time import time
 from turtle import shape
 import pandas as pd
@@ -149,7 +150,7 @@ def drop_data_in_connect_matrix(connect_matrix, missing_labels=[35, 36, 81, 82])
     connect_matrix = np.delete(connect_matrix, index_to_remove, axis=1) 
     return connect_matrix
 
-def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue=None):    
+def run_simulation(subject, paths, output_dir, beta=1, step=1, beta_iter=100, queue=None):    
     ''' Run simulation for single patient. '''
 
     subject_output_dir = os.path.join(output_dir, subject)
@@ -160,8 +161,6 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])
-        logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
-        logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     except Exception as e:
         logging.error(e)
         return
@@ -169,7 +168,7 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
     min_rmse = -1
     opt_beta = None
     opt_pcc = None
-    for _ in range(N_runs):
+    for _ in range(beta_iter):
         try:
             simulation = DiffusionSimulation(connect_matrix, beta, t0_concentration)
             t1_concentration_pred = simulation.run()
@@ -193,10 +192,6 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
             continue
 
         beta += step
-
-    logging.info(f'Optimal beta was {opt_beta}')
-    logging.info(f'Minimum rmse for subject {subject} is: {min_rmse:.2f}')
-    logging.info(f'Corresponding Pearson correlation coefficient for subject {subject} is: {opt_pcc:.2f}')
     
     '''
     visualize_terminal_state_comparison(t0_concentration, 
@@ -213,12 +208,14 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
 ### MULTIPROCESSING ###
 
 def main():
-    try:
-        category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
-    except Exception as e:
-        logging.error(e)
-        category = 'ALL'
-    if len(category) < 2: category = 'ALL'
+    category = sys.argv[1] if len(sys.argv) > 1 else ''
+    while category == '':
+        try:
+            category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
+        except Exception as e:
+            logging.error(e)
+            category = 'ALL'
+        category = 'ALL' if category == '' else category
 
     dataset_path = f'../dataset_preparing/dataset_{category}.json'
     output_dir = '../../results'
@@ -229,35 +226,34 @@ def main():
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
     
-    num_cores = ''
-    try:
-        num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
-    except Exception as e:
-        num_cores = multiprocessing.cpu_count()
-        logging.info(f"{num_cores} cores available")
+    num_cores = sys.argv[2] if len(sys.argv) > 2 else -1
+    while num_cores < 1:
+        try:
+            num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
+        except Exception as e:
+            num_cores = multiprocessing.cpu_count()
+            logging.info(f"{num_cores} cores available")
 
-    train_size = -1
+    train_size = sys.argv[3] if len(sys.argv) > 3 else -1
     while train_size <= 0 or train_size > len(dataset.keys()):
         try:
             train_size = int(input(f'Number of training samples [max {len(dataset.keys())}]: '))
         except Exception as e:
-            print(e)
-            continue
+            logging.error(e)
 
-    N_runs = ''
-    while not isinstance(N_runs, int) or N_runs < 0:
+    beta_iter = sys.argv[5] if len(sys.argv) > 5 else -1
+    while beta_iter <= 0 :
         try:
-            N_runs = int(input('Number of iterations for Beta optimization: '))
+            beta_iter = int(input('Insert the number of iterations for beta0 estimation: '))
         except Exception as e:
-            print(e)
-            continue
+            logging.error(e)
 
-    N_fold = ''
-    while not isinstance(N_fold, int) or N_fold < 0:
+    N_fold = sys.argv[6] if len(sys.argv) > 6 else -1
+    while N_fold < 1:
         try:
-            N_fold = int(input('Number of folds for cross validation of results: '))
+            N_fold = int(input('Folds for cross validation: '))
         except Exception as e:
-            print(e)
+            logging.error(e)
             continue
     
     train_beta = []
@@ -267,8 +263,6 @@ def main():
     test_pcc = []
     train_time = 0
     for i in tqdm(range(N_fold)):
-        logging.info(f"Fold {i+1}/{N_fold}")
-
         train_set = {}
         while len(train_set.keys()) < train_size:
             t = random.randint(0, len(dataset.keys())-1)
@@ -280,13 +274,13 @@ def main():
             if subj not in train_set:
                 test_set[subj] = paths
 
-        # Training ('beta' in increased of 'step' for 'N_runs' iterations)
+        # Training ('beta' in increased of 'step' for 'beta_iter' iterations)
         procs = []
         start_time = time()
         queue = multiprocessing.Queue()
         for subj, paths in train_set.items():
             logging.info(f"Patient {subj}")
-            p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, 1, 1, N_runs, queue))
+            p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, 1, 1, beta_iter, queue))
             p.start()
             procs.append(p)
 
@@ -311,17 +305,11 @@ def main():
         avg_beta = np.mean(train_beta, axis=0)
         train_avg_rmse = np.mean(train_rmse, axis=0)
         train_avg_pcc = np.mean(train_pcc, axis=0)
-
-        logging.info(f"Average Beta from training set: {avg_beta}")
-        logging.info(f"rmse values on training set:\n{train_rmse}")
-        logging.info(f"Average rmse on training set: {train_avg_rmse}")
-        logging.info(f"Average Pearson Correlation Coefficient on training set: {train_avg_pcc}")
     
         # Testing (use the learned 'avg_beta' without changing it)
         procs = []
         queue = multiprocessing.Queue()
         for subj, paths in test_set.items():
-            logging.info(f"Patient {subj}")
             p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, avg_beta, 0, 1, queue))
             p.start()
             procs.append(p)
@@ -343,19 +331,20 @@ def main():
 
         test_avg_rmse = np.mean(test_rmse, axis=0)
         test_avg_pcc = np.mean(test_pcc, axis=0)
-        logging.info(f"Average rmse on test set (with beta={avg_beta}): {format(test_avg_rmse, '.2f')}")
-        logging.info(f"Average Pearson Correlation Coefficient on test set (with beta={avg_beta}): {format(test_avg_pcc, '.2f')}")
         pt_avg.add_row([format(test_avg_rmse, '.2f'), "", format(test_avg_pcc, '.2f'), ""])
 
-        out_file= open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_{category}.txt", 'w')
+        filename = f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_{category}.txt"
+        out_file= open(filename, 'w')
         out_file.write(f"Category: {category}\n")
         out_file.write(f"Cores: {num_cores}\n")
         out_file.write(f"Subjects: {len(dataset.keys())}\n")
         out_file.write(f"Training set size: {train_size}\n")
         out_file.write(f"Testing set size: {len(dataset.keys()) - train_size}\n")
-        out_file.write(f"Iterations for Beta estimation: {N_runs}\n")
+        out_file.write(f"Iterations for Beta estimation: {beta_iter}\n")
         out_file.write(f"Folds: {N_fold}\n")
         out_file.write(f"Elapsed time for training (s): {format(train_time, '.2f')}\n")
+        out_file.close()
+        logging.info(f"Results saved in {filename}")
 
 if __name__ == '__main__':
     main()
