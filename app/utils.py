@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import nibabel
 
-COEFF_PATH = './data/MAR_model/coeff_matrix.csv' # path to MAR model coefficients matrix
-ATLAS_PATH = './data/atlas/aal.nii.gz'           # path to brain atlas 
+COEFF_PATH = './data/MAR_model/A_matrix_MAR.csv' # path to MAR model coefficients matrix
+ATLAS_PATH = './data/atlas/AAL3v1_1mm.nii.gz'    # path to brain atlas 
 
 def load_coeff_matrix():
     data = np.genfromtxt(COEFF_PATH, delimiter=',')
@@ -36,9 +36,11 @@ def prepare_atlas_with_concentrations(concentration):
     atlas = load_atlas()
     regions = np.unique(atlas).astype('int')
     
-    # insert MP concentration = 0 for background
+    # insert MP concentration = 0 for background and missing regions
     concentration = list(concentration)
-    concentration.insert(0, 0)
+    for idx in [0, 35, 36, 81, 82]: # missing regions labels
+        concentration.insert(idx, 0)
+    
     
     for region_idx in regions:
         atlas = np.where(atlas == region_idx, concentration[region_idx], atlas)

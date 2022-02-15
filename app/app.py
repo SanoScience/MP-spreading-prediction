@@ -17,10 +17,12 @@ def upload_new_data(caption):
         return data
     
 def visualize_concentration_lineplot(input_vec, output_vec): 
+    # some labels are missing in the atlas - create custom index
+    region_labels = np.concatenate((np.arange(1, 35), np.arange(37, 81), np.arange(83, 171)), axis=None)
     chart_df = pd.DataFrame({
         't0': input_vec,
         't1 pred': output_vec
-    }) 
+    }, index=region_labels) 
     
     fig = px.line(chart_df, markers=True, height=500, width=1000)
     fig.update_layout(
@@ -30,11 +32,11 @@ def visualize_concentration_lineplot(input_vec, output_vec):
 
     return fig
 
-def visualize_concentration_image(brain):
+def visualize_concentration_image(brain, sliced_axis=0):  
     brain = np.rot90(brain)
-    fig = px.imshow(brain[:, :, :].T, animation_frame=0, 
+    fig = px.imshow(brain[:, :, :].T, animation_frame=sliced_axis, 
                     color_continuous_scale='Reds',
-                    zmin=0)
+                    zmin=0, width=1000)
     return fig
 
 @st.cache
@@ -66,9 +68,9 @@ def main():
         st.text('Visualization')
         fig1 = visualize_concentration_lineplot(t0_concentration, t1_concentration_pred)
         st.plotly_chart(fig1)
-        
-        fig2 = visualize_concentration_image(region_concentrations)
-        st.plotly_chart(fig2)
+
+        fig_col1 = visualize_concentration_image(region_concentrations)
+        st.plotly_chart(fig_col1)
         
         st.subheader('Download')
         st.download_button(
