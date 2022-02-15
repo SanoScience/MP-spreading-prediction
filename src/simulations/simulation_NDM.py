@@ -104,7 +104,7 @@ class DiffusionSimulation:
         #xt = x_prev - timestep * self.beta * self.L @ x_prev
 
         # where x(t) = U * e^(-lambda*B*t) * U^(-1) * x0
-        step = self.eigvecs * np.exp(-self.eigvals @ self.beta @ timestep) * np.linalg.inv(self.eigvecs + 1e-10) @ x_prev
+        step = self.eigvecs @ np.exp(-self.eigvals * self.beta * timestep) @ np.linalg.inv(self.eigvecs + 1e-10) @ x_prev
         xt = x_prev - step
 
         return xt
@@ -112,8 +112,12 @@ class DiffusionSimulation:
     def iterate_spreading_by_Julien(self):
         diffusion = [self.diffusion_init]  
         
-        for i in range(self.iterations):
-            next_step = self.integration_step_by_Julien(diffusion[-1], self.timestep)
+        for _ in range(self.iterations):
+            try:
+                next_step = self.integration_step_by_Julien(diffusion[-1], self.timestep)
+            except Exception as e:
+                logging.error(e)
+                break
             diffusion.append(next_step)  
             
         return np.asarray(diffusion) 
@@ -159,33 +163,34 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
         logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
         logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     except Exception as e:
-        print(e)
+        logging.error(e)
         return
 
     min_rmse = -1
     opt_beta = None
     opt_pcc = None
     for _ in range(N_runs):
-        simulation = DiffusionSimulation(connect_matrix, beta, t0_concentration)
         try:
+            simulation = DiffusionSimulation(connect_matrix, beta, t0_concentration)
             t1_concentration_pred = simulation.run()
             simulation.save_diffusion_matrix(subject_output_dir)
             simulation.save_terminal_concentration(subject_output_dir)
+            '''
+            visualize_diffusion_timeplot(simulation.diffusion_final.T, 
+                                        simulation.timestep,
+                                        simulation.t_total,
+                                        save_dir=subject_output_dir)
+            '''
+            rmse = calc_rmse(t1_concentration_pred, t1_concentration)
+            corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+            if rmse < min_rmse or min_rmse == -1:
+                min_rmse = rmse 
+                opt_pcc = corr_coef
+                opt_beta = beta
+
         except Exception as e:
-            print(e)
+            logging.error(e)
             continue
-        '''
-        visualize_diffusion_timeplot(simulation.diffusion_final.T, 
-                                    simulation.timestep,
-                                    simulation.t_total,
-                                    save_dir=subject_output_dir)
-        '''
-        rmse = calc_rmse(t1_concentration_pred, t1_concentration)
-        corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        if rmse < min_rmse or min_rmse == -1:
-            min_rmse = rmse 
-            opt_pcc = corr_coef
-            opt_beta = beta
 
         beta += step
 
@@ -208,8 +213,16 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, N_runs=100, queue
 ### MULTIPROCESSING ###
 
 def main():
-    dataset_path = '../dataset_preparing/dataset_av45.json'
-    output_dir = '../../results' 
+    try:
+        category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
+    except Exception as e:
+        logging.error(e)
+        category = 'ALL'
+    if len(category) < 2: category = 'ALL'
+
+    dataset_path = f'../dataset_preparing/dataset_{category}.json'
+    output_dir = '../../results'
+
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson Correlation", "SD Pearson Correlation"]
 
@@ -221,7 +234,7 @@ def main():
         num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
     except Exception as e:
         num_cores = multiprocessing.cpu_count()
-    logging.info(f"{num_cores} cores available")
+        logging.info(f"{num_cores} cores available")
 
     N_runs = ''
     while not isinstance(N_runs, int) or N_runs < 0:
@@ -230,7 +243,6 @@ def main():
         except Exception as e:
             print(e)
             continue
-    logging.info(f'Doing {N_runs} Beta optimization steps')
 
     train_size = -1
     while train_size <= 0 or train_size > len(dataset.keys()):
@@ -239,7 +251,6 @@ def main():
         except Exception as e:
             print(e)
             continue
-    logging.info(f"Train set of {train_size} elements")
 
     N_fold = ''
     while not isinstance(N_fold, int) or N_fold < 0:
@@ -248,7 +259,6 @@ def main():
         except Exception as e:
             print(e)
             continue
-    logging.info(f'Using {N_fold}-fold cross validation steps')
     
     train_beta = []
     train_rmse = []
@@ -269,7 +279,6 @@ def main():
         for subj, paths in dataset.items():
             if subj not in train_set:
                 test_set[subj] = paths
-        logging.info(f"Test set of {len(test_set)} elements")
 
         # Training ('beta' in increased of 'step' for 'N_runs' iterations)
         procs = []
@@ -293,7 +302,8 @@ def main():
         train_time += time() - start_time
     
         # [subject, opt_beta, min_rmse]
-        for subj, b, err, pcc in queue:
+        while not queue.empty():
+            subj, b, err, pcc = queue.get()
             train_beta.append(b)
             train_rmse.append(err)
             train_pcc.append(pcc)
@@ -326,16 +336,19 @@ def main():
             p.join()
     
         # [opt_beta, min_rmse]
-        for subj, _, err, pcc in queue:
+        while not queue.empty():
+            subj, _, err, pcc = queue.get()
             test_rmse.append(err)
             test_pcc.append(pcc)
+
         test_avg_rmse = np.mean(test_rmse, axis=0)
         test_avg_pcc = np.mean(test_pcc, axis=0)
         logging.info(f"Average rmse on test set (with beta={avg_beta}): {test_avg_rmse}")
         logging.info(f"Average Pearson Correlation Coefficient on test set (with beta={avg_beta}): {test_avg_pcc}")
 
-        out_file= open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_performance.txt", 'w')
+        out_file= open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_{category}.txt", 'w')
         out_file.write(f"Cores: {num_cores}\n")
+        out_file.write(f"Category: {category}\n")
         out_file.write(f"Subjects: {len(dataset.keys())}\n")
         out_file.write(f"Iterations for Patients: {N_runs}\n")
         out_file.write(f"Training set size: {train_size}\n")

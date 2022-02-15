@@ -27,7 +27,7 @@ import re
 logging.basicConfig(level=logging.INFO)
 
 class datasetThread(threading.Thread):
-   def __init__(self, threadID, dataset_dir, subject, queue, tracers= ['av45','fbb','pib'], threshold = 100):
+   def __init__(self, threadID, dataset_dir, subject, queue, tracers= ['av45','fbb','pib'], threshold = 10):
       threading.Thread.__init__(self)
       self.threadID = threadID
       self.dataset_dir = dataset_dir
@@ -95,8 +95,9 @@ def save_dataset(dataset, filename):
         json.dump(dataset, f, indent=4)
 
 if __name__ == '__main__':
-    dataset_filepath = 'dataset_av45.json'           
+    dataset_filepath = 'dataset_{}.json'           
     dataset_dir = '../../data/ADNI/derivatives'
+    categories = ['ALL', 'AD', 'LMCI', 'EMCI', 'CN']
     
     num_cores = ''
     try:
@@ -109,29 +110,29 @@ if __name__ == '__main__':
     subjects = os.listdir(dataset_dir)
     
     print(f'Initial no. of subjects: {len(subjects)}')
-    
-    dataset = {}
-    queueLock = threading.Lock()
-    dictQueue = queue.Queue(len(subjects))
-    for subj in subjects:
-        try:
-            t = datasetThread(threading.active_count(), dataset_dir, subj, dictQueue)
-            t.start()
-            #threads.append(t)
-            while threading.active_count() == num_cores:
-                pass # simply wait
-            
-        except Exception:
-            logging.error(f'No valid data for subject: {subj}')
-            continue 
-    
-    while threading.active_count() > 1:
-        # wait for the termination of all threads (Note that one thread is the current main)
-        pass
-
-    while not dictQueue.empty():
-        element = dictQueue.get()
-        dataset[element[0]] = element[1]
+    for c in categories:
+        dataset = {}
+        queueLock = threading.Lock()
+        dictQueue = queue.Queue(len(subjects))
+        for subj in subjects:
+            if c == 'ALL' or re.match(rf".*{c}.*", subj):
+                try:
+                    t = datasetThread(threading.active_count(), dataset_dir, subj, dictQueue)
+                    t.start()
+                    while threading.active_count() == num_cores+1:
+                        pass # simply wait
+                    
+                except Exception:
+                    logging.error(f'No valid data for subject: {subj}')
+                    continue 
         
-    save_dataset(dataset, dataset_filepath)
-    logging.info(f'Size of the dataset: {len(dataset)}')
+        while threading.active_count() > 1:
+            # wait for the termination of all threads (Note that one thread is the current main)
+            pass
+
+        while not dictQueue.empty():
+            element = dictQueue.get()
+            dataset[element[0]] = element[1]
+        
+        save_dataset(dataset, dataset_filepath.format(c))
+        logging.info(f'Size of the dataset \'{dataset_filepath.format(c)}\': {len(dataset)}')

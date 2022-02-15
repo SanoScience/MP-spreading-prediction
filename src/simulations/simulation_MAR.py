@@ -219,6 +219,7 @@ def sequential_training(dataset, output_dir, maxiter):
     ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
     connect_matrix = None
     for subj, paths in dataset.items():
+        tmp = None
         tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, True, maxiter)
         connect_matrix = tmp if tmp is not None else connect_matrix
     
@@ -246,7 +247,15 @@ def test(conn_matrix, test_set):
     return avg_rmse, avg_pcc
 
 if __name__ == '__main__':
-    dataset_path = '../dataset_preparing/dataset_av45.json'
+
+    try:
+        category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
+    except Exception as e:
+        logging.error(e)
+        category = 'ALL'
+    if len(category) < 2: category = 'ALL'
+
+    dataset_path = f'../dataset_preparing/dataset_{category}.json'
     output_dir = '../../results'
 
     pt_avg = PrettyTable()
@@ -259,7 +268,7 @@ if __name__ == '__main__':
         num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
     except Exception as e:
         num_cores = multiprocessing.cpu_count()
-    logging.info(f"{num_cores} cores available")
+        logging.info(f"{num_cores} cores available")
 
     train_size = -1
     while train_size <= 0 or train_size > len(dataset.keys()):
@@ -268,15 +277,12 @@ if __name__ == '__main__':
         except Exception as e:
             logging.error(e)
             continue
-    logging.info(f"Train set of {train_size} elements")
 
     try:
         maxiter = int(input(f'Number of maximum iterations for each simulation [default {int(2e6)}]: '))
     except Exception as e:
         logging.error(e)
         maxiter = int(2e6)
-
-    logging.info(f"Maximum iterations for each simulation: {maxiter}")
 
     N_fold = ''
     while not isinstance(N_fold, int) or N_fold < 0:
@@ -285,10 +291,12 @@ if __name__ == '__main__':
         except Exception as e:
             logging.error(e)
             continue
-    logging.info(f'Using {N_fold}-folds')
 
-    performance_par = []
-    performance_seq = []
+    total_rmse_par = []
+    total_pcc_par = []
+
+    total_rmse_seq = []
+    total_pcc_seq = []
 
     par_time = 0
     seq_time = 0
@@ -316,14 +324,19 @@ if __name__ == '__main__':
         seq_time += time() - start_time
         logging.info(f"Sequential Training for {i}-th Fold done in {par_time} seconds")
 
-        performance_par.append(test(par_conn_matrix, test_set))
-        performance_seq.append(test(seq_conn_matrix, test_set))
-    
-    avg_rmse_par = np.mean(np.array(performance_par)[:,0], axis=0)
-    avg_pcc_par = np.mean(np.array(performance_par)[:,1], axis=0)
+        rmse_par, pcc_par = test(par_conn_matrix, test_set)
+        total_rmse_par.append(rmse_par)
+        total_pcc_par.append(pcc_par)
 
-    avg_rmse_seq = np.mean(np.array(performance_seq)[:,0], axis=0)
-    avg_pcc_seq = np.mean(np.array(performance_seq)[:,1], axis=0)
+        rmse_seq, pcc_seq = test(seq_conn_matrix, test_set)
+        total_rmse_seq.append(rmse_seq)
+        total_pcc_seq.append(pcc_seq)
+    
+    avg_rmse_par = np.mean(total_rmse_par, axis=0)
+    avg_pcc_par = np.mean(total_pcc_par, axis=0)
+
+    avg_rmse_seq = np.mean(total_rmse_seq, axis=0)
+    avg_pcc_seq = np.mean(total_pcc_seq, axis=0)
 
     pt_avg.add_row(["Parallel", avg_rmse_par, "", avg_pcc_par, ""])
     pt_avg.add_row(["Sequential", avg_rmse_seq, "", avg_pcc_seq, ""])
@@ -331,8 +344,9 @@ if __name__ == '__main__':
     logging.info("Mean RMSE on the whole dataset")
     logging.info(f"Parallel: {avg_rmse_par}")
     logging.info(f"Sequencial: {avg_rmse_seq}")
-    out_file = open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_performance.txt", 'w')
+    out_file = open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_{category}.txt", 'w')
     out_file.write(f"Cores: {num_cores}\n")
+    out_file.write(f"Category: {category}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
     out_file.write(f"Iterations per patient: {maxiter}\n")
     out_file.write(f"Training set size: {train_size}\n")

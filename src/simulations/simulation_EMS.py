@@ -268,8 +268,15 @@ def dijkstra(matrix):
     return distance
 
 def main():
-    dataset_path = '../dataset_preparing/dataset_av45.json'
-    output_dir = '../../results' 
+    try:
+        category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
+    except Exception as e:
+        logging.error(e)
+        category = 'ALL'
+    if len(category) < 2: category = 'ALL'
+
+    dataset_path = f'../dataset_preparing/dataset_{category}.json'
+    output_dir = '../../results'
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
@@ -282,7 +289,7 @@ def main():
         num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
     except Exception as e:
         num_cores = multiprocessing.cpu_count()
-    #logging.info(f"{num_cores} cores available")
+        logging.info(f"{num_cores} cores available")
 
     iter_max = ''
     try:
@@ -323,8 +330,9 @@ def main():
     avg_pcc = np.mean(pcc_list, axis=0)
 
     pt_avg.add_row([avg_rmse, "", avg_pcc, ""])     
-    out_file = open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_EMS_performance.txt", 'w')
+    out_file = open(f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_EMS_{category}.txt", 'w')
     out_file.write(f"Cores: {num_cores}\n")
+    out_file.write(f"Category: {category}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
     out_file.write(f"Iterations per patient: {iter_max}\n")
     out_file.write(f"Elapsed time for training (s): {elapsed_time}\n")
