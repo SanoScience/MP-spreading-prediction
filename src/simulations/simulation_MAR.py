@@ -269,7 +269,7 @@ if __name__ == '__main__':
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
 
-    num_cores = sys.argv[2] if len(sys.argv) > 2 else -1
+    num_cores = int(sys.argv[2]) if len(sys.argv) > 2 else -1
     while num_cores < 1:
         try:
             num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
@@ -277,21 +277,21 @@ if __name__ == '__main__':
             num_cores = multiprocessing.cpu_count()
             logging.info(f"{num_cores} cores available")
 
-    train_size = sys.argv[3] if len(sys.argv) > 3 else -1
+    train_size = int(sys.argv[3]) if len(sys.argv) > 3 else -1
     while train_size <= 0 or train_size > len(dataset.keys()):
         try:
             train_size = int(input(f'Number of training samples [max {len(dataset.keys())}]: '))
         except Exception as e:
             logging.error(e)
 
-    iter_max = sys.argv[4] if len(sys.argv) > 4 else -1
+    iter_max = int(sys.argv[4]) if len(sys.argv) > 4 else -1
     while iter_max <= 0:
         try:
             iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 10\'000]: '))
         except Exception as e:
             iter_max = 10000
 
-    N_fold = sys.argv[5] if len(sys.argv) > 5 else -1
+    N_fold = int(sys.argv[5]) if len(sys.argv) > 5 else -1
     while N_fold < 1:
         try:
             N_fold = int(input('Folds for cross validation: '))
