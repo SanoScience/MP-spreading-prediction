@@ -334,19 +334,13 @@ if __name__ == '__main__':
         rmse_seq, pcc_seq = test(seq_conn_matrix, test_set)
         total_rmse_seq.append(rmse_seq)
         total_pcc_seq.append(pcc_seq)
-    
-    avg_rmse_par = np.mean(total_rmse_par, axis=0)
-    avg_pcc_par = np.mean(total_pcc_par, axis=0)
-
-    avg_rmse_seq = np.mean(total_rmse_seq, axis=0)
-    avg_pcc_seq = np.mean(total_pcc_seq, axis=0)
 
     # Note, these are the matrices from the last training phase (not the 'best of best')
     np.savetxt("../../results/A_matrix_par", par_conn_matrix, delimiter=',')
     np.savetxt("../../results/A_matrix_seq", seq_conn_matrix, delimiter=',')
 
-    pt_avg.add_row(["Parallel", format(avg_rmse_par, '.2f'), "", format(avg_pcc_par, '.2f'), ""])
-    pt_avg.add_row(["Sequential", format(avg_rmse_seq, '.2f'), "", format(avg_pcc_seq, '.2f'), ""])
+    pt_avg.add_row(["Parallel", format(total_rmse_par, '.2f'), format(np.std(total_rmse_par, axis=0), '.2f'), format(total_pcc_par, '.2f'), format(np.std(total_pcc_par, axis=0), '.2f')])
+    pt_avg.add_row(["Sequential", format(total_rmse_seq, '.2f'), format(np.std(total_rmse_seq, axis=0), '.2f'), format(total_pcc_seq, '.2f'), format(np.std(total_pcc_seq, axis=0), '.2f')])
 
     filename = f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_{category}.txt"
     out_file = open(filename, 'w')

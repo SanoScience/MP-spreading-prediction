@@ -395,10 +395,7 @@ if __name__=="__main__":
         total_rmse.append(np.mean(test_rmse_list, axis=0))
         total_pcc.append(np.mean(test_pcc_list, axis=0))
    
-    avg_rmse = np.mean(total_rmse, axis=0)
-    avg_pcc = np.mean(total_pcc, axis=0)
-
-    pt_avg.add_row([format(avg_rmse, '.2f'), "", format(avg_pcc, '.2f'), ""])     
+    pt_avg.add_row([format(np.mean(total_rmse, axis=0), '.2f'), format(np.std(total_rmse, axis=0), '.2f'), format(np.mean(total_pcc, axis=0), '.2f'), format(np.std(total_pcc, axis=0), '.2f')])
     filename = f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_EMS_{category}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")

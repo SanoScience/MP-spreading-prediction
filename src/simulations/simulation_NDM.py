@@ -323,9 +323,7 @@ if __name__ == '__main__':
             test_rmse.append(err)
             test_pcc.append(pcc)
 
-        test_avg_rmse = np.mean(test_rmse, axis=0)
-        test_avg_pcc = np.mean(test_pcc, axis=0)
-        pt_avg.add_row([format(test_avg_rmse, '.2f'), "", format(test_avg_pcc, '.2f'), ""])
+        pt_avg.add_row([format(np.mean(test_rmse, axis=0), '.2f'), format(np.std(test_rmse, axis=0), '.2f'), format(np.mean(test_pcc, axis=0), '.2f'), format(np.std(test_pcc, axis=0), '.2f')])
 
         filename = f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_{category}.txt"
         out_file= open(filename, 'w')
