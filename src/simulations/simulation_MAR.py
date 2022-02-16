@@ -135,12 +135,12 @@ class MARsimulation:
                     logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f} (current eta {self.eta})')
                 '''
                 iter_count += 1
-                self.eta+=1e-12
+                #self.eta+=1e-12
                 prev_A = np.copy(A)
             except FloatingPointError:   
                 self.eta = 1e-10
                 A = np.copy(prev_A)
-                logging.warning(f'Overflow encountered at iteration {iter_count}. Changing starting learning rate to: {self.eta}')
+                logging.warning(f'Overflow encountered at iteration {iter_count}. Resetting learning rate to: {self.eta}')
                 continue
                                           
         if vis_error: visualize_error(error_buffer)
@@ -164,29 +164,31 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
         # load proteins concentration in brain regions
         t0_concentration = load_matrix(paths['baseline']) 
         t1_concentration = load_matrix(paths['followup'])
-        logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
-        logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
+        #logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
+        #logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     except Exception as e:
         logging.error(e)
         logging.error(f"Exception causing abortion of simulation for subject {subject}")
 
+    error = corr_coef = None
     try:
         simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration, iter_max)
         t1_concentration_pred = drop_negative_predictions(simulation.run(norm_opt=2))
-        error = calc_rmse(t1_concentration, t1_concentration_pred)
-        corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        if make_plot: visualize_terminal_state_comparison(  t0_concentration, 
+        #error = calc_rmse(t1_concentration, t1_concentration_pred)
+        #corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+    except Exception as e:
+        logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}") 
+        return None       
+    
+    if make_plot: visualize_terminal_state_comparison(  t0_concentration, 
                                                             t1_concentration_pred,
                                                             t1_concentration,
                                                             subject,
                                                             error, 
                                                             corr_coef)
-        if save_results:
-            save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
-            save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
-    except Exception as e:
-        logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}") 
-        return None       
+    if save_results:
+        save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
+        save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
 
     return simulation.coef_matrix
            
@@ -239,6 +241,7 @@ def test(conn_matrix, test_set):
         except Exception as e:
             logging.error(e)
             logging.error(f"Error in loading data from patient {subj}, skipping...")
+            continue
         else:
             rmse_list.append(rmse)
             pcc_list.append(pcc)
@@ -339,8 +342,8 @@ if __name__ == '__main__':
     np.savetxt("../../results/A_matrix_par", par_conn_matrix, delimiter=',')
     np.savetxt("../../results/A_matrix_seq", seq_conn_matrix, delimiter=',')
 
-    pt_avg.add_row(["Parallel", format(total_rmse_par, '.2f'), format(np.std(total_rmse_par, axis=0), '.2f'), format(total_pcc_par, '.2f'), format(np.std(total_pcc_par, axis=0), '.2f')])
-    pt_avg.add_row(["Sequential", format(total_rmse_seq, '.2f'), format(np.std(total_rmse_seq, axis=0), '.2f'), format(total_pcc_seq, '.2f'), format(np.std(total_pcc_seq, axis=0), '.2f')])
+    pt_avg.add_row(["Parallel", round(np.mean(total_rmse_par), 2), round(np.std(total_rmse_par), 2), round(np.mean(total_pcc_par), 2), round(np.std(total_pcc_par), 2)])
+    pt_avg.add_row(["Sequential", round(np.mean(total_rmse_seq), 2), round(np.std(total_rmse_seq), 2), round(np.mean(total_pcc_seq), 2), round(np.std(total_pcc_seq), 2)])
 
     filename = f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_{category}.txt"
     out_file = open(filename, 'w')
