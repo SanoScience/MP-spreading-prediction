@@ -164,6 +164,8 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, beta_iter=100, qu
     opt_pcc = None
     for _ in range(beta_iter):
         try:
+            beta = (t1_concentration - t0_concentration) @ np.sum(connect_matrix, axis=0) * 0.01
+            logging.info(f'Beta value: {beta}')
             simulation = DiffusionSimulation(connect_matrix, beta, t0_concentration)
             t1_concentration_pred = simulation.run()
             simulation.save_diffusion_matrix(subject_output_dir)
@@ -176,6 +178,7 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, beta_iter=100, qu
             '''
             rmse = calc_rmse(t1_concentration_pred, t1_concentration)
             corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+           
             if rmse < min_rmse or min_rmse == -1:
                 min_rmse = rmse 
                 opt_pcc = corr_coef
