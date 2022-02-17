@@ -98,8 +98,9 @@ def save_dataset(dataset, filename):
         json.dump(dataset, f, indent=4)
 
 if __name__ == '__main__':
+    os.chdir(os.getcwd() + '/../..') # Moving to the root folder of the project
     dataset_filepath = 'dataset_{}.json'           
-    dataset_dir = '../../data/ADNI/derivatives'
+    dataset_dir = f'data/ADNI/derivatives'
     categories = ['ALL', 'AD', 'LMCI', 'EMCI', 'CN']
     
     num_cores = ''

@@ -238,6 +238,8 @@ def test(conn_matrix, test_set):
             pred = conn_matrix @ t0_concentration
             rmse = calc_rmse(t1_concentration, pred)
             pcc = pearson_corr_coef(t1_concentration, pred)[0]
+            if np.isnan(rmse) or np.isinf(rmse): raise Exception("Invalid value of RMSE")
+            if np.isnan(pcc): raise Exception("Invalid value of PCC")
         except Exception as e:
             logging.error(e)
             logging.error(f"Error in loading data from patient {subj}, skipping...")

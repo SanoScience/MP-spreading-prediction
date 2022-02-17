@@ -232,8 +232,8 @@ def run_simulation(paths, output_dir, subject, iter_max, beta_iter, beta0=0.1, q
         try:
             rmse = calc_rmse(t1_concentration, t1_concentration_pred)
             corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-            assert rmse != 'nan' and rmse != 'inf'
-            assert corr_coef != 'nan' and corr_coef != 'inf'
+            if np.isnan(rmse) or np.isinf(rmse): raise Exception("Invalid value of RMSE")
+            if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
         except Exception as e:
             logging.error(e)
             continue
