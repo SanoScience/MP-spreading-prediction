@@ -32,13 +32,18 @@ import networkx as nx
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
 class DiffusionSimulation:
-    def __init__(self, connect_matrix, timestep, concentrations=None):
+    def __init__(self, connect_matrix, t_total, concentrations=None):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
-        Otherwise: manually choose initial seeds and concentrations. '''
+        Otherwise: manually choose initial seeds and concentrations.
+        t_total: gap between baseline and followup PET (in years)
+            timestep = t_total / (iterations * 10)
+            iterations = t_total / (timestep * 10)
+            t_total = timestep * iterations * 10
+        Putting iterations to '1' and for t_total = 2 years, the timestep is 0.02
+        '''
         self.rois = 166 
-        self.t_total = 2 # total length of the simulation in years
-        self.timestep = timestep # equivalent to 7.3 days per time step
-        self.iterations = int(self.t_total / self.timestep) # 200 iterations
+        self.t_total = t_total # total length of the simulation in years
+        self.timestep = self.t_total / 10 
         self.cm = connect_matrix
         if concentrations is not None: 
             #logging.info(f'Loading concentration from PET files.')
@@ -77,9 +82,7 @@ class DiffusionSimulation:
             if inverse_log: self.calc_exponent()
 
             self.calc_laplacian()     
-            self.beta = []
-            for i in range(len(self.eigvals)):
-                self.beta.append(self.eigvals[i] / self.diffusion_init[i] if self.diffusion_init[i] != 0 else 0)
+            self.beta = 0.1
             self.diffusion_final = self.iterate_spreading()
 
             if downsample: 
@@ -94,23 +97,22 @@ class DiffusionSimulation:
         # methods proposed by Julien Lefevre during Marseille Brainhack 
         step = 0
         try:
-            exp = np.exp(self.beta @ self.eigvals * -self.t_total)
-            step = self.eigvecs * exp * self.eigvecs @  self.diffusion_init * self.timestep
+            exp = np.exp(self.beta * self.eigvals * -1)
+            step = self.eigvecs * exp * self.eigvecs @  self.diffusion_init
         except Exception as e:
             logging.error(e)
-        xt = x_prev + step
+        xt = x_prev + step * self.timestep
         return xt
     
     def iterate_spreading(self):
         diffusion = [self.diffusion_init]  
         
-        for _ in range(self.iterations):
-            try:
-                next_step = self.integration_step(diffusion[-1])
-            except Exception as e:
-                logging.error(e)
-                break
-            diffusion.append(next_step)  
+        try:
+            next_step = self.integration_step(diffusion[-1])
+        except Exception as e:
+            logging.error(e)
+            #break
+        diffusion.append(next_step)  
             
         return np.asarray(diffusion, dtype=object) 
  
@@ -135,7 +137,7 @@ class DiffusionSimulation:
         np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
                    self.diffusion_final[-1, :], delimiter=',')
 
-def run_simulation(subject, paths, output_dir, delta_t, queue=None):    
+def run_simulation(subject, paths, output_dir, t_total, queue=None):    
     ''' Run simulation for single patient. '''
 
     subject_output_dir = os.path.join(output_dir, subject)
@@ -151,7 +153,7 @@ def run_simulation(subject, paths, output_dir, delta_t, queue=None):
         return
 
     try:
-        simulation = DiffusionSimulation(connect_matrix, delta_t, t0_concentration)
+        simulation = DiffusionSimulation(connect_matrix, t_total, t0_concentration)
         t1_concentration_pred = simulation.run()
         simulation.save_diffusion_matrix(subject_output_dir)
         simulation.save_terminal_concentration(subject_output_dir)
@@ -168,7 +170,7 @@ def run_simulation(subject, paths, output_dir, delta_t, queue=None):
     except Exception as e:
         logging.error(e)
         return
-    '''    
+    '''
     visualize_terminal_state_comparison(t0_concentration, 
                                         t1_concentration_pred,
                                         t1_concentration,
@@ -210,13 +212,12 @@ if __name__ == '__main__':
             num_cores = multiprocessing.cpu_count()
             logging.info(f"{num_cores} cores available")
 
-    delta_t = int(sys.argv[5]) if len(sys.argv) > 5 else -1
-    while delta_t <= 0:
+    t_total = int(sys.argv[3]) if len(sys.argv) > 3 else -1
+    while t_total < 1:
         try:
-            delta_t = int(input('Insert the time step you want to use [default is 0.01, equivalent to 7 days in a time window of 2 years]: '))
+            t_total = int(input('Insert the time gap (in years) between baseline and followup [default is 2]: '))
         except Exception as e:
-            delta_t = 0.01
-            logging.info(f"Using a timestep of {delta_t}")
+            t_total = 2
     
     rmse_list = []
     pcc_list = []
@@ -229,7 +230,7 @@ if __name__ == '__main__':
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, delta_t, queue))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, t_total, queue))
         p.start()
         procs.append(p)
 
@@ -255,7 +256,6 @@ if __name__ == '__main__':
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
-    out_file.write(f"Time step used: {delta_t}\n")
     out_file.write(f"Elapsed time (s): {format(total_time, '.2f')}\n")
     out_file.write(pt_avg.get_string())
     out_file.close()

@@ -242,7 +242,6 @@ def test(conn_matrix, test_set):
             if np.isnan(pcc): raise Exception("Invalid value of PCC")
         except Exception as e:
             logging.error(e)
-            logging.error(f"Error in loading data from patient {subj}, skipping...")
             continue
         else:
             rmse_list.append(rmse)
@@ -256,6 +255,7 @@ def test(conn_matrix, test_set):
     return avg_rmse, avg_pcc
 
 if __name__ == '__main__':
+    os.chdir(os.getcwd()+'/../../')
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
         try:
@@ -265,8 +265,8 @@ if __name__ == '__main__':
             category = 'ALL'
         category = 'ALL' if category == '' else category
 
-    dataset_path = f'../dataset_preparing/dataset_{category}.json'
-    output_dir = '../../results'
+    dataset_path = f'src/dataset_preparing/dataset_{category}.json'
+    output_dir = 'results'
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Type", "Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
@@ -341,13 +341,13 @@ if __name__ == '__main__':
         total_pcc_seq.append(pcc_seq)
 
     # Note, these are the matrices from the last training phase (not the 'best of best')
-    np.savetxt("../../results/A_matrix_par", par_conn_matrix, delimiter=',')
-    np.savetxt("../../results/A_matrix_seq", seq_conn_matrix, delimiter=',')
+    np.savetxt("results/A_matrix_par", par_conn_matrix, delimiter=',')
+    np.savetxt("results/A_matrix_seq", seq_conn_matrix, delimiter=',')
 
     pt_avg.add_row(["Parallel", round(np.mean(total_rmse_par), 2), round(np.std(total_rmse_par), 2), round(np.mean(total_pcc_par), 2), round(np.std(total_pcc_par), 2)])
     pt_avg.add_row(["Sequential", round(np.mean(total_rmse_seq), 2), round(np.std(total_rmse_seq), 2), round(np.mean(total_pcc_seq), 2), round(np.std(total_pcc_seq), 2)])
 
-    filename = f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_{category}.txt"
+    filename = f"results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_{category}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")
