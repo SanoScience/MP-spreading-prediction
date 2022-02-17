@@ -89,6 +89,18 @@ python3 simulation_NDM.py
     ├── dataset_preparing           # dataset preparation: input and output for MAR and simulations 
     │   ├── create_dataset.py
     │   ├── dataset_av45.json
+    ├── preprocessing               # preprocessing scripts 
+    │   ├── main.py
+    │   └── utils
+    │       ├── brain_extraction.py
+    │       ├── brain_segmentation.py
+    │       ├── cerebellum_normalization.py
+    │       ├── denoising.py
+    │       ├── eddy_correction.py
+    │       ├── flatten.py
+    │       ├── gibbs.py
+    │       ├── motion_correction.py
+    │       └── registration.py
     ├── simulations                 # simulation scripts 
     │   ├── simulation_NDM.py 
     │   ├── simulation_EMS.py

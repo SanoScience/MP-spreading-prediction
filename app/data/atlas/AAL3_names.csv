@@ -1,0 +1,89 @@
+NO.;ANATOMICAL DESCRIPTION;LABEL;POSSIBLE ABBREVIATION
+1,2;Precentral gyrus;Precentral;PreCG
+3,4;Superior frontal gyrus, dorsolateral;Frontal_Sup;SFG
+5, 6;Middle frontal gyrus;Frontal_Mid;MFG
+7, 8;Inferior frontal gyrus, opercular part;Frontal Inf Oper;IFGoperc
+9, 10;Inferior frontal gyrus, triangular part;Frontal Inf Tri;IFGtriang
+11, 12;IFG pars orbitalis;Frontal Inf Orb;IFGorb
+13, 14;Rolandic operculum;Rolandic Oper;ROL
+15, 16;Supplementary motor area;Supp_Motor_Area;SMA
+17, 18;Olfactory cortex;Olfactory;OLF
+19, 20;Superior frontal gyrus, medial;Frontal Sup_Med;SFGmedial
+21, 22;Superior frontal gyrus, medial orbital;Frontal Med_Orb;PFCventmed
+23, 24;Gyrus rectus;Rectus;REC
+25, 26;Medial orbital gyrus;OFCmed;OFCmed
+27, 28;Anterior orbital gyrus;OFCant;OF Cant
+29, 30;Posterior orbital gyrus;OFCpost;OFCpost
+31, 32;Lateral orbital gyrus;OFClat;OF Clat
+33, 34;Insula;Insula;INS
+37, 38;Middle cingulate & paracingulate gyri;Cingulate Mid;MCC
+39, 40;Posterior cingulate gyrus;Cingulate_Post;PCC
+41, 42;Hippocampus;Hippocampus;HIP
+43, 44;Parahippocampal gyrus;ParaHippocampal;PHG
+45, 46;Amygdala;Amygdala;AMYG
+47, 48;Calcarine fissure and surrounding cortex;Calcarine;CAL
+49, 50;Cuneus;Cuneus;CUN
+51, 52;Lingual gyrus;Lingual;LING
+53, 54;Superior occipital gyrus;Occipital Sup;SOG
+55, 56;Middle occipital gyrus;Occipital Mid;MOG
+57, 58;Inferior occipital gyrus;Occipital_Inf;IOG
+59, 60;Fusiform gyrus;Fusiform;FFG
+61, 62;Postcentral gyrus;Postcentral;POCG
+63, 64;Superior parietal gyrus;Parietal Sup;SPG
+65, 66;Inferior parietal gyrus, excluding supramarginal and angular gyri;Parietal Inf;IPG
+67, 68;SupraMarginal gyrus;SupraMarginal;SMG
+69, 70;Angular gyrus;Angular;ANG
+71, 72;Precuneus;Precuneus;PCUN
+73, 74;Paracentral lobule;Paracentral Lobule;PCL
+75, 76;Caudate nucleus;Caudate;CAU
+77, 78;Lenticular nucleus, Putamen;Putamen;PUT
+79, 80;Lenticular nucleus, Pallidum;Pallidum;PAL
+83, 84;Heschl's gyrus;Heschl;HES
+85, 86;Superior temporal gyrus;Temporal Sup;STG
+87, 88;Temporal pole : superior temporal gyrus;Temporal Pole Sup;TPOsup
+89, 90;Middle temporal gyrus;Temporal Mid;MTG
+91, 92;Temporal pole : middle temporal gyrus;Temporal Pole Mid;TPOmid
+93, 94;Inferior temporal gyrus;Temporal Inf;ITG
+95, 96;Crus I of cerebellar hemisphere;Cerebellum Crus1;CERCRU1
+97, 98;Crus II of cerebellar hemisphere;Cerebellum Crus2;CERCRU2
+99, 100;Lobule III of cerebellar hemisphere;Cerebellum 3;CER3
+101, 102;Lobule IV, V of cerebellar hemisphere;Cerebellum_4_5;CER4_5
+103, 104;Lobule VI of cerebellar hemisphere;Cerebellum_6;CER6
+105, 106;Lobule VIIB of cerebellar hemisphere;Cerebellum_7b;CER7b
+107, 108;Lobule VIII of cerebellar hemisphere;Cerebellum_8;CERS
+109, 110;Lobule IX of cerebellar hemisphere;Cerebellum_9;CERE
+111, 112;Lobule X of cerebellar hemisphere;Cerebellum_10;CER10
+113;Lobule I, II of vermis;Vermis_1_2;VER1_2
+114;Lobule III of vermis;Vermis_3;VER3
+115;Lobule IV, V of vermis;Vermis_4_5;VER4_5
+116;Lobule VI of vermis;Vermis_6;VERO
+117;Lobule VII of vermis;Vermis_7;VERZ
+118;Lobule VIII of vermis;Vermis_8;VER8
+119;Lobule IX of vermis;Vermis_9;VERS
+120;Lobule X of vermis;Vermis_10;VER10
+121, 122;Thalamus, Anteroventral Nucleus;Thal_AV;tAV
+123, 124;Lateral posterior;Thal_LP;tLP
+125, 126;Ventral anterior;Thal_VA;tVA
+127, 128;Ventral lateral;Thal_VL;tVL
+129, 130;Ventral posterolateral;Thal_VPL;tVPL
+131, 132;Intralaminar;Thal_IL;tIL
+133, 134;Reuniens;Thal_Re;tRe
+135, 136;Mediodorsal medial magnocellular;Thal_MDm;tMDm
+137, 138;Mediodorsal lateral parvocellular;Thal_MDI;tMDI
+139, 140;Lateral geniculate;Thal_LGN;TLGN
+141, 142;Medial Geniculate;Thal_MGN;tMGN
+143, 144;Pulvinar anterior;Thal_PuA;tPuA
+145, 146;Pulvinar medial;Thal_PuM;tPuM
+147, 148;Pulvinar lateral;Thal_PuL.;tPul
+149, 150;Pulvinar inferior;Thal_Pul;tPul
+151, 152;Anterior cingulate cortex, subgenual;ACC_sub;ACCsub
+153, 154;Anterior cingulate cortex, pregenual;ACC_pre;ACCpre
+155, 156;Anterior cingulate cortex, supracallosal;ACC_sup;ACCsup
+157, 158;Nucleus accumbens;N_Acc;Nacc
+159, 160;Ventral tegmental area;VTA;VTA
+161, 162;Substantia nigra, pars compacta;SN_PC;SNPC
+163, 164;Substantia nigra, pars reticulata;SN_pr;SNpr
+165, 166;Red nucleus;Red_N;RedN
+167, 168;Locus coeruleus;LC;LC
+169;Raphe nucleus, dorsal;Raphe D;Raphed
+170;Raphe nucleus, median;Raphe_M;RapheM
