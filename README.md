@@ -9,15 +9,19 @@ Aleksandra Pestka
 Recent advancements in Magnetic Resonance Images acquisition have provided better estimations of brain properties through in vivo analysis, providing more additional data. At the same time, the better knowledge of Alzheimer's Disease biological mechanisms and progression allows the theorization of forecasting models on the clinical development of early-stage patients. We deployed the Constrained Multivariate Autoregressive Model (CMAR) with others already existing to provide an objective evaluation metric. Preprocessing steps applied cutting-edge optimization techniques to the data before using them in the models. We predicted the progression of the disease for each individual, using the structural connectivity extracted from MRIs and Positron Emission Tomography (PET) measures for Amyloid-Beta and Tau proteins. Experiments showed the reliability of CMAR in this kind of prediction, becoming a candidate for being an effective diagnostic tool.
 
 ### Methodology 
+Preprocessing Pipeline
+![Preprocessing Pipeline](images/Preprocessing_Pipeline.png)
+
+
 Simulations and models used for predicting th progression of Alzheimer disease:
 - Constrained Multivariate Autoregressive Model (CMAR)
 - Network Diffusion Model (NDM)
-- Epidemic Model Spreading (EMS)
+- Epidemic Spreading Model (ESM)
 
 ### Workflow
 1. Install dependencies.<br>
 To install the necessary dependencies you can use ```pip install -r requirements.txt.``` It is advised to use it within a python3 virtual environment with Python3.9. 
-2. Add atlas file and dataset (DWI + PET) to [data](data) folder according to the following structure:
+2. Add atlas file and dataset (DWI + PET) to [data](data) folder according to the [BIDS format](https://bids.neuroimaging.io/):
 ```bash
 ├── ADNI
 │   └── derivatives
@@ -31,12 +35,22 @@ To install the necessary dependencies you can use ```pip install -r requirements
 │           ...
 └── atlas
 ```
-3. Generate tractography and connectivity matrix from DWI data. 
+3. Perform preprocessing on your dataset
+``` bash
+cd src/preprocessing
+python3 main.py <img_type> <dataset_path> <cores>
+```
+*img_type*: type of image to look up for (dwi, anat or pet)
+*dataset_path*: absolute or relative path of the input folder containing images (it can be '.' if its in the same path). Please note that the pipeline will produce a directory named 'derivatives' inside the specified path.
+*cores*: the number of cores to use (-1 uses all available).
+The CLI options are optional and will be asked before starting the preprocessing if not specified.
+
+4. Generate tractography and connectivity matrix from DWI data. 
 ``` bash
 cd src/tractography
 python3 generate_tractogram_with_CM.py 
 ```
-4. Extract average MP concentration in brain regions. 
+5. Extract average MP concentration in brain regions. 
 ```bash
 cd src/analysis
 python3 extract_regions_means_PET.py

@@ -32,13 +32,13 @@ import networkx as nx
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
 class DiffusionSimulation:
-    def __init__(self, connect_matrix, beta, concentrations=None):
+    def __init__(self, connect_matrix, beta, timestep, concentrations=None):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations. '''
         self.beta = beta 
         self.rois = 166 
         self.t_total = 2 # total length of the simulation in years
-        self.timestep = 0.01 # equivalent to 7.3 days per time step
+        self.timestep = timestep # equivalent to 7.3 days per time step
         self.iterations = int(self.t_total / self.timestep) # 200 iterations
         self.cm = connect_matrix
         if concentrations is not None: 
@@ -144,7 +144,7 @@ class DiffusionSimulation:
         np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
                    self.diffusion_final[-1, :], delimiter=',')
 
-def run_simulation(subject, paths, output_dir, beta=1, step=1, beta_iter=100, queue=None):    
+def run_simulation(subject, paths, output_dir, beta, delta_t, queue=None):    
     ''' Run simulation for single patient. '''
 
     subject_output_dir = os.path.join(output_dir, subject)
@@ -159,36 +159,23 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, beta_iter=100, qu
         logging.error(e)
         return
 
-    min_rmse = -1
-    opt_beta = None
-    opt_pcc = None
-    for _ in range(beta_iter):
-        try:
-            beta = (t1_concentration - t0_concentration) @ np.sum(connect_matrix, axis=0) * 0.01
-            logging.info(f'Beta value: {beta}')
-            simulation = DiffusionSimulation(connect_matrix, beta, t0_concentration)
-            t1_concentration_pred = simulation.run()
-            simulation.save_diffusion_matrix(subject_output_dir)
-            simulation.save_terminal_concentration(subject_output_dir)
-            '''
-            visualize_diffusion_timeplot(simulation.diffusion_final.T, 
-                                        simulation.timestep,
-                                        simulation.t_total,
-                                        save_dir=subject_output_dir)
-            '''
-            rmse = calc_rmse(t1_concentration_pred, t1_concentration)
-            corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-           
-            if rmse < min_rmse or min_rmse == -1:
-                min_rmse = rmse 
-                opt_pcc = corr_coef
-                opt_beta = beta
+    try:
+        simulation = DiffusionSimulation(connect_matrix, beta, delta_t, t0_concentration)
+        t1_concentration_pred = simulation.run()
+        simulation.save_diffusion_matrix(subject_output_dir)
+        simulation.save_terminal_concentration(subject_output_dir)
+        '''
+        visualize_diffusion_timeplot(simulation.diffusion_final.T, 
+                                    simulation.timestep,
+                                    simulation.t_total,
+                                    save_dir=subject_output_dir)
+        '''
+        rmse = calc_rmse(t1_concentration_pred, t1_concentration)
+        corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
 
-        except Exception as e:
-            logging.error(e)
-            continue
-
-        beta += step
+    except Exception as e:
+        logging.error(e)
+        return
     
     '''
     visualize_terminal_state_comparison(t0_concentration, 
@@ -200,7 +187,7 @@ def run_simulation(subject, paths, output_dir, beta=1, step=1, beta_iter=100, qu
                                         save_dir=subject_output_dir)
     '''
     if queue:
-        queue.put([opt_beta, min_rmse, opt_pcc])
+        queue.put([rmse, corr_coef])
     
 ### MULTIPROCESSING ###
 
@@ -238,12 +225,13 @@ if __name__ == '__main__':
         except Exception as e:
             logging.error(e)
 
-    beta_iter = int(sys.argv[5]) if len(sys.argv) > 5 else -1
-    while beta_iter <= 0 :
+    delta_t = int(sys.argv[5]) if len(sys.argv) > 5 else -1
+    while delta_t <= 0:
         try:
-            beta_iter = int(input('Insert the number of iterations for beta0 estimation: '))
+            delta_t = int(input('Insert the time step you want to use [default is 0.01 seconds, equivalent to 7 days in a time window of 2 years]: '))
         except Exception as e:
-            logging.error(e)
+            delta_t = 0.01
+            logging.info(f"Using a timestep of {delta_t} seconds")
 
     N_fold = int(sys.argv[6]) if len(sys.argv) > 6 else -1
     while N_fold < 1:
@@ -271,12 +259,19 @@ if __name__ == '__main__':
             if subj not in train_set:
                 test_set[subj] = paths
 
-        # Training ('beta' in increased of 'step' for 'beta_iter' iterations)
+        # Training ('beta' is calculated for each training patient and then averaged to be applied on testing set)
         procs = []
         start_time = time()
         queue = multiprocessing.Queue()
+        beta_list = []
         for subj, paths in train_set.items():
-            logging.info(f"Patient {subj}")
+            #logging.info(f"Patient {subj}")
+            connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
+            t0_concentration = load_matrix(paths['baseline'])
+            t1_concentration = load_matrix(paths['followup'])
+            #beta = (t1_concentration - t0_concentration) @ np.sum(connect_matrix, axis=0) * delta_t
+            #beta_list.append(beta)
+            '''
             p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, 1, 1, beta_iter, queue))
             p.start()
             procs.append(p)
@@ -289,25 +284,19 @@ if __name__ == '__main__':
             
         for p in procs:
             p.join()
-
-        train_time += time() - start_time
+        '''
+        
+        #avg_beta = np.mean(beta_list)
     
-        # [subject, opt_beta, min_rmse]
-        while not queue.empty():
-            b, err, pcc = queue.get()
-            train_beta.append(b)
-            train_rmse.append(err)
-            train_pcc.append(pcc)
-
-        avg_beta = np.mean(train_beta, axis=0)
-        train_avg_rmse = np.mean(train_rmse, axis=0)
-        train_avg_pcc = np.mean(train_pcc, axis=0)
-    
-        # Testing (use the learned 'avg_beta' without changing it)
+        # Testing (use the learned 'avg_beta')
         procs = []
         queue = multiprocessing.Queue()
         for subj, paths in test_set.items():
-            p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, avg_beta, 0, 1, queue))
+            connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
+            t0_concentration = load_matrix(paths['baseline'])
+            t1_concentration = load_matrix(paths['followup'])
+            avg_beta = (t1_concentration - t0_concentration) @ np.sum(connect_matrix, axis=0) * delta_t
+            p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, avg_beta, delta_t, queue))
             p.start()
             procs.append(p)
 
@@ -322,7 +311,7 @@ if __name__ == '__main__':
     
         # [opt_beta, min_rmse]
         while not queue.empty():
-            _, err, pcc = queue.get()
+            err, pcc = queue.get()
             test_rmse.append(err)
             test_pcc.append(pcc)
 
@@ -335,7 +324,8 @@ if __name__ == '__main__':
         out_file.write(f"Subjects: {len(dataset.keys())}\n")
         out_file.write(f"Training set size: {train_size}\n")
         out_file.write(f"Testing set size: {len(dataset.keys()) - train_size}\n")
-        out_file.write(f"Iterations for Beta estimation: {beta_iter}\n")
+        out_file.write(f"Time step used (s): {delta_t}\n")
+        out_file.write(f"Average beta used for testing: {avg_beta}\n")
         out_file.write(f"Folds: {N_fold}\n")
         out_file.write(f"Elapsed time for training (s): {format(train_time, '.2f')}\n")
         out_file.close()
