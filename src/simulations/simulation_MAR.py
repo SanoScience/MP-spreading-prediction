@@ -255,6 +255,8 @@ def test(conn_matrix, test_set):
     return avg_rmse, avg_pcc
 
 if __name__ == '__main__':
+    total_time = time()
+
     os.chdir(os.getcwd()+'/../../')
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
@@ -347,6 +349,7 @@ if __name__ == '__main__':
     pt_avg.add_row(["Parallel", round(np.mean(total_rmse_par), 2), round(np.std(total_rmse_par), 2), round(np.mean(total_pcc_par), 2), round(np.std(total_pcc_par), 2)])
     pt_avg.add_row(["Sequential", round(np.mean(total_rmse_seq), 2), round(np.std(total_rmse_seq), 2), round(np.mean(total_pcc_seq), 2), round(np.std(total_pcc_seq), 2)])
 
+    total_time = time() - total_time
     filename = f"results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_{category}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
@@ -358,6 +361,7 @@ if __name__ == '__main__':
     out_file.write(f"Folds: {N_fold}\n")
     out_file.write(f"Elapsed time for \'Parallel\' training (s): {format(par_time, '.2f')}\n")
     out_file.write(f"Elapsed time for \'Sequential\' training (s): {format(seq_time, '.2f')}\n")
+    out_file.write(f"Total time (s): {format(total_time, '.2f')}\n")
     out_file.write(pt_avg.get_string())
     out_file.close()
     logging.info(f"Results saved in {filename}")

@@ -275,6 +275,8 @@ def dijkstra(matrix):
     return distance
 
 if __name__=="__main__":
+    total_time = time()
+
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
         try:
@@ -396,6 +398,8 @@ if __name__=="__main__":
         total_pcc.append(np.mean(test_pcc_list, axis=0))
    
     pt_avg.add_row([format(np.mean(total_rmse, axis=0), '.2f'), format(np.std(total_rmse, axis=0), '.2f'), format(np.mean(total_pcc, axis=0), '.2f'), format(np.std(total_pcc, axis=0), '.2f')])
+
+    total_time = time() - total_time
     filename = f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_ESM_{category}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
@@ -407,6 +411,7 @@ if __name__=="__main__":
     out_file.write(f"Iterations per beta0: {beta_iter}\n")
     out_file.write(f"Folds: {N_fold}\n")
     out_file.write(f"Elapsed time for training (s): {format(train_time, '.2f')}\n")
+    out_file.write(f"Total time (s): {format(total_time, '.2f')}\n")
     out_file.write(f"Average b0: {np.mean(train_b0s, axis=0)}\n")
     out_file.write(pt_avg.get_string())
     out_file.close()

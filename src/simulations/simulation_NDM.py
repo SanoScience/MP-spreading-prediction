@@ -185,6 +185,8 @@ def run_simulation(subject, paths, output_dir, t_total, queue=None):
 ### MULTIPROCESSING ###
 
 if __name__ == '__main__':
+    total_time = time()
+
     os.chdir(os.getcwd()+'/../../')
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
@@ -221,7 +223,6 @@ if __name__ == '__main__':
     
     rmse_list = []
     pcc_list = []
-    total_time = 0
     
     # Testing (use the learned 'avg_beta')
     procs = []
@@ -251,6 +252,7 @@ if __name__ == '__main__':
 
     pt_avg.add_row([format(np.mean(rmse_list, axis=0), '.2f'), format(np.std(rmse_list, axis=0), '.2f'), format(np.mean(pcc_list, axis=0), '.2f'), format(np.std(pcc_list, axis=0), '.2f')])
 
+    total_time = time() - total_time
     filename = f"results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_{category}.txt"
     out_file= open(filename, 'w')
     out_file.write(f"Category: {category}\n")
