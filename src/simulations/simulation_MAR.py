@@ -197,7 +197,7 @@ def parallel_training(dataset, output_dir, num_cores, iter_max):
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
     procs = []
-    for subj, paths in dataset.items():
+    for subj, paths in tqdm(dataset.items()):
         p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, True, iter_max))
         p.start()
         procs.append(p)        
@@ -220,7 +220,7 @@ def parallel_training(dataset, output_dir, num_cores, iter_max):
 def sequential_training(dataset, output_dir, iter_max):
     ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
     connect_matrix = None
-    for subj, paths in dataset.items():
+    for subj, paths in tqdm(dataset.items()):
         tmp = None
         tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, True, iter_max)
         connect_matrix = tmp if tmp is not None else connect_matrix
@@ -230,7 +230,7 @@ def sequential_training(dataset, output_dir, iter_max):
 def test(conn_matrix, test_set):
     rmse_list = []
     pcc_list = []
-    for subj, paths in test_set.items():
+    for subj, paths in tqdm(test_set.items()):
         try:
             t0_concentration = load_matrix(paths['baseline'])
             t1_concentration = load_matrix(paths['followup'])

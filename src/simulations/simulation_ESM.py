@@ -31,23 +31,25 @@ from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_msle
 
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
-class EMS_Simulation:
+class ESMSimulation:
     ''' A class to simulate the spread of misfolded beta_amyloid. '''
 
-    def __init__(self, connect_matrix, regions_distances, years, concentrations=None, iter_max=10000, beta0=0.1):
-        self.N_regions = 166    # number of brain regions 
+    def __init__(self, connect_matrix, regions_distances, years=2, timestep=0.002, concentrations=None, beta0=0.1, sigma_noise=1, gini_coeff = 0.5):
+        self.n_regions = 166    # number of brain regions 
         self.speed = 1          # propagation velocity
-        self.dt = 0.0001          # time step (keep it very small to avoid overflows)
-        self.T_total = years    # total time 
+        self.t_total = years    # total time 
+        self.dt = timestep      # time step
+        self.dt = 0.0001
         self.amy_control = 3    # parameter to control the number of voxels in which beta-amyloid may get synthesized (?)
         self.prob_stay = [0.5 for _ in range(166)]    # the probability of staying in the same region per unit time (0.5)
-        self.trans_rate = 116     # a scalar value, controlling the baseline infectivity
-        self.iter_max = iter_max      # max no. of iterations
+        self.iterations = int(self.t_total / (self.dt * 100))
         self.mu_noise = 0       # mean of the additive noise
-        self.sigma_noise = 1    # standard deviation of the additive noise
-        self.gini_coeff = 1     # measure of statistical dispersion in a given system, with value 0 reflecting perfect equality and value 1 corresponding to a complete inequality
-        self.clearance_rate = np.ones(self.N_regions)   
-        self.synthesis_rate = np.ones(self.N_regions)  
+        self.sigma_noise = sigma_noise    # standard deviation of the additive noise
+        self.gini_coeff = gini_coeff     # measure of statistical dispersion in a given system, with value 0 reflecting perfect equality and value 1 corresponding to a complete inequality
+        self.gini_coeff = 1
+        # TODO: consider 0.5 in clearance and synthesization rates
+        self.clearance_rate = np.ones(self.n_regions)   
+        self.synthesis_rate = np.ones(self.n_regions)  
         self.beta0 = beta0
         
         if concentrations is not None: 
@@ -67,7 +69,7 @@ class EMS_Simulation:
             init_concentration (int): initial concentration of misfolded proteins in the seeds. '''
             
         # Store initial misfolded proteins
-        diffusion_init = np.zeros(self.N_regions)
+        diffusion_init = np.zeros(self.n_regions)
         # Seed regions for Alzheimer (according to AAL atlas): 31, 32, 35, 36 (TODO: confirm)
         # assign initial concentration of proteins in this region
         diffusion_init[[31, 32, 35, 36]] = init_concentration
@@ -75,48 +77,69 @@ class EMS_Simulation:
     
     def remove_diagonal(self, matrix):
         # remove diagonal elements from matrix
-        matrix -= np.diag(np.diag(matrix))
+        matrix -= np.diag(matrix)
         return matrix
 
-    def calculate_connect(self):
-        eps = 1e-2
+    def iterate(self):        
+        # dijkstra shortest paths matrix has self connections equal to 0...
         self.regions_distances = self.remove_diagonal(self.regions_distances)
-        self.regions_distances += eps # add small epsilon to avoid dividing by zero
-        self.connect_matrix = self.remove_diagonal(self.connect_matrix)
+        self.regions_distances += 1e-2
+
+        # ... same for CM
+        #self.connect_matrix = self.remove_diagonal(self.connect_matrix)
         
-        connect = self.connect_matrix
-        noise = np.random.normal(self.mu_noise, self.sigma_noise, (self.N_regions, self.N_regions))     
-       
-        Epsilon = np.zeros((self.N_regions, self.N_regions))
+        #self.regions_distances += eps # add small epsilon to avoid dividing by zero
+
+        noise = np.random.normal(self.mu_noise, self.sigma_noise, self.n_regions)     
+        Epsilon = np.zeros((self.n_regions, self.n_regions))
         
-        for i in range(self.N_regions):
-            beta = 1 - np.exp(-self.beta0 * self.prob_stay[i])  # regional probability receiving MP infectous-like agents
+        for i in range(self.n_regions):
+            beta_i = 1 - np.exp(-self.beta0 * self.prob_stay[i])  # regional probability receiving MP infectous-like agents
+            beta_int = (1 - self.gini_coeff) * beta_i
             t = 0
-            for j in range(self.N_regions):
+            for j in range(self.n_regions):
+                beta_j = 1 - np.exp(-self.beta0 * self.prob_stay[j])
+                b_ext = self.gini_coeff * beta_j
                 if i != j:
-                    t +=  beta * self.prob_stay[i] * (self.connect_matrix[i, j] * self.gini_coeff + self.connect_matrix[i, i] * (1 - self.gini_coeff))
+                    t +=  self.connect_matrix[i, j] * b_ext * self.prob_stay[j] 
+            t += self.connect_matrix[i, i] * beta_int * self.prob_stay[i]
             Epsilon[i] = t
+
+        #probability of being clear of MP at time t
+        # delta = np.exp(-self.diffusion_init * self.prob_stay)
+        self.clearance_rate = np.exp(-self.diffusion_init * self.prob_stay)
+        connect = (np.ones_like(self.prob_stay) - self.prob_stay) * Epsilon - self.clearance_rate * self.prob_stay + noise
             
         # INTRA-BRAIN EPIDEMIC SPREADING MODEL 
-        connect = (1 - self.prob_stay[i])*Epsilon - self.prob_stay * np.exp(- self.diffusion_init* self.prob_stay) +  noise
+        #connect = (1 - self.prob_stay[i])*Epsilon - self.prob_stay * np.exp(- self.diffusion_init* self.prob_stay) +  noise
             
         # The probability of moving from region i to edge (i,j)
-        sum_line = np.sum(connect, axis=1)
-        connect /= sum_line
+        connect /= np.sum(connect, axis=1)
         return connect
     
+    def run(self):
+        connect = self.iterate()
+        Rnor, Pnor = self.calculate_Rnor_Pnor(connect)
+        Rmis, Pmis = self.calculate_Rmis_Pmis(connect, Rnor, Pnor)
+
+        # visualize_diffusion_timeplot(Rmis, self.dt, self.iterations)
+
+        # predicted vs real plot; take results from the last step
+        return Rmis
+
     def calculate_Rnor_Pnor(self, connect):  
         ''' Calculate and return no. of normal amyloid in regions and paths. '''
-                   
-        Rnor = np.zeros(self.N_regions) # number of  normal amyloid in regions
-        Pnor = np.zeros(self.N_regions) # number of  normal amyloid in paths
+                    
+        Rnor = np.zeros(self.n_regions) # number of  normal amyloid in regions
+        Pnor = np.zeros(self.n_regions) # number of  normal amyloid in paths
 
-        movOut = np.zeros((self.N_regions, self.N_regions))
+        movOut = np.zeros((self.n_regions, self.n_regions))
 
         # moving process
-        for _ in range(self.iter_max):  
-            # movDrt stores the number of proteins towards each region. 
-            # i.e. element in kth row lth col denotes the number of proteins in region k moving towards l
+        for _ in range(self.iterations):
+            # movDrt stores the number of proteins towards each region.
+            # i.e. element in kth row lth col denotes the number 
+            # of proteins in region k moving towards l
             movDrt = Rnor * connect * self.dt
             movDrt = self.remove_diagonal(movDrt)
         
@@ -139,7 +162,7 @@ class EMS_Simulation:
             Rnor = Rnor -  Rnor * (1 - np.exp(- self.clearance_rate * self.dt)) + (self.synthesis_rate * self.amy_control) * self.dt
             if abs(Rnor - Rtmp).all() < (precision * Rtmp).all():
                 break
-    
+
         return Rnor, Pnor
 
     def calculate_Rmis_Pmis(self, connect, Rnor0, Pnor0):
@@ -147,26 +170,26 @@ class EMS_Simulation:
         at each timestep. 
         
         Args:
-            Rnor0 (list): vector with length N_Regions, the population of normal agents in regions before pathogenic spreading 
-            Pnor0 (list): vector with length N_Regions, the population of normal agents in edges before pathogenic spreading 
+            Rnor0 (list): vector with length n_regions, the population of normal agents in regions before pathogenic spreading 
+            Pnor0 (list): vector with length n_regions, the population of normal agents in edges before pathogenic spreading 
         '''
 
         # store results for single timepoint
-        Rmis = np.zeros(self.N_regions)                         # number of misfolded beta-amyloid in regions
-        Pmis = np.zeros((self.N_regions, self.N_regions))       # number of misfolded beta-amyloid in paths
+        Rmis = np.zeros(self.n_regions)                         # number of misfolded beta-amyloid in regions
+        Pmis = np.zeros((self.n_regions, self.n_regions))       # number of misfolded beta-amyloid in paths
 
         # store results at each timepoint
-        Rmis_all = np.zeros((self.N_regions, self.T_total))
-        Pmis_all = np.zeros((self.N_regions, self.N_regions, self.T_total))
+        #Rmis_all = np.zeros((self.n_regions))
+        #Pmis_all = np.zeros((self.n_regions, self.n_regions))
         
         # misfolded protein spreading process
-        movOut_mis = np.zeros((self.N_regions, self.N_regions))
-        movDrt_mis = np.zeros((self.N_regions, self.N_regions))
+        movOut_mis = np.zeros((self.n_regions, self.n_regions))
+        movDrt_mis = np.zeros((self.n_regions, self.n_regions))
 
         # fill with PET data 
         Rmis = self.diffusion_init
         
-        for t in range(self.T_total):
+        for _ in range(self.iterations):
             # moving process
             # misfolded proteins: region -->> paths
             movDrt_mis = Rnor0 * connect * self.dt
@@ -195,12 +218,12 @@ class EMS_Simulation:
             # update
             Rmis = Rmis - Rmis_cleared + N_misfolded + (self.synthesis_rate * self.amy_control) * self.dt
             
-            Rmis_all[:,t] = Rmis # regions
-            Pmis_all[:, :, t] = Pmis # paths
+            #Rmis_all[:] = Rmis # regions
+            #Pmis_all[:, :] = Pmis # paths
             
-        return Rmis_all, Pmis_all
+        return Rmis, Pmis
 
-def run_simulation(paths, output_dir, subject, iter_max, beta_iter, beta0=0.1, queue = None):    
+def run_simulation(paths, output_dir, subject, beta_iter, beta0=0.1, queue = None):    
     subject_output_dir = os.path.join(output_dir, subject)
     if not os.path.exists(subject_output_dir):
         os.makedirs(subject_output_dir)
@@ -213,22 +236,24 @@ def run_simulation(paths, output_dir, subject, iter_max, beta_iter, beta0=0.1, q
         logging.error(e)
         return
 
-    years = 50
+    years = 2
+    timestep = 0.002
     
     regions_distances = dijkstra(connect_matrix)
     beta_step = 0.0001
     opt_beta0 = opt_rmse = opt_pcc = -1
     for _ in range(beta_iter):
-        simulation = EMS_Simulation(connect_matrix, regions_distances, years, concentrations=t0_concentration, iter_max=iter_max, beta0=beta0)
+        simulation = ESMSimulation(connect_matrix, regions_distances, years, timestep, concentrations=t0_concentration, beta0=beta0)
         beta0 += beta_step
-        connect = simulation.calculate_connect()
-        Rnor, Pnor = simulation.calculate_Rnor_Pnor(connect)
-        Rmis_all, Pmis_all = simulation.calculate_Rmis_Pmis(connect, Rnor, Pnor)
+        t1_concentration_pred = simulation.run()
+        #connect = simulation.calculate_connect()
+        #Rnor, Pnor = simulation.calculate_Rnor_Pnor(connect)
+        #Rmis_all, Pmis_all = simulation.calculate_Rmis_Pmis(connect, Rnor, Pnor)
 
-        #visualize_diffusion_timeplot(Rmis_all, simulation.dt, simulation.T_total)
+        #visualize_diffusion_timeplot(Rmis_all, simulation.dt, simulation.t_total)
 
         # predicted vs real plot; take results from the last step
-        t1_concentration_pred = Rmis_all[:, years-1]
+        #t1_concentration_pred = Rmis_all[:, years-1]
         try:
             rmse = calc_rmse(t1_concentration, t1_concentration_pred)
             corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
@@ -239,17 +264,18 @@ def run_simulation(paths, output_dir, subject, iter_max, beta_iter, beta0=0.1, q
             continue
         else:
             if opt_rmse == -1 or rmse < opt_rmse:
+                opt_prediction = t1_concentration_pred
                 opt_rmse = rmse 
                 opt_pcc = corr_coef
                 opt_beta0 = beta0
-        '''
+        
         visualize_terminal_state_comparison(t0_concentration, 
-                                            t1_concentration_pred, 
+                                            opt_prediction, 
                                             t1_concentration, 
                                             subject,
                                             rmse,
                                             corr_coef)
-        '''
+        
         #save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'EMS')
     if queue:
         queue.put([opt_beta0, opt_rmse, opt_pcc])
@@ -274,9 +300,11 @@ def dijkstra(matrix):
                 
     return distance
 
+
 if __name__=="__main__":
     total_time = time()
 
+    os.chdir(os.getcwd()+'/../../')
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
         try:
@@ -286,8 +314,8 @@ if __name__=="__main__":
             category = 'ALL'
         category = 'ALL' if category == '' else category
 
-    dataset_path = f'../dataset_preparing/dataset_{category}.json'
-    output_dir = '../../results'
+    dataset_path = f'src/dataset_preparing/dataset_{category}.json'
+    output_dir = 'results'
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
@@ -310,21 +338,15 @@ if __name__=="__main__":
         except Exception as e:
             logging.error(e)
 
-    iter_max = int(sys.argv[4]) if len(sys.argv) > 4 else -1
-    while iter_max <= 0:
-        try:
-            iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 10\'000]: '))
-        except Exception as e:
-            iter_max = 10000
 
-    beta_iter = int(sys.argv[5]) if len(sys.argv) > 5 else -1
-    while beta_iter <= 0 :
+    beta_iter = int(sys.argv[4]) if len(sys.argv) > 4 else -1
+    while beta_iter <= 0:
         try:
             beta_iter = int(input('Insert the number of iterations for beta0 estimation: '))
         except Exception as e:
             logging.error(e)
 
-    N_fold = int(sys.argv[6]) if len(sys.argv) > 6 else -1
+    N_fold = int(sys.argv[5]) if len(sys.argv) > 5 else -1
     while N_fold < 1:
         try:
             N_fold = int(input('Folds for cross validation: '))
@@ -338,6 +360,7 @@ if __name__=="__main__":
     train_b0s = []
     total_rmse = []
     total_pcc = []
+    initial_beta = 0.1
     for i in tqdm(range(N_fold)):   
         train_set = {}
         while len(train_set.keys()) < train_size:
@@ -352,7 +375,7 @@ if __name__=="__main__":
     
         start_time = time()
         for subj, paths in train_set.items():
-            p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, iter_max, beta_iter, 0.1, queue))
+            p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, beta_iter, initial_beta, queue))
             p.start()
             procs.append(p)
 
@@ -375,7 +398,7 @@ if __name__=="__main__":
         train_time += time() - start_time
 
         for subj, paths in test_set.items():
-            p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, iter_max, 1, avg_beta0, queue))
+            p = multiprocessing.Process(target=run_simulation, args=(paths, output_dir, subj, 1, avg_beta0, queue))
             p.start()
             procs.append(p)
 
@@ -400,14 +423,13 @@ if __name__=="__main__":
     pt_avg.add_row([format(np.mean(total_rmse, axis=0), '.2f'), format(np.std(total_rmse, axis=0), '.2f'), format(np.mean(total_pcc, axis=0), '.2f'), format(np.std(total_pcc, axis=0), '.2f')])
 
     total_time = time() - total_time
-    filename = f"../../results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_ESM_{category}.txt"
+    filename = f"results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_ESM_{category}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
     out_file.write(f"Training set size: {train_size}\n")
     out_file.write(f"Testing set size: {len(dataset.keys())-train_size}\n")
-    out_file.write(f"Iterations per patient: {iter_max}\n")
     out_file.write(f"Iterations per beta0: {beta_iter}\n")
     out_file.write(f"Folds: {N_fold}\n")
     out_file.write(f"Elapsed time for training (s): {format(train_time, '.2f')}\n")
