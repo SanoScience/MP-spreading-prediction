@@ -159,6 +159,7 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, iter_m
         # load connectome ('is' works also with objects, '==' doesn't)
         if connect_matrix is None:
             connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
+            connect_matrix = np.expm1(connect_matrix)
         
         # load proteins concentration in brain regions
         t0_concentration = load_matrix(paths['baseline']) 
