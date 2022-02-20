@@ -148,7 +148,7 @@ class MARsimulation:
         #logging.info(f"Iterations: {iter_count}")
         return A
                   
-def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_results, iter_max, q = None):    
+def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, iter_max, results_stem = ''):    
     ''' Run simulation for single patient. '''
       
     subject_output_dir = os.path.join(output_dir, subject)
@@ -185,9 +185,9 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, save_r
                                                             subject,
                                                             error, 
                                                             corr_coef)
-    if save_results:
-        save_terminal_concentration(subject_output_dir, t1_concentration_pred, 'MAR')
-        save_coeff_matrix(subject_output_dir, simulation.coef_matrix)
+    if results_stem:
+        save_terminal_concentration(subject_output_dir, t1_concentration_pred, results_stem)
+        save_coeff_matrix(subject_output_dir, simulation.coef_matrix, results_stem)
 
     return simulation.coef_matrix
            
@@ -198,7 +198,7 @@ def parallel_training(dataset, output_dir, num_cores, iter_max):
     The final matrix is an average matrix. '''
     procs = []
     for subj, paths in tqdm(dataset.items()):
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, True, iter_max))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, iter_max, 'par_MAR'))
         p.start()
         procs.append(p)        
         while len(procs)%num_cores == 0 and len(procs) > 0:
@@ -212,7 +212,7 @@ def parallel_training(dataset, output_dir, num_cores, iter_max):
     conn_matrices = []
     # read results saved by "run simulation method"
     for subj, _ in dataset.items():
-        conn_matrices.append(load_matrix(os.path.join(output_dir, subj, 'A_matrix_MAR.csv')))
+        conn_matrices.append(load_matrix(os.path.join(output_dir, subj, 'A_par_MAR.csv')))
     
     avg_conn_matrix = np.mean(conn_matrices, axis=0)
     return avg_conn_matrix
@@ -222,7 +222,7 @@ def sequential_training(dataset, output_dir, iter_max):
     connect_matrix = None
     for subj, paths in tqdm(dataset.items()):
         tmp = None
-        tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, True, iter_max)
+        tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, iter_max,  'seq_MAR')
         connect_matrix = tmp if tmp is not None else connect_matrix
     
     return connect_matrix
