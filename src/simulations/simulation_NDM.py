@@ -23,7 +23,7 @@ import numpy as np
 from scipy.stats.stats import pearsonr as pearson_corr_coef, PearsonRConstantInputWarning
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
-from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_rmse
+from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_rmse, prepare_cm
 from datetime import datetime
 from prettytable import PrettyTable
 
@@ -74,12 +74,11 @@ class DiffusionSimulation:
         self.eigvals = np.array(self.eigvals).real # Taking only the real part
         self.inv_eigvecs = np.linalg.inv(self.eigvecs + 1e-12)
                     
-    def run(self, inverse_log=True, downsample=False):
+    def run(self, downsample=False):
         ''' Run simulation. '''
 
         # if values in the connectivity matrix were obtained through logarithm, revert it with an exponential 
         try:
-            if inverse_log: self.calc_exponent()
 
             self.calc_laplacian()     
             self.beta = 0.1
@@ -116,10 +115,6 @@ class DiffusionSimulation:
             
         return np.asarray(diffusion, dtype=object) 
  
-    def calc_exponent(self):
-        ''' Inverse operation to log1p. '''
-        self.cm = np.expm1(self.cm)
- 
     def downsample_matrix(self, matrix, target_len=int(1e3)):
         ''' Take every n-th sample when the matrix is longer than target length. '''
         current_len = matrix.shape[0]
@@ -146,6 +141,7 @@ def run_simulation(subject, paths, output_dir, t_total, queue=None):
       
     try:
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
+        connect_matrix = prepare_cm(connect_matrix)
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])
     except Exception as e:
@@ -228,9 +224,6 @@ if __name__ == '__main__':
     procs = []
     queue = multiprocessing.Queue()
     for subj, paths in dataset.items():
-        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
-        t0_concentration = load_matrix(paths['baseline'])
-        t1_concentration = load_matrix(paths['followup'])
         p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, t_total, queue))
         p.start()
         procs.append(p)

@@ -31,7 +31,7 @@ from scipy.stats import norm
 from scipy.stats import zscore
 
 from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
-from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_msle, save_terminal_concentration
+from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_msle, prepare_cm, save_terminal_concentration
 
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
@@ -84,7 +84,6 @@ def Simulation(concentration, connect_matrix, years, timestep, beta_0, delta_0, 
     
     #TODO: should I use something different from 0 for null concentrations? (i.e. 0.1) Possibly depending on strenght of connections
     # between healthy and infected regions (and also internal concentrations)
-    connect_matrix = connect_matrix / np.max(connect_matrix)
     
     # Define gaussian noise (NOTE authors don't differentiate it by region nor by time)
     noise = np.random.normal(mu_noise, sigma_noise)
@@ -134,8 +133,8 @@ def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noi
         os.makedirs(subject_output_dir)
       
     try:
-        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome'])) 
-        connect_matrix = np.expm1(connect_matrix)
+        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
+        connect_matrix = prepare_cm(connect_matrix)
         connect_matrix += 1e-2
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])
@@ -219,7 +218,7 @@ if __name__=="__main__":
             logging.info(f"{num_cores} cores available")
             
     beta_0 = float(sys.argv[3]) if len(sys.argv) > 3 else -1
-    while num_cores < 0:
+    while beta_0 < 0:
         try:
             beta_0 = float(input('Insert the value for beta_0: '))
         except Exception as e:

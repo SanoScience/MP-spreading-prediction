@@ -10,6 +10,10 @@ def load_matrix(path):
     data = np.genfromtxt(path, delimiter=",")
     return data
 
+def prepare_cm(matrix):
+    matrix = np.expm1(matrix)
+    return matrix / np.max(matrix)
+
 def drop_data_in_connect_matrix(connect_matrix, missing_labels=[35, 36, 81, 82]):
     index_to_remove = [(label - 1) for label in missing_labels]
     connect_matrix = np.delete(connect_matrix, index_to_remove, axis=0)

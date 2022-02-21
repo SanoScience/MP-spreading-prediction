@@ -12,6 +12,7 @@ import random
 import sys
 from time import time
 import json
+from matplotlib.pyplot import connect
 from tqdm import tqdm 
 import numpy as np
 import pandas as pd
@@ -22,11 +23,12 @@ from datetime import datetime
 import multiprocessing
 from prettytable import PrettyTable
 
+date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 np.seterr(all = 'raise')
 
 class MARsimulation:
-    def __init__(self, connect_matrix, t0_concentrations, t1_concentrations, iter_max=int(2e6)):
+    def __init__(self, connect_matrix, t0_concentrations, t1_concentrations, lam, iter_max=int(2e6)):
         self.N_regions = 166                                                    # no. of brain areas from the atlas
         self.iter_max = iter_max
         self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
@@ -34,23 +36,15 @@ class MARsimulation:
         self.eta = 1e-10                                                         # learning rate of the gradient descent       
         self.cm = connect_matrix                                                # connectivity matrix 
         self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
+        self.lam = lam
         self.init_concentrations = t0_concentrations
         self.final_concentrations = t1_concentrations
 
-    def run(self, norm_opt, inverse_log=True):
+    def run(self):
         ''' 
         Run simulation. 
-        Args:
-            norm_opt (int): normalize option for connectivity matrix
-            inverse_log (boolean): if True use normal values instead of logarithmic in connectivity matrix '''
-        if inverse_log: 
-            try:
-                self.calc_exponent()
-                self.filter_connections()
-            except Exception as e:
-                logging.error(e)
+        '''
         
-        self.transform_cm(norm_opt)
         self.generate_indicator_matrix()
         pred_concentrations = None
         try:
@@ -60,43 +54,7 @@ class MARsimulation:
             logging.error(e)
 
         return pred_concentrations
- 
-    def calc_exponent(self):
-        ''' 
-        Transform the connectivity matrix to get the no. of connections between regions
-        instead of logarithm. 
         
-        Inverse operation to log1p. '''
-        try:
-            self.cm = np.expm1(self.cm)
-        except FloatingPointError as e:
-            logging.error(e)
-            logging.error("Overflow encountered, using the inaltered matrix...")
-        
-    def filter_connections(self):
-        ''' Filter out all connections with less than n fiber reaching. '''
-        self.cm = np.where(self.cm > self.min_tract_num, self.cm, 0).astype('float32')
-        
-    def transform_cm(self, norm_opt):
-        '''
-        Transform initial conenctivity matrix. 
-        
-        Args:
-            0 means no normalization, = 1 means binarize, = 2 means divide by the maximum '''
-        
-        if norm_opt == 0:
-            #logging.info('No normalization of the initial matrix')
-            pass
-        elif norm_opt == 1:
-            #logging.info('Initial matrix binarized')
-            self.cm = np.where(self.cm > 0, 1, 0).astype('float32')
-        elif norm_opt == 2:
-            #logging.info('Initial matrix normalized according to its largest value')
-            max_val = np.max(self.cm)
-            self.cm /= max_val
-        else:
-            pass
-            #logging.info('No normalization of the initial matrix')
             
     def generate_indicator_matrix(self):
         ''' Construct a matrix with only zeros and ones to be used to 
@@ -119,7 +77,7 @@ class MARsimulation:
                 if vis_error: error_buffer.append(error_reconstruct)
                 
                 # gradient computation
-                gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) 
+                gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) + self.lam * np.sum(np.diag(A)) 
                 A -= self.eta * gradient       
                 # reinforce where there was no connection at the beginning 
                 A *= self.B
@@ -148,7 +106,7 @@ class MARsimulation:
         #logging.info(f"Iterations: {iter_count}")
         return A
                   
-def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, iter_max, results_stem = ''):    
+def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, lam, iter_max, results_stem = ''):    
     ''' Run simulation for single patient. '''
       
     subject_output_dir = os.path.join(output_dir, subject)
@@ -159,7 +117,7 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, iter_m
         # load connectome ('is' works also with objects, '==' doesn't)
         if connect_matrix is None:
             connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
-            connect_matrix = np.expm1(connect_matrix)
+            connect_matrix = prepare_cm(connect_matrix)
         
         # load proteins concentration in brain regions
         t0_concentration = load_matrix(paths['baseline']) 
@@ -172,8 +130,8 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, iter_m
 
     error = corr_coef = None
     try:
-        simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration, iter_max)
-        t1_concentration_pred = drop_negative_predictions(simulation.run(norm_opt=2))
+        simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration, lam, iter_max)
+        t1_concentration_pred = drop_negative_predictions(simulation.run())
         #error = calc_rmse(t1_concentration, t1_concentration_pred)
         #corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
     except Exception as e:
@@ -187,19 +145,19 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, iter_m
                                                             error, 
                                                             corr_coef)
     if results_stem:
-        save_terminal_concentration(subject_output_dir, t1_concentration_pred, results_stem)
+        #save_terminal_concentration(subject_output_dir, t1_concentration_pred, results_stem)
         save_coeff_matrix(subject_output_dir, simulation.coef_matrix, results_stem)
 
     return simulation.coef_matrix
            
 ### MULTIPROCESSING ###        
 
-def parallel_training(dataset, output_dir, num_cores, iter_max):
+def parallel_training(dataset, output_dir, num_cores, lam, iter_max):
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
     procs = []
     for subj, paths in tqdm(dataset.items()):
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, iter_max, 'par_MAR'))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, lam, iter_max, 'par_MAR'))
         p.start()
         procs.append(p)        
         while len(procs)%num_cores == 0 and len(procs) > 0:
@@ -218,7 +176,7 @@ def parallel_training(dataset, output_dir, num_cores, iter_max):
     avg_conn_matrix = np.mean(conn_matrices, axis=0)
     return avg_conn_matrix
 
-def sequential_training(dataset, output_dir, iter_max):
+def sequential_training(dataset, output_dir, lam, iter_max):
     ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
     connect_matrix = None
     for subj, paths in tqdm(dataset.items()):
@@ -290,15 +248,22 @@ if __name__ == '__main__':
             train_size = int(input(f'Number of training samples [max {len(dataset.keys())}]: '))
         except Exception as e:
             logging.error(e)
+            
+    lam = int(sys.argv[4]) if len(sys.argv) > 4 else -1
+    while lam < 0 or lam > 1:
+        try:
+            lam = int(input('Insert the lambda coefficient for L1 penalty [0..1]: '))
+        except Exception as e:
+            logging.error(e)
 
-    iter_max = int(sys.argv[4]) if len(sys.argv) > 4 else -1
+    iter_max = int(sys.argv[5]) if len(sys.argv) > 5 else -1
     while iter_max <= 0:
         try:
             iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 10\'000]: '))
         except Exception as e:
             iter_max = 10000
 
-    N_fold = int(sys.argv[5]) if len(sys.argv) > 5 else -1
+    N_fold = int(sys.argv[6]) if len(sys.argv) > 6 else -1
     while N_fold < 1:
         try:
             N_fold = int(input('Folds for cross validation: '))
@@ -350,7 +315,7 @@ if __name__ == '__main__':
     pt_avg.add_row(["Sequential", round(np.mean(total_rmse_seq), 2), round(np.std(total_rmse_seq), 2), round(np.mean(total_pcc_seq), 2), round(np.std(total_pcc_seq), 2)])
 
     total_time = time() - total_time
-    filename = f"results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_MAR_{category}.txt"
+    filename = f"results/{date}_MAR_{category}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")
