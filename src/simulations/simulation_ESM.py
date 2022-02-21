@@ -25,7 +25,7 @@ import networkx as nx
 from tqdm import tqdm
 from networkx.algorithms.shortest_paths.generic import shortest_path
 from networkx.algorithms.shortest_paths.weighted import _dijkstra
-from scipy.stats.stats import pearsonr as pearson_corr_coef
+from scipy.stats import pearsonr as pearson_corr_coef
 
 from scipy.stats import norm
 from scipy.stats import zscore

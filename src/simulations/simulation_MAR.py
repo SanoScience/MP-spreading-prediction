@@ -18,7 +18,7 @@ from matplotlib.pyplot import connect
 from tqdm import tqdm 
 import numpy as np
 import pandas as pd
-from scipy.stats.stats import pearsonr as pearson_corr_coef
+from scipy.stats import pearsonr as pearson_corr_coef
 from utils_vis import *
 from utils import *
 from datetime import datetime
