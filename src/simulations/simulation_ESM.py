@@ -16,6 +16,7 @@ import logging
 import random
 import sys
 from time import time
+import warnings
 from prettytable import PrettyTable
 
 import numpy as np
@@ -94,28 +95,34 @@ def Simulation(concentration, connect_matrix, years, timestep, beta_0, delta_0, 
     P = np.array(np.where(concentration>0, 1, 0), dtype=np.float64)
     Beta = np.zeros(n_regions)
     Delta = np.zeros(n_regions)
-
+    
     for _ in range(iterations):
-        Beta = 1 - np.exp(- beta_0 * P)
-        Delta = np.exp(- delta_0 * P)
-        gini = compute_gini(concentration)
-        
-        Beta_ext = gini * Beta 
-        Beta_int = (1 - gini) * Beta
-        
-        # Epsilon has to be computed at each time step
-        Epsilon = np.zeros(n_regions)
-        for i in range(n_regions):
-            for j in range(n_regions):
-                if i != j:
-                    # NOTE: I am assuming the delay to go from j to i is null (else Beta_ext(t- Tau(ij)))
-                    # Computing the extrinsic infection probability (i!=j)...
-                    Epsilon[i] += connect_matrix[j,i] * Beta_ext[j] 
-            # and summing the intrinstic infection rate
-            Epsilon[i] += connect_matrix[i,i] * Beta_int[i] * P[i]
-        
-        # Updating probabilities
-        P = (1 - P) * Epsilon - Delta * P + noise
+        with warnings.catch_warnings():
+            try:
+                Beta = 1 - np.exp(- beta_0 * P)
+                Delta = np.exp(- delta_0 * P)
+                gini = compute_gini(concentration)
+                
+                Beta_ext = gini * Beta 
+                Beta_int = (1 - gini) * Beta
+                
+                # Epsilon has to be computed at each time step
+                Epsilon = np.zeros(n_regions)
+                for i in range(n_regions):
+                    for j in range(n_regions):
+                        if i != j:
+                            # NOTE: I am assuming the delay to go from j to i is null (else Beta_ext(t- Tau(ij)))
+                            # Computing the extrinsic infection probability (i!=j)...
+                            Epsilon[i] += connect_matrix[j,i] * Beta_ext[j] 
+                    # and summing the intrinstic infection rate
+                    Epsilon[i] += connect_matrix[i,i] * Beta_int[i] * P[i]
+            
+                # Updating probabilities
+                P = (1 - P) * Epsilon - Delta * P + noise
+            except Exception as e:
+                logging.error(e)
+                return concentration
+            
         concentration += (P * (concentration @ connect_matrix)) * timestep
         
     return concentration
@@ -137,7 +144,7 @@ def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noi
         return
     
     years = 2
-    timestep = 0.001
+    timestep = 0.0001
     try:
         t1_concentration_pred = Simulation(
             t0_concentration.copy(),           # initial concentration
@@ -244,7 +251,7 @@ if __name__=="__main__":
     total_rmse = []
     total_pcc = []
     
-    for subj, paths in dataset.items():
+    for subj, paths in tqdm(dataset.items()):
         p = multiprocessing.Process(target=run_simulation, args=(
             paths, 
             output_dir, 
