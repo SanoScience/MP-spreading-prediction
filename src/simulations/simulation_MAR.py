@@ -77,7 +77,7 @@ class MARsimulation:
                 if vis_error: error_buffer.append(error_reconstruct)
                 
                 # gradient computation
-                gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) + self.lam * np.sum(np.diag(A)) 
+                gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) + self.lam * np.sum(np.abs(A)) 
                 A -= self.eta * gradient       
                 # reinforce where there was no connection at the beginning 
                 A *= self.B
