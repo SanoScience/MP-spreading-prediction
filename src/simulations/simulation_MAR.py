@@ -181,7 +181,7 @@ def sequential_training(dataset, output_dir, lam, iter_max):
     connect_matrix = None
     for subj, paths in tqdm(dataset.items()):
         tmp = None
-        tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, iter_max,  'seq_MAR')
+        tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, lam, iter_max, 'seq_MAR')
         connect_matrix = tmp if tmp is not None else connect_matrix
     
     return connect_matrix
@@ -249,10 +249,10 @@ if __name__ == '__main__':
         except Exception as e:
             logging.error(e)
             
-    lam = int(sys.argv[4]) if len(sys.argv) > 4 else -1
+    lam = float(sys.argv[4]) if len(sys.argv) > 4 else -1
     while lam < 0 or lam > 1:
         try:
-            lam = int(input('Insert the lambda coefficient for L1 penalty [0..1]: '))
+            lam = float(input('Insert the lambda coefficient for L1 penalty [0..1]: '))
         except Exception as e:
             logging.error(e)
 
@@ -292,11 +292,11 @@ if __name__ == '__main__':
                 test_set[subj] = paths
 
         start_time = time()
-        par_conn_matrix = parallel_training(train_set, output_dir, num_cores, iter_max)
+        par_conn_matrix = parallel_training(train_set, output_dir, num_cores, lam, iter_max)
         par_time += time() - start_time
 
         start_time = time()  
-        seq_conn_matrix = sequential_training(train_set, output_dir, iter_max)
+        seq_conn_matrix = sequential_training(train_set, output_dir, lam, iter_max)
         seq_time += time() - start_time
 
         rmse_par, pcc_par = test(par_conn_matrix, test_set)
@@ -322,6 +322,7 @@ if __name__ == '__main__':
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
     out_file.write(f"Training set size: {train_size}\n")
     out_file.write(f"Testing set size: {len(dataset.keys())-train_size}\n")
+    out_file.write(f"Lambda coefficient: {lam}\n")
     out_file.write(f"Iterations per patient: {iter_max}\n")
     out_file.write(f"Folds: {N_fold}\n")
     out_file.write(f"Elapsed time for \'Parallel\' training (s): {format(par_time, '.2f')}\n")
