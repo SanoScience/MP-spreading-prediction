@@ -4,6 +4,10 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import warnings
+
+# suppress ONLY matplotlib warnings
+#warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 
 def visualize_NIfTI_data(data, depths, time_idx=None):
     ''' Visualize provided depths from NIfTI data at the specific time. 
@@ -40,21 +44,18 @@ def visualize_diffusion_timeplot(matrix, timestep, total_time, save_dir=None):
         plt.savefig(os.path.join(save_dir, 'diffusion_over_time.png'))
     plt.show() 
     
-def visualize_terminal_state_comparison(input_vec, output_vec, target_vec, 
-                                        subject, error=None, corr_coeff=None, 
-                                        save_dir=None):
+def save_prediction_plot(baseline, prediction, followup, subject, filepath, error=None, corr_coeff=None):
     plt.figure(figsize=(15, 5))
-    plt.plot(input_vec, '--', marker='o', c='b', label='initial concentration t0')
-    plt.plot(output_vec, '--', marker='o', c='r', label='predicted concentration t1')
-    plt.plot(target_vec, '--', marker='o', c='g', label='true concentration t1')
+    plt.plot(baseline, '--', marker='o', c='b', label='initial concentration t0')
+    plt.plot(prediction, '--', marker='o', c='r', label='predicted concentration t1')
+    plt.plot(followup, '--', marker='o', c='g', label='true concentration t1')
     plt.xlabel('ROI (index of brain region based on AAL atlas)')
     plt.ylabel('concentration of misfolded proteins')
     plt.legend(loc='upper right')
     if error is not None: plt.title(f'Subject: {subject} \nError between true and predicted t1: {error:.2f}\nPearson correlation coeff: {corr_coeff:.2f}')
     plt.tight_layout()
-    if save_dir is not None:
-        plt.savefig(os.path.join(save_dir, 'concentration_comparison.png'))
-    plt.show()
+    plt.savefig(filepath)
+    return 
     
 def visualize_error(error):
     plt.figure(figsize=(15, 5))

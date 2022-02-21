@@ -24,9 +24,8 @@ def save_diffusion_matrix(save_dir, diffusion_matrix, method_name):
     np.savetxt(os.path.join(save_dir, f'diffusion_matrix_over_time_{method_name}.csv'), 
                             diffusion_matrix, delimiter=",")
     
-def save_coeff_matrix(save_dir, matrix, file_stem):
-    np.savetxt(os.path.join(save_dir, f'A_{file_stem}.csv'), 
-                            matrix, delimiter=",")
+def save_coeff_matrix(filepath, matrix):
+    np.savetxt(filepath, matrix, delimiter=",")
     
 def save_terminal_concentration(save_dir, concentration_pred, file_stem):
     ''' Save last (terminal) concentration. '''

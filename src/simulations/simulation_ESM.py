@@ -30,25 +30,10 @@ from scipy.stats.stats import pearsonr as pearson_corr_coef
 from scipy.stats import norm
 from scipy.stats import zscore
 
-from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
-from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_msle, prepare_cm, save_terminal_concentration
+from utils_vis import save_prediction_plot
+from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, prepare_cm
 
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
-
-# Distance matrix
-def dijkstra(matrix):
-    L = len(matrix)
-    distance = np.zeros((L,L))
-    G = nx.from_numpy_matrix(matrix, create_using=nx.DiGraph())
-    for i in range(L):
-        for j in range(L):
-            t = nx.has_path(G,i,j)
-            if t == False:
-                distance[i,j] = 0
-            else:
-                t = nx.dijkstra_path_length(G, i, j, weight = 'weight')
-                distance [i, j] = t
-    return distance
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 
 def drop_negative_predictions(predictions):
     return np.maximum(predictions, 0)
@@ -66,19 +51,6 @@ def compute_gini(concentration):
     # Gini coefficient
     return 0.5 * rmad
 
-'''
-def define_initial_P(concentration, connect_matrix, distances, max_concentration):
-    # NOTE: both connectivity and distances matrix have 0 diagonals (self connections are not considered)
-    
-    # I consider only connections with infective regions (I am cutting out rows corresponding to regions without Amyloid)
-    # I am expanding the binary vector to a binary matrix to apply it to the connectivity matrix
-    infected_regions = np.tile(np.where(concentration>0, 1, 0), (np.shape(connect_matrix)[0],1)) * connect_matrix
-    
-    # NOTE: missing connections and not infective regions have value 0 in 'infected_regions' matrix
-    P = 1 - np.exp(- np.sum.outer(infected_regions, infected_regions)/np.sum.outer(distances))
-    
-    return P
-'''
 
 def Simulation(concentration, connect_matrix, years, timestep, beta_0, delta_0, mu_noise, sigma_noise, velocity=1, n_regions = 166):
     
@@ -97,6 +69,7 @@ def Simulation(concentration, connect_matrix, years, timestep, beta_0, delta_0, 
     
     for _ in range(iterations):
         with warnings.catch_warnings():
+            warnings.filterwarnings ('error')
             try:
                 Beta = 1 - np.exp(- beta_0 * P)
                 Delta = np.exp(- delta_0 * P)
@@ -173,16 +146,11 @@ def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noi
     except Exception as e:
         logging.error(e)
         return
-    '''
-    visualize_terminal_state_comparison(t0_concentration, 
-                                        t1_concentration_pred, 
-                                        t1_concentration, 
-                                        subj,
-                                        rmse,
-                                        corr_coef)
-    '''
+    
+    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, os.path.join(subject_output_dir, 'ESM_prediction.png'), rmse, corr_coef)
+    
     if queue:
-        queue.put([rmse, corr_coef])
+        queue.put([subj, rmse, corr_coef])
         
     return
 
@@ -208,6 +176,10 @@ if __name__=="__main__":
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+    
+    pt_subs = PrettyTable()
+    pt_subs.field_names = ["ID", "RMSE", "Pearson"]
+    pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
@@ -275,9 +247,10 @@ if __name__=="__main__":
         p.join()
     
     while not queue.empty():
-        rmse, pcc = queue.get()
+        subj, rmse, pcc = queue.get()
         total_rmse.append(rmse)
         total_pcc.append(pcc)
+        pt_subs.add_row([subj, round(rmse,2), round(pcc,2)])
    
     pt_avg.add_row([format(np.mean(total_rmse, axis=0), '.2f'), format(np.std(total_rmse, axis=0), '.2f'), format(np.mean(total_pcc, axis=0), '.2f'), format(np.std(total_pcc, axis=0), '.2f')])
 
@@ -292,6 +265,7 @@ if __name__=="__main__":
     out_file.write(f"sigma_noise: {sigma_noise}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
     out_file.write(f"Total time (s): {format(total_time, '.2f')}\n")
-    out_file.write(pt_avg.get_string())
+    out_file.write(pt_avg.get_string()+'\n')
+    out_file.write(pt_subs.get_string())    
     out_file.close()
     logging.info(f"Results saved in {filename}")

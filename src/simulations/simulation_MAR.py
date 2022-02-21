@@ -5,10 +5,12 @@ A.Crimi et al. "Effective Brain Connectivity Through a Constrained Autoregressiv
 '''
 
 from audioop import rms
+from collections import defaultdict
 import os
 from glob import glob
 import logging
 import random
+from re import S
 import sys
 from time import time
 import json
@@ -102,11 +104,11 @@ class MARsimulation:
                                           
         if vis_error: visualize_error(error_buffer)
 
-        logging.info(f"Final reconstruction error: {error_reconstruct}")
+        #logging.info(f"Final reconstruction error: {error_reconstruct}")
         #logging.info(f"Iterations: {iter_count}")
         return A
                   
-def run_simulation(subject, paths, output_subj, connect_matrix, make_plot, lam, iter_max, results_stem = ''):    
+def run_simulation(subject, paths, output_subj, connect_matrix, lam, iter_max, results_stem, queue):    
     ''' Run simulation for single patient. '''
       
     subject_output_subj = os.path.join(output_subj, subject)
@@ -128,36 +130,34 @@ def run_simulation(subject, paths, output_subj, connect_matrix, make_plot, lam, 
         logging.error(e)
         logging.error(f"Exception causing abortion of simulation for subject {subject}")
 
-    error = corr_coef = None
+    rmse = corr_coef = None
     try:
         simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration, lam, iter_max)
         t1_concentration_pred = drop_negative_predictions(simulation.run())
-        #error = calc_rmse(t1_concentration, t1_concentration_pred)
-        #corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+        rmse = calc_rmse(t1_concentration, t1_concentration_pred)
+        corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+        if np.isnan(rmse) or np.isinf(rmse): raise Exception("Invalid value of RMSE")
+        if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
     except Exception as e:
         logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}") 
-        return None       
-    
-    if make_plot: visualize_terminal_state_comparison(  t0_concentration, 
-                                                            t1_concentration_pred,
-                                                            t1_concentration,
-                                                            subject,
-                                                            error, 
-                                                            corr_coef)
-    if results_stem:
-        #save_terminal_concentration(subject_output_subj, t1_concentration_pred, results_stem)
-        save_coeff_matrix(subject_output_subj, simulation.coef_matrix, results_stem)
+        
+    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, os.path.join(subject_output_subj, results_stem+'_prediction.png'), rmse, corr_coef)
+    save_coeff_matrix(os.path.join(subject_output_subj,'A_'+results_stem+'.csv'), simulation.coef_matrix)
+
+    queue.put([subject, rmse, corr_coef])
 
     return simulation.coef_matrix
            
 ### MULTIPROCESSING ###        
 
-def parallel_training(dataset, output_subj, num_cores, lam, iter_max):
+def parallel_training(dataset, output_subj, num_cores, lam, iter_max, dicts_subj):
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
+    file_stem = 'par_MAR'
     procs = []
+    queue = multiprocessing.Queue()
     for subj, paths in tqdm(dataset.items()):
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_subj, None, False, lam, iter_max, 'par_MAR'))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_subj, None, lam, iter_max, file_stem, queue))
         p.start()
         procs.append(p)        
         while len(procs)%num_cores == 0 and len(procs) > 0:
@@ -168,25 +168,35 @@ def parallel_training(dataset, output_subj, num_cores, lam, iter_max):
         for p in procs:
             p.join()
     
+    while not queue.empty():
+        subj, rmse, pcc = queue.get()
+        dicts_subj[subj].append([rmse, pcc])
+    
     conn_matrices = []
     # read results saved by "run simulation method"
     for subj, _ in dataset.items():
-        conn_matrices.append(load_matrix(os.path.join(output_subj, subj, 'A_par_MAR.csv')))
+        conn_matrices.append(load_matrix(os.path.join(output_subj, subj, f'A_{file_stem}.csv')))
     
     avg_conn_matrix = np.mean(conn_matrices, axis=0)
     return avg_conn_matrix
 
-def sequential_training(dataset, output_subj, lam, iter_max):
+def sequential_training(dataset, output_subj, lam, iter_max, dicts_subj):
     ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
+    file_stem = 'seq_MAR'
     connect_matrix = None
+    queue = multiprocessing.Queue()
     for subj, paths in tqdm(dataset.items()):
         tmp = None
-        tmp = run_simulation(subj, paths, output_subj, connect_matrix, False, lam, iter_max, 'seq_MAR')
+        tmp = run_simulation(subj, paths, output_subj, connect_matrix, lam, iter_max, file_stem, queue)
         connect_matrix = tmp if tmp is not None else connect_matrix
+    
+    while not queue.empty():
+        subj, rmse, pcc = queue.get()
+        dicts_subj[subj].append([rmse, pcc])
     
     return connect_matrix
 
-def test(conn_matrix, test_set):
+def test(conn_matrix, test_set, dicts_subj):
     rmse_list = []
     pcc_list = []
     for subj, paths in tqdm(test_set.items()):
@@ -204,11 +214,12 @@ def test(conn_matrix, test_set):
         else:
             rmse_list.append(rmse)
             pcc_list.append(pcc)
+            dicts_subj[subj].append([rmse, pcc])
     
     avg_rmse = np.mean(rmse_list, axis=0)
     avg_pcc = np.mean(pcc_list, axis=0)
-    logging.info(f"Average error on test samples for this fold: {avg_rmse}")
-    logging.info(f"Average Pearson correlation on test samples for this fold: {avg_pcc}")
+    #logging.info(f"Average error on test samples for this fold: {avg_rmse}")
+    #logging.info(f"Average Pearson correlation on test samples for this fold: {avg_pcc}")
 
     return avg_rmse, avg_pcc
 
@@ -233,6 +244,13 @@ if __name__ == '__main__':
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Type", "Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+    
+    # Dictionary storing, for each patient (key), a list of couples (RMSE, PCC)
+    dicts_subj_par = defaultdict(list)
+    dicts_subj_seq = defaultdict(list)
+    pt_subs = PrettyTable()
+    pt_subs.field_names = ["Type", "ID", "Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+    pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
@@ -282,6 +300,7 @@ if __name__ == '__main__':
 
     par_time = 0
     seq_time = 0
+    
     for i in tqdm(range(N_fold)):   
         train_set = {}
         while len(train_set.keys()) < train_size:
@@ -295,18 +314,18 @@ if __name__ == '__main__':
                 test_set[subj] = paths
 
         start_time = time()
-        par_conn_matrix = parallel_training(train_set, output_subj, num_cores, lam, iter_max)
+        par_conn_matrix = parallel_training(train_set, output_subj, num_cores, lam, iter_max, dicts_subj_par)
         par_time += time() - start_time
 
         start_time = time()  
-        seq_conn_matrix = sequential_training(train_set, output_subj, lam, iter_max)
+        seq_conn_matrix = sequential_training(train_set, output_subj, lam, iter_max, dicts_subj_seq)
         seq_time += time() - start_time
 
-        rmse_par, pcc_par = test(par_conn_matrix, test_set)
+        rmse_par, pcc_par = test(par_conn_matrix, test_set, dicts_subj_par)
         total_rmse_par.append(rmse_par)
         total_pcc_par.append(pcc_par)
 
-        rmse_seq, pcc_seq = test(seq_conn_matrix, test_set)
+        rmse_seq, pcc_seq = test(seq_conn_matrix, test_set, dicts_subj_seq)
         total_rmse_seq.append(rmse_seq)
         total_pcc_seq.append(pcc_seq)
 
@@ -316,6 +335,17 @@ if __name__ == '__main__':
 
     pt_avg.add_row(["Parallel", round(np.mean(total_rmse_par), 2), round(np.std(total_rmse_par), 2), round(np.mean(total_pcc_par), 2), round(np.std(total_pcc_par), 2)])
     pt_avg.add_row(["Sequential", round(np.mean(total_rmse_seq), 2), round(np.std(total_rmse_seq), 2), round(np.mean(total_pcc_seq), 2), round(np.std(total_pcc_seq), 2)])
+
+    for subj in dicts_subj_par.keys():
+        rmse_list = [el[0] for el in dicts_subj_par[subj]]
+        pcc_list = [el[1] for el in dicts_subj_par[subj]]
+        pt_subs.add_row(['PAR', subj, round(np.mean(rmse_list),2), round(np.std(rmse_list),2), round(np.mean(pcc_list),2), round(np.std(pcc_list),2)])
+        
+    for subj in dicts_subj_seq.keys():
+        rmse_list = [el[0] for el in dicts_subj_seq[subj]]
+        pcc_list = [el[1] for el in dicts_subj_seq[subj]]
+        pt_subs.add_row(['SEQ', subj, round(np.mean(rmse_list),2), round(np.std(rmse_list),2), round(np.mean(pcc_list),2), round(np.std(pcc_list),2)])
+    
 
     total_time = time() - total_time
     filename = f"{output_res}/{date}_MAR_{category}_{train_size}_{lam}_{iter_max}_{N_fold}.txt"
@@ -331,6 +361,7 @@ if __name__ == '__main__':
     out_file.write(f"Elapsed time for \'Parallel\' training (s): {format(par_time, '.2f')}\n")
     out_file.write(f"Elapsed time for \'Sequential\' training (s): {format(seq_time, '.2f')}\n")
     out_file.write(f"Total time (s): {format(total_time, '.2f')}\n")
-    out_file.write(pt_avg.get_string())
+    out_file.write(pt_avg.get_string() + '\n')
+    out_file.write(pt_subs.get_string())
     out_file.close()
     logging.info(f"Results saved in {filename}")

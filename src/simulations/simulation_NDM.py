@@ -22,14 +22,13 @@ from tqdm import tqdm
 import numpy as np
 from scipy.stats.stats import pearsonr as pearson_corr_coef, PearsonRConstantInputWarning
 
-from utils_vis import visualize_diffusion_timeplot, visualize_terminal_state_comparison
+from utils_vis import save_prediction_plot
 from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_rmse, prepare_cm
 from datetime import datetime
 from prettytable import PrettyTable
 
 import networkx as nx
-
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 
 class DiffusionSimulation:
     def __init__(self, connect_matrix, concentrations=None):
@@ -152,32 +151,18 @@ def run_simulation(subject, paths, output_dir, queue=None):
     try:
         simulation = DiffusionSimulation(connect_matrix, t0_concentration)
         t1_concentration_pred = simulation.run()
-        simulation.save_diffusion_matrix(subject_output_dir)
-        simulation.save_terminal_concentration(subject_output_dir)
-        '''
-        visualize_diffusion_timeplot(simulation.diffusion_final.T, 
-                                    simulation.timestep,
-                                    simulation.t_total,
-                                    save_dir=subject_output_dir)
-        '''
         rmse = calc_rmse(t1_concentration_pred, t1_concentration)
-        if np.isnan(rmse) or np.isinf(rmse): raise Exception("Invalid value of RMSE")
         corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+        if np.isnan(rmse) or np.isinf(rmse): raise Exception("Invalid value of RMSE")
         if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
     except Exception as e:
         logging.error(e)
         return
-    '''
-    visualize_terminal_state_comparison(t0_concentration, 
-                                        t1_concentration_pred,
-                                        t1_concentration,
-                                        subject,
-                                        rmse,
-                                        corr_coef,
-                                        save_dir=subject_output_dir)
-    '''
+    
+    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, os.path.join(subject_output_dir, 'NDM_prediction.png'), rmse, corr_coef)
+
     if queue:
-        queue.put([rmse, corr_coef])
+        queue.put([subj, rmse, corr_coef])
     
 ### MULTIPROCESSING ###
 
@@ -201,7 +186,11 @@ if __name__ == '__main__':
         os.makedirs(output_res)
 
     pt_avg = PrettyTable()
-    pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson Correlation", "SD Pearson Correlation"]
+    pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+    
+    pt_subs = PrettyTable()
+    pt_subs.field_names = ["ID", "RMSE", "Pearson"]
+    pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
@@ -235,11 +224,11 @@ if __name__ == '__main__':
     for p in procs:
         p.join()
 
-    # [opt_beta, min_rmse]
     while not queue.empty():
-        err, pcc = queue.get()
+        subj, err, pcc = queue.get()
         rmse_list.append(err)
         pcc_list.append(pcc)
+        pt_subs.add_row([subj, round(err,2), round(pcc,2)])
 
     pt_avg.add_row([format(np.mean(rmse_list, axis=0), '.2f'), format(np.std(rmse_list, axis=0), '.2f'), format(np.mean(pcc_list, axis=0), '.2f'), format(np.std(pcc_list, axis=0), '.2f')])
 
@@ -250,6 +239,7 @@ if __name__ == '__main__':
     out_file.write(f"Cores: {num_cores}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
     out_file.write(f"Elapsed time (s): {format(total_time, '.2f')}\n")
-    out_file.write(pt_avg.get_string())
+    out_file.write(pt_avg.get_string()+'\n')
+    out_file.write(pt_subs.get_string())
     out_file.close()
     logging.info(f"Results saved in {filename}")
