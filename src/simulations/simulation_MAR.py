@@ -106,12 +106,12 @@ class MARsimulation:
         #logging.info(f"Iterations: {iter_count}")
         return A
                   
-def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, lam, iter_max, results_stem = ''):    
+def run_simulation(subject, paths, output_subj, connect_matrix, make_plot, lam, iter_max, results_stem = ''):    
     ''' Run simulation for single patient. '''
       
-    subject_output_dir = os.path.join(output_dir, subject)
-    if not os.path.exists(subject_output_dir):
-        os.makedirs(subject_output_dir)
+    subject_output_subj = os.path.join(output_subj, subject)
+    if not os.path.exists(subject_output_subj):
+        os.makedirs(subject_output_subj)
     
     try:
         # load connectome ('is' works also with objects, '==' doesn't)
@@ -145,19 +145,19 @@ def run_simulation(subject, paths, output_dir, connect_matrix, make_plot, lam, i
                                                             error, 
                                                             corr_coef)
     if results_stem:
-        #save_terminal_concentration(subject_output_dir, t1_concentration_pred, results_stem)
-        save_coeff_matrix(subject_output_dir, simulation.coef_matrix, results_stem)
+        #save_terminal_concentration(subject_output_subj, t1_concentration_pred, results_stem)
+        save_coeff_matrix(subject_output_subj, simulation.coef_matrix, results_stem)
 
     return simulation.coef_matrix
            
 ### MULTIPROCESSING ###        
 
-def parallel_training(dataset, output_dir, num_cores, lam, iter_max):
+def parallel_training(dataset, output_subj, num_cores, lam, iter_max):
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
     procs = []
     for subj, paths in tqdm(dataset.items()):
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, None, False, lam, iter_max, 'par_MAR'))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_subj, None, False, lam, iter_max, 'par_MAR'))
         p.start()
         procs.append(p)        
         while len(procs)%num_cores == 0 and len(procs) > 0:
@@ -171,17 +171,17 @@ def parallel_training(dataset, output_dir, num_cores, lam, iter_max):
     conn_matrices = []
     # read results saved by "run simulation method"
     for subj, _ in dataset.items():
-        conn_matrices.append(load_matrix(os.path.join(output_dir, subj, 'A_par_MAR.csv')))
+        conn_matrices.append(load_matrix(os.path.join(output_subj, subj, 'A_par_MAR.csv')))
     
     avg_conn_matrix = np.mean(conn_matrices, axis=0)
     return avg_conn_matrix
 
-def sequential_training(dataset, output_dir, lam, iter_max):
+def sequential_training(dataset, output_subj, lam, iter_max):
     ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
     connect_matrix = None
     for subj, paths in tqdm(dataset.items()):
         tmp = None
-        tmp = run_simulation(subj, paths, output_dir, connect_matrix, False, lam, iter_max, 'seq_MAR')
+        tmp = run_simulation(subj, paths, output_subj, connect_matrix, False, lam, iter_max, 'seq_MAR')
         connect_matrix = tmp if tmp is not None else connect_matrix
     
     return connect_matrix
@@ -226,7 +226,10 @@ if __name__ == '__main__':
         category = 'ALL' if category == '' else category
 
     dataset_path = f'src/dataset_preparing/dataset_{category}.json'
-    output_dir = 'results'
+    output_subj = 'results/subjects'
+    output_res = 'results/benchmarks'
+    if not os.path.exists(output_res):
+        os.makedirs(output_res)
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Type", "Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
@@ -292,11 +295,11 @@ if __name__ == '__main__':
                 test_set[subj] = paths
 
         start_time = time()
-        par_conn_matrix = parallel_training(train_set, output_dir, num_cores, lam, iter_max)
+        par_conn_matrix = parallel_training(train_set, output_subj, num_cores, lam, iter_max)
         par_time += time() - start_time
 
         start_time = time()  
-        seq_conn_matrix = sequential_training(train_set, output_dir, lam, iter_max)
+        seq_conn_matrix = sequential_training(train_set, output_subj, lam, iter_max)
         seq_time += time() - start_time
 
         rmse_par, pcc_par = test(par_conn_matrix, test_set)
@@ -315,7 +318,7 @@ if __name__ == '__main__':
     pt_avg.add_row(["Sequential", round(np.mean(total_rmse_seq), 2), round(np.std(total_rmse_seq), 2), round(np.mean(total_pcc_seq), 2), round(np.std(total_pcc_seq), 2)])
 
     total_time = time() - total_time
-    filename = f"results/{date}_MAR_{category}_{train_size}_{lam}_{iter_max}_{N_fold}.txt"
+    filename = f"{output_res}/{date}_MAR_{category}_{train_size}_{lam}_{iter_max}_{N_fold}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")

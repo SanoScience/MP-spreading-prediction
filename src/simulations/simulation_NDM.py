@@ -195,7 +195,10 @@ if __name__ == '__main__':
         category = 'ALL' if category == '' else category
 
     dataset_path = f'src/dataset_preparing/dataset_{category}.json'
-    output_dir = 'results'
+    output_subj = 'results/subjects'
+    output_res = 'results/benchmarks'
+    if not os.path.exists(output_res):
+        os.makedirs(output_res)
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson Correlation", "SD Pearson Correlation"]
@@ -219,7 +222,7 @@ if __name__ == '__main__':
     procs = []
     queue = multiprocessing.Queue()
     for subj, paths in dataset.items():
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, queue))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_subj, queue))
         p.start()
         procs.append(p)
 
@@ -241,7 +244,7 @@ if __name__ == '__main__':
     pt_avg.add_row([format(np.mean(rmse_list, axis=0), '.2f'), format(np.std(rmse_list, axis=0), '.2f'), format(np.mean(pcc_list, axis=0), '.2f'), format(np.std(pcc_list, axis=0), '.2f')])
 
     total_time = time() - total_time
-    filename = f"results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_{category}.txt"
+    filename = f"{output_res}/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_{category}.txt"
     out_file= open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")

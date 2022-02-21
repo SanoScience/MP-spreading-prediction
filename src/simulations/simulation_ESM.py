@@ -201,7 +201,10 @@ if __name__=="__main__":
         category = 'ALL' if category == '' else category
 
     dataset_path = f'src/dataset_preparing/dataset_{category}.json'
-    output_dir = 'results'
+    output_subj = 'results/subjects'
+    output_res = 'results/benchmarks'
+    if not os.path.exists(output_res):
+        os.makedirs(output_res)
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
@@ -253,7 +256,7 @@ if __name__=="__main__":
     for subj, paths in tqdm(dataset.items()):
         p = multiprocessing.Process(target=run_simulation, args=(
             paths, 
-            output_dir, 
+            output_subj, 
             subj,
             beta_0, 
             delta_0, 
@@ -279,7 +282,7 @@ if __name__=="__main__":
     pt_avg.add_row([format(np.mean(total_rmse, axis=0), '.2f'), format(np.std(total_rmse, axis=0), '.2f'), format(np.mean(total_pcc, axis=0), '.2f'), format(np.std(total_pcc, axis=0), '.2f')])
 
     total_time = time() - total_time
-    filename = f"results/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_ESM_{category}_{beta_0}_{delta_0}_{mu_noise}_{sigma_noise}.txt"
+    filename = f"{output_res}/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_ESM_{category}_{beta_0}_{delta_0}_{mu_noise}_{sigma_noise}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")
