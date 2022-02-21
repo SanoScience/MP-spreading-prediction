@@ -315,7 +315,7 @@ if __name__ == '__main__':
     pt_avg.add_row(["Sequential", round(np.mean(total_rmse_seq), 2), round(np.std(total_rmse_seq), 2), round(np.mean(total_pcc_seq), 2), round(np.std(total_pcc_seq), 2)])
 
     total_time = time() - total_time
-    filename = f"results/{date}_MAR_{category}.txt"
+    filename = f"results/{date}_MAR_{category}_{train_size}_{lam}_{iter_max}_{N_fold}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")

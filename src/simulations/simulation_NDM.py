@@ -32,7 +32,7 @@ import networkx as nx
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG)
 
 class DiffusionSimulation:
-    def __init__(self, connect_matrix, t_total, concentrations=None):
+    def __init__(self, connect_matrix, concentrations=None):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations.
         t_total: gap between baseline and followup PET (in years)
@@ -42,7 +42,7 @@ class DiffusionSimulation:
         Putting iterations to '1' and for t_total = 2 years, the timestep is 0.02
         '''
         self.rois = 166 
-        self.t_total = t_total # total length of the simulation in years
+        self.t_total = 2 # total length of the simulation in years
         self.timestep = self.t_total / 10 
         self.cm = connect_matrix
         if concentrations is not None: 
@@ -81,6 +81,7 @@ class DiffusionSimulation:
         try:
 
             self.calc_laplacian()     
+            # NOTE: this beta value has already been estimated and was the optimal for the considered dataset
             self.beta = 0.1
             self.diffusion_final = self.iterate_spreading()
 
@@ -132,7 +133,7 @@ class DiffusionSimulation:
         np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
                    self.diffusion_final[-1, :], delimiter=',')
 
-def run_simulation(subject, paths, output_dir, t_total, queue=None):    
+def run_simulation(subject, paths, output_dir, queue=None):    
     ''' Run simulation for single patient. '''
 
     subject_output_dir = os.path.join(output_dir, subject)
@@ -149,7 +150,7 @@ def run_simulation(subject, paths, output_dir, t_total, queue=None):
         return
 
     try:
-        simulation = DiffusionSimulation(connect_matrix, t_total, t0_concentration)
+        simulation = DiffusionSimulation(connect_matrix, t0_concentration)
         t1_concentration_pred = simulation.run()
         simulation.save_diffusion_matrix(subject_output_dir)
         simulation.save_terminal_concentration(subject_output_dir)
@@ -210,12 +211,6 @@ if __name__ == '__main__':
             num_cores = multiprocessing.cpu_count()
             logging.info(f"{num_cores} cores available")
 
-    t_total = int(sys.argv[3]) if len(sys.argv) > 3 else -1
-    while t_total < 1:
-        try:
-            t_total = int(input('Insert the time gap (in years) between baseline and followup [default is 2]: '))
-        except Exception as e:
-            t_total = 2
     
     rmse_list = []
     pcc_list = []
@@ -224,7 +219,7 @@ if __name__ == '__main__':
     procs = []
     queue = multiprocessing.Queue()
     for subj, paths in dataset.items():
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, t_total, queue))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_dir, queue))
         p.start()
         procs.append(p)
 

@@ -1,18 +1,79 @@
-python3 simulation_MAR.py ALL 4 25 0.5 1000000 2
-echo "#"
-python3 simulation_MAR.py ALL 4 25 0 1000000 2
-echo "#"
-python3 simulation_MAR.py ALL 4 25 1 1000000 2
-echo "#"
-
-python3 simulation_MAR.py ALL 4 25 0.5 2000000 2
-echo "#"
-python3 simulation_MAR.py ALL 4 25 0 2000000 2
-echo "#"
-python3 simulation_MAR.py ALL 4 25 1 2000000 2
+echo "### ALL ###"
 
 python3 simulation_MAR.py ALL 4 30 0.5 1000000 2
 echo "#"
-python3 simulation_MAR.py ALL 4 30 0.5 1000000 2
+python3 simulation_MAR.py ALL 4 30 0 1000000 2
 echo "#"
-python3 simulation_MAR.py ALL 4 30 0.5 1000000 2
+python3 simulation_MAR.py ALL 4 30 1 1000000 2
+echo "#"
+
+python3 simulation_MAR.py ALL 4 30 0.5 2000000 2
+echo "#"
+python3 simulation_MAR.py ALL 4 30 0 2000000 2
+echo "#"
+python3 simulation_MAR.py ALL 4 30 1 2000000 2
+echo "#"
+
+echo "### AD ###"
+
+python3 simulation_MAR.py AD 4 30 0.5 1000000 2
+echo "#"
+python3 simulation_MAR.py AD 4 30 0 1000000 2
+echo "#"
+python3 simulation_MAR.py AD 4 30 1 1000000 2
+echo "#"
+
+python3 simulation_MAR.py AD 4 30 0.5 2000000 2
+echo "#"
+python3 simulation_MAR.py AD 4 30 0 2000000 2
+echo "#"
+python3 simulation_MAR.py AD 4 30 1 2000000 2
+echo "#"
+
+echo "### LMCI ###"
+
+python3 simulation_MAR.py LMCI 4 30 0.5 1000000 2
+echo "#"
+python3 simulation_MAR.py LMCI 4 30 0 1000000 2
+echo "#"
+python3 simulation_MAR.py LMCI 4 30 1 1000000 2
+echo "#"
+
+python3 simulation_MAR.py LMCI 4 30 0.5 2000000 2
+echo "#"
+python3 simulation_MAR.py LMCI 4 30 0 2000000 2
+echo "#"
+python3 simulation_MAR.py LMCI 4 30 1 2000000 2
+echo "#"
+
+echo "### EMCI ###"
+
+python3 simulation_MAR.py EMCI 4 30 0.5 1000000 2
+echo "#"
+python3 simulation_MAR.py EMCI 4 30 0 1000000 2
+echo "#"
+python3 simulation_MAR.py EMCI 4 30 1 1000000 2
+echo "#"
+
+python3 simulation_MAR.py EMCI 4 30 0.5 2000000 2
+echo "#"
+python3 simulation_MAR.py EMCI 4 30 0 2000000 2
+echo "#"
+python3 simulation_MAR.py EMCI 4 30 1 2000000 2
+echo "#"
+
+echo "### CN ###"
+
+python3 simulation_MAR.py CN 4 30 0.5 1000000 2
+echo "#"
+python3 simulation_MAR.py CN 4 30 0 1000000 2
+echo "#"
+python3 simulation_MAR.py CN 4 30 1 1000000 2
+echo "#"
+
+python3 simulation_MAR.py CN 4 30 0.5 2000000 2
+echo "#"
+python3 simulation_MAR.py CN 4 30 0 2000000 2
+echo "#"
+python3 simulation_MAR.py CN 4 30 1 2000000 2
+echo "#"
