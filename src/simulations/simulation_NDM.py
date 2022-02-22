@@ -5,22 +5,17 @@ Ashish Raj, Amy Kuceyeski, Michael Weiner,
 "A Network Diffusion Model of Disease Progression in Dementia"
 '''
 
-from cmath import inf, nan
 import json
 import multiprocessing
 import os
 import logging
-from glob import glob
-import random
 from re import L
 import sys
 from time import time
-from turtle import shape
-import pandas as pd
 
 from tqdm import tqdm 
 import numpy as np
-from scipy.stats import pearsonr as pearson_corr_coef, PearsonRConstantInputWarning
+from scipy.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import save_prediction_plot
 from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_rmse, prepare_cm

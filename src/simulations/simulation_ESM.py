@@ -8,27 +8,18 @@ Authors: Yasser Iturria-Medina ,Roberto C. Sotero,Paule J. Toussaint,Alan C. Eva
 '''
 
 from datetime import datetime
-from glob import glob
 import json
 import multiprocessing 
 import os
 import logging
-import random
 import sys
 from time import time
 import warnings
 from prettytable import PrettyTable
 
 import numpy as np
-import matplotlib.pyplot as plt
-import networkx as nx
 from tqdm import tqdm
-from networkx.algorithms.shortest_paths.generic import shortest_path
-from networkx.algorithms.shortest_paths.weighted import _dijkstra
 from scipy.stats import pearsonr as pearson_corr_coef
-
-from scipy.stats import norm
-from scipy.stats import zscore
 
 from utils_vis import save_prediction_plot
 from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, prepare_cm

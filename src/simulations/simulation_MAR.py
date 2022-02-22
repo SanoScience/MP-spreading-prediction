@@ -4,17 +4,13 @@ Based on publication:
 A.Crimi et al. "Effective Brain Connectivity Through a Constrained Autoregressive Model" MICCAI 2016
 '''
 
-from audioop import rms
 from collections import defaultdict
 import os
-from glob import glob
 import logging
 import random
-from re import S
 import sys
 from time import time
 import json
-from matplotlib.pyplot import connect
 from tqdm import tqdm 
 import numpy as np
 import pandas as pd
