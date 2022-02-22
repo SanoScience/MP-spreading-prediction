@@ -210,7 +210,7 @@ if __name__ == '__main__':
     # Testing (use the learned 'avg_beta')
     procs = []
     queue = multiprocessing.Queue()
-    for subj, paths in dataset.items():
+    for subj, paths in tqdm(dataset.items()):
         p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_subj, queue))
         p.start()
         procs.append(p)
