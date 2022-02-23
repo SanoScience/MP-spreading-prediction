@@ -55,6 +55,9 @@ def save_prediction_plot(baseline, prediction, followup, subject, filepath, erro
     if error is not None: plt.title(f'Subject: {subject} \nError between true and predicted t1: {error:.2f}\nPearson correlation coeff: {corr_coeff:.2f}')
     plt.tight_layout()
     plt.savefig(filepath)
+    
+    # After saving the figure, explicitly close it to avoid memory wasting
+    plt.close()
     return 
     
 def visualize_error(error):
