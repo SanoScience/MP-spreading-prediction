@@ -176,8 +176,10 @@ def parallel_training(dataset, output_subj, num_cores, lam, iter_max, dicts_subj
     avg_conn_matrix = np.mean(conn_matrices, axis=0)
     return avg_conn_matrix
 
+
 def sequential_training(dataset, output_subj, lam, iter_max, dicts_subj):
-    ''' 2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
+    ''' DEPRECATED 
+    2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
     file_stem = 'seq_MAR'
     connect_matrix = None
     queue = multiprocessing.Queue()
@@ -239,11 +241,10 @@ if __name__ == '__main__':
         os.makedirs(output_res)
 
     pt_avg = PrettyTable()
-    pt_avg.field_names = ["Type", "Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+    pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
     
     # Dictionary storing, for each patient (key), a list of couples (RMSE, PCC)
-    dicts_subj_par = defaultdict(list)
-    dicts_subj_seq = defaultdict(list)
+    dicts_subj = defaultdict(list)
     pt_subs = PrettyTable()
     pt_subs.field_names = ["Type", "ID", "Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
     pt_subs.sortby = "ID" # Set the table always sorted by patient ID
@@ -291,11 +292,7 @@ if __name__ == '__main__':
     total_rmse_par = []
     total_pcc_par = []
 
-    total_rmse_seq = []
-    total_pcc_seq = []
-
     par_time = 0
-    seq_time = 0
     
     for i in tqdm(range(N_fold)):   
         train_set = {}
@@ -310,38 +307,22 @@ if __name__ == '__main__':
                 test_set[subj] = paths
 
         start_time = time()
-        par_conn_matrix = parallel_training(train_set, output_subj, num_cores, lam, iter_max, dicts_subj_par)
+        par_conn_matrix = parallel_training(train_set, output_subj, num_cores, lam, iter_max, dicts_subj)
         par_time += time() - start_time
 
-        start_time = time()  
-        seq_conn_matrix = sequential_training(train_set, output_subj, lam, iter_max, dicts_subj_seq)
-        seq_time += time() - start_time
-
-        rmse_par, pcc_par = test(par_conn_matrix, test_set, dicts_subj_par)
+        rmse_par, pcc_par = test(par_conn_matrix, test_set, dicts_subj)
         total_rmse_par.append(rmse_par)
         total_pcc_par.append(pcc_par)
 
-        rmse_seq, pcc_seq = test(seq_conn_matrix, test_set, dicts_subj_seq)
-        total_rmse_seq.append(rmse_seq)
-        total_pcc_seq.append(pcc_seq)
-
     # Note, these are the matrices from the last training phase (not the 'best of best')
-    np.savetxt("results/A_matrix_par", par_conn_matrix, delimiter=',')
-    np.savetxt("results/A_matrix_seq", seq_conn_matrix, delimiter=',')
+    np.savetxt("results/A_matrix", par_conn_matrix, delimiter=',')
 
-    pt_avg.add_row(["Parallel", round(np.mean(total_rmse_par), 2), round(np.std(total_rmse_par), 2), round(np.mean(total_pcc_par), 2), round(np.std(total_pcc_par), 2)])
-    pt_avg.add_row(["Sequential", round(np.mean(total_rmse_seq), 2), round(np.std(total_rmse_seq), 2), round(np.mean(total_pcc_seq), 2), round(np.std(total_pcc_seq), 2)])
+    pt_avg.add_row([round(np.mean(total_rmse_par), 2), round(np.std(total_rmse_par), 2), round(np.mean(total_pcc_par), 2), round(np.std(total_pcc_par), 2)])
 
-    for subj in dicts_subj_par.keys():
-        rmse_list = [el[0] for el in dicts_subj_par[subj]]
-        pcc_list = [el[1] for el in dicts_subj_par[subj]]
-        pt_subs.add_row(['PAR', subj, round(np.mean(rmse_list),2), round(np.std(rmse_list),2), round(np.mean(pcc_list),2), round(np.std(pcc_list),2)])
-        
-    for subj in dicts_subj_seq.keys():
-        rmse_list = [el[0] for el in dicts_subj_seq[subj]]
-        pcc_list = [el[1] for el in dicts_subj_seq[subj]]
-        pt_subs.add_row(['SEQ', subj, round(np.mean(rmse_list),2), round(np.std(rmse_list),2), round(np.mean(pcc_list),2), round(np.std(pcc_list),2)])
-    
+    for subj in dicts_subj.keys():
+        rmse_list = [el[0] for el in dicts_subj[subj]]
+        pcc_list = [el[1] for el in dicts_subj[subj]]
+        pt_subs.add_row([subj, round(np.mean(rmse_list),2), round(np.std(rmse_list),2), round(np.mean(pcc_list),2), round(np.std(pcc_list),2)])
 
     total_time = time() - total_time
     filename = f"{output_res}/{date}_MAR_{category}_{train_size}_{lam}_{iter_max}_{N_fold}.txt"
@@ -355,7 +336,6 @@ if __name__ == '__main__':
     out_file.write(f"Iterations per patient: {iter_max}\n")
     out_file.write(f"Folds: {N_fold}\n")
     out_file.write(f"Elapsed time for \'Parallel\' training (s): {format(par_time, '.2f')}\n")
-    out_file.write(f"Elapsed time for \'Sequential\' training (s): {format(seq_time, '.2f')}\n")
     out_file.write(f"Total time (s): {format(total_time, '.2f')}\n")
     out_file.write(pt_avg.get_string() + '\n')
     out_file.write(pt_subs.get_string())

@@ -33,11 +33,11 @@ class DiffusionSimulation:
             timestep = t_total / (iterations * 10)
             iterations = t_total / (timestep * 10)
             t_total = timestep * iterations * 10
-        Putting iterations to '1' and for t_total = 2 years, the timestep is 0.02
+        Putting iterations to '1' and for t_total = 2 years, the timestep is 0.2
         '''
         self.rois = 166 
         self.t_total = 2 # total length of the simulation in years
-        self.timestep = self.t_total / 10 
+        self.timestep = self.t_total / 10
         self.cm = connect_matrix
         if concentrations is not None: 
             #logging.info(f'Loading concentration from PET files.')
