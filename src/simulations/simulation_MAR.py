@@ -246,7 +246,7 @@ if __name__ == '__main__':
     # Dictionary storing, for each patient (key), a list of couples (RMSE, PCC)
     dicts_subj = defaultdict(list)
     pt_subs = PrettyTable()
-    pt_subs.field_names = ["Type", "ID", "Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+    pt_subs.field_names = ["ID", "Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
     pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
     with open(dataset_path, 'r') as f:
