@@ -7,14 +7,14 @@
 #python3 simulation_MAR.py ALL 8 30 1 2000000 2
 #echo "#"
 
-#echo "### AD ###"
+echo "### AD ###"
 
-#python3 simulation_MAR.py AD 8 2 0.5 2000000 2
-#echo "#"
-#python3 simulation_MAR.py AD 8 2 0 2000000 2
-#echo "#"
-#python3 simulation_MAR.py AD 8 2 1 2000000 2
-#echo "#"
+python3 simulation_MAR.py AD 2 2 0.5 2000000 2
+echo "#"
+python3 simulation_MAR.py AD 2 2 0 2000000 2
+echo "#"
+python3 simulation_MAR.py AD 2 2 1 2000000 2
+echo "#"
 
 #echo "### LMCI ###"
 
@@ -34,11 +34,11 @@
 #python3 simulation_MAR.py EMCI 8 14 1 2000000 2
 #echo "#"
 
-echo "### CN ###"
+#echo "### CN ###"
 
-python3 simulation_MAR.py CN 8 8 0.5 2000000 2
-echo "#"
-python3 simulation_MAR.py CN 8 8 0 2000000 2
-echo "#"
-python3 simulation_MAR.py CN 8 8 1 2000000 2
-echo "#"
+#python3 simulation_MAR.py CN 8 8 0.5 2000000 2
+#echo "#"
+#python3 simulation_MAR.py CN 8 8 0 2000000 2
+#echo "#"
+#python3 simulation_MAR.py CN 8 8 1 2000000 2
+#echo "#"

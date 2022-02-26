@@ -137,7 +137,7 @@ def run_simulation(subject, paths, output_subj, connect_matrix, lam, iter_max, r
     except Exception as e:
         logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}") 
         
-    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, os.path.join(subject_output_subj, results_stem+'_prediction.png'), rmse, corr_coef)
+    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subject, os.path.join(subject_output_subj, results_stem+'_prediction.png'), rmse, corr_coef)
     save_coeff_matrix(os.path.join(subject_output_subj,'A_'+results_stem+'.csv'), simulation.coef_matrix)
 
     queue.put([subject, rmse, corr_coef])

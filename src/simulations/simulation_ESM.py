@@ -54,6 +54,7 @@ def Simulation(concentration, connect_matrix, years, timestep, beta_0, delta_0, 
     iterations = int(years/timestep)
     
     #P = define_initial_P(concentration, connect_matrix, distances, max_concentration)
+    # NOTE Initial P has to be explored for different values (i.e. 0.5 instead of 1)
     P = np.array(np.where(concentration>0, 1, 0), dtype=np.float64)
     Beta = np.zeros(n_regions)
     Delta = np.zeros(n_regions)
