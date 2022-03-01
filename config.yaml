@@ -1,7 +1,7 @@
 paths:
   dataset_dir: "data/ADNI/derivatives/"
   output_dir: "data/output/"
-  atlas_path: "data/atlas/AAL3v1_1mm.nii.gz"
+  atlas_path: "data/atlas/AAL3v1.nii.gz"
   subject: "sub-AD4009"                                                                 # if null (aka None): scripts are run on the whole dataset 
 
 tractogram_config:
