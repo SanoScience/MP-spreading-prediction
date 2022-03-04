@@ -28,7 +28,7 @@ import nibabel
 import yaml
 import numpy as np
 
-from generate_connectivity_matrix import ConnectivityMatrix
+from generate_CM import ConnectivityMatrix
 from utils import parallelize
 from glob import glob
 

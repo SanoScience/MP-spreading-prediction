@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-from generate_connectivity_matrix import ConnectivityMatrix
+from generate_CM import ConnectivityMatrix
 from utils import parallelize_CM
 from glob import glob
 
