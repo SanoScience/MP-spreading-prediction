@@ -1,12 +1,10 @@
 from subprocess import Popen, PIPE, STDOUT
-#import json
 from nibabel import load, save, Nifti1Image
 from dipy.io.gradients import read_bvals_bvecs
 from dipy.core.gradients import gradient_table
 import os
 import re
 import sys
-#from nibabel.nifti1 import Nifti1Image
 from utils.brain_extraction import BrainExtraction, BET_FSL
 from utils.brain_extraction import BrainExtraction
 from utils.denoising import Denoising_LPCA
@@ -17,11 +15,13 @@ from utils.motion_correction import MotionCorrection
 from utils.registration import Registration, RegistrationPET
 from utils.brain_segmentation import BrainSegmentation
 from utils.cerebellum_normalization import CerebellumNormalization
-import nipype
 import logging
 import multiprocessing
 import numpy as np
 from tqdm import tqdm
+import csv
+from dipy.segment.mask import median_otsu
+
 
 def check_path(path):
     #logging.info("Checking path {}".format(path))
@@ -61,11 +61,14 @@ def dispatcher(f, atlas_file, img_type):
         bvals, bvecs = read_bvals_bvecs(name_bval, name_bvec)
         gtab = gradient_table(bvals, bvecs)  
     
+    ########################
+    ### BRAIN EXTRACTION ###
+    ########################
     
     #logging.info(name + " Starting Brain Extraction")
     if img_type == 'anat':
         try:
-            be = BET_FSL(name_nii, name)
+            be = BET_FSL(name_nii, name, binary_mask=False)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at brain_extraction')
@@ -80,8 +83,8 @@ def dispatcher(f, atlas_file, img_type):
     try:
         data, affine, header = be.run()
         bm = be.get_mask()
-        name_nii = intermediate_dir + name + '_be.nii'
-        name_bm = name + '_bm.nii'
+        name_nii = intermediate_dir + name + '_be.nii.gz'
+        name_bm = name + '_bm.nii.gz'
         save(Nifti1Image(data, affine, header), name_nii)
         save(Nifti1Image(bm, affine, header), name_bm)
     except Exception as e:
@@ -94,7 +97,7 @@ def dispatcher(f, atlas_file, img_type):
         try:
             lpca = Denoising_LPCA(data, affine, header, name, bm)
             data, affine, header = lpca.run(gtab)
-            name_nii = intermediate_dir + name + '_lpca.nii'
+            name_nii = intermediate_dir + name + '_lpca.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
@@ -106,7 +109,7 @@ def dispatcher(f, atlas_file, img_type):
         try:
             gib = Gibbs(data, affine, header, name)
             data, affine, header = gib.run()
-            name_nii = intermediate_dir + name + '_gibbs.nii'
+            name_nii = intermediate_dir + name + '_gibbs.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
@@ -120,7 +123,7 @@ def dispatcher(f, atlas_file, img_type):
             data, affine, header = ec.run()
             name_bvec, name_bval = ec.get_bvec_bval()
             gtab = ec.get_BMatrix()
-            name_nii = intermediate_dir + name + '_eddy.nii'
+            name_nii = intermediate_dir + name + '_eddy.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
@@ -136,7 +139,7 @@ def dispatcher(f, atlas_file, img_type):
             try:
                 mc = MotionCorrection(data, affine, header, name)
                 data, affine, header = mc.run()
-                name_nii = intermediate_dir + name + '_mc.nii'
+                name_nii = intermediate_dir + name + '_mc.nii.gz'
                 save(Nifti1Image(data, affine, header), name_nii)
             except Exception as e:
                 logging.error(e)
@@ -147,7 +150,7 @@ def dispatcher(f, atlas_file, img_type):
         try:
             flat = Flatten(name_nii, name)
             data, affine, header = flat.run()
-            name_nii = intermediate_dir + name + '_fl.nii'
+            name_nii = intermediate_dir + name + '_fl.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
@@ -158,7 +161,7 @@ def dispatcher(f, atlas_file, img_type):
         try:
             atl_regs = RegistrationPET(name_nii, atlas_file, name, img_type)
             data, affine, header = atl_regs.run()
-            name_nii = intermediate_dir + name + '_reg.nii'
+            name_nii = intermediate_dir + name + '_reg.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
@@ -172,47 +175,51 @@ def dispatcher(f, atlas_file, img_type):
         try:
             atl_regs = RegistrationPET(name_nii, atlas_file, name, img_type)
             data, affine, header = atl_regs.run()
-            name_nii = intermediate_dir + name + '_reg.nii'
+            name_nii = intermediate_dir + name + '_reg.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Registration')
         
-        try:
-            # the image type 'mask' is just to distinct it from dwi, which requires a longer process
-            atl_regs = RegistrationPET(name_bm, atlas_file, name_bm.removesuffix('.nii'), 'mask')
-            bm, affine_bm, header_bm = atl_regs.run()
-            save(Nifti1Image(bm, affine_bm, header_bm), name_bm)
-        except Exception as e:
-            logging.error(e)
-            logging.error(name_nii + ' at Registration(mask)')
-        #logging.info(name + " Atlas Registration done")
-
+    '''
+    NOTE: DEPRECATED
     if img_type == 'pet':    
         #logging.info(name + " Starting Cerebellum Normalization")
         try:
             ce = CerebellumNormalization(name_nii, atlas_file, name)
             data, affine, header = ce.run()
-            name_nii = intermediate_dir + name + '_norm.nii'
+            name_nii = intermediate_dir + name + '_norm.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at CerebellumNormalization')
         #logging.info(name + " Cerebellum Normalization done")
+    '''
     
     if img_type == 'anat':
         #logging.info("Starting Brain Segmentation")
         try:
             tissue_class = BrainSegmentation(name_nii, name)
             data, affine, header = tissue_class.run()
-            name_nii = intermediate_dir + name + '_segm.nii'
+            name_nii = intermediate_dir + name + '_segm.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at BrainSegmentation')
         #logging.info("Brain Segmentation done")
-        
-    save(Nifti1Image(data, affine, header), name + '.nii')
+    
+    # get the binary mask of dwi after preprocessing
+    if img_type == 'dwi':
+        try:
+            bm = median_otsu(data[:,:,:,0])[0]
+            name_bm = name + '_bm.nii.gz'
+            save(Nifti1Image(bm, affine, header), name_bm)
+        except Exception as e:
+                logging.error(e)
+                logging.error(name_nii + ' at brain_extraction (final)')
+    #logging.info(name + " Brain Extraction done")
+
+    save(Nifti1Image(data, affine, header), name + '.nii.gz')
     #logging.info(f"{name} Preprocessing finished, final output saved as {os.getcwd() + os.sep + name + '.nii'}")
 
     return 
@@ -221,123 +228,83 @@ logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [
 logging.getLogger('nipype.workflow').setLevel(0)
 logging.getLogger('nipype.interface').setLevel(0)
 
-# assuming atlas is in 'data/atlas' directory
-atlas_file = os.getcwd() + '../../data/atlas/AAL3v1_1mm.nii.gz'
-logging.info(f"Using atlas {atlas_file}")
+if __name__=='__main__':
+    # assuming atlas is in the current dir
+    atlas_file = os.getcwd() + '/AAL3v1.nii.gz'
+    logging.info(f"Using atlas {atlas_file}")
 
-if len(sys.argv) > 1:
-    img_type = sys.argv[1]
-else:
-    img_type = input('Provide type of image dwi/anat/pet: ')
-#logging.info(f"PreProcessing {img_type} files")
-
-if len(sys.argv) > 2:
-    dataset_path = sys.argv[2]
-else:
-    dataset_path = input('Insert local path of the dataset (enter to look in the current directory): ')
-
-if len(sys.argv) > 3:
-    if int(sys.argv[3]) == -1:
-        num_cores = multiprocessing.cpu_count()
+    if len(sys.argv) > 1:
+        img_type = sys.argv[1]
     else:
-        num_cores = int(sys.argv[3])
-else:
-    num_cores = input("Insert the number of cores you want to use (default, 4): ")
-    num_cores = int(num_cores) if len(num_cores) > 0 else 4
+        img_type = input('Provide type of image [dwi/anat/pet/*] or csv filename containing images to process: ')
+    #logging.info(f"PreProcessing {img_type} files")
 
-
-# If it starts with '/' it is an absolute path, otherwise make it absolute
-if not dataset_path.startswith('/'):
-    if dataset_path != '.':
-        dataset_path = os.getcwd() + '/' + dataset_path
+    if img_type.endswith('.csv'):
+        files = []
+        # the output 'derivative' folder will be created in the same path of passed csv file
+        dataset_path = img_type.removesuffix(img_type.split(os.sep)[-1])
+        with open(img_type, newline='') as csvfile:
+            reader = csv.reader(csvfile, delimiter='')
+            for row in reader:
+                files.append(row)
     else:
-        dataset_path = os.getcwd() + '/'
+        if len(sys.argv) > 2:
+            dataset_path = sys.argv[2]
+        else:
+            dataset_path = input('Insert local path of the dataset (enter to look in the current directory): ')
+            
+        #logging.info(f"Looking for all '.nii' files of type {img_type} in the path {dataset_path} (excluding \'derivatives\' folder)...")
+        output = Popen(f"find {dataset_path} ! -path '*derivatives*' ! -wholename '{atlas_file}' -wholename \'*/{img_type}/*.nii\'", shell=True, stdout=PIPE)
+        files = str(output.stdout.read()).removeprefix('b\'').removesuffix('\'').removesuffix('\\n').split('\\n')
 
-#logging.info(f"Looking for all '.nii' files of type {img_type} in the path {dataset_path} (excluding \'derivatives\' folder)...")
-output = Popen(f"find {dataset_path} ! -path '*derivatives*' ! -wholename '{atlas_file}' -wholename \'*/{img_type}/*.nii\'", shell=True, stdout=PIPE)
-files = str(output.stdout.read()).removeprefix('b\'').removesuffix('\'').removesuffix('\\n').split('\\n')
+        logging.info("Found {} files".format(len(files)))
+        logging.info(files)
+            
+        # If it starts with '/' it is an absolute path, otherwise make it absolute
+        if not dataset_path.startswith('/'):
+            if dataset_path != '.':
+                dataset_path = os.getcwd() + '/' + dataset_path
+            else:
+                dataset_path = os.getcwd() + '/'
 
-logging.info("Found {} files".format(len(files)))
-logging.info(files)
-
-# TODO
-# skip_temporary = True if input('Do you want to skip already processed temp files? [Y/n]') != 'n' else False
-
-procs = []
-
-for i in tqdm(range(len(files))):
-    #dispatcher(files[i], atlas_file, img_type)
-    p = multiprocessing.Process(target=dispatcher, args=(files[i], atlas_file, img_type))
-    p.start()
-    procs.append(p)
-    
-    while len(procs)%num_cores == 0 and len(procs) > 0:
-        for p in procs:
-            # wait for 10 seconds to wait process termination
-            p.join(timeout=10)
-            # when a process is done, remove it from processes queue
-            if not p.is_alive():
-                procs.remove(p)
-                
-    # final chunk could be shorter than num_cores, so it's handled waiting for its completion (join without arguments wait for the end of the process)
-    if i == len(files) - 1:
-        for p in procs:
-            p.join()
+    if len(sys.argv) > 3:
+        if int(sys.argv[3]) == -1:
+            num_cores = multiprocessing.cpu_count()
+        else:
+            num_cores = int(sys.argv[3])
+    else:
+        num_cores = input("Insert the number of cores you want to use (default, 4): ")
+        num_cores = int(num_cores) if len(num_cores) > 0 else 4
 
 
-logging.info("Preprocessing done")
+    # TODO
+    # skip_temporary = True if input('Do you want to skip already processed temp files? [Y/n]') != 'n' else False
 
-"""
-print("Starting preprocessing...")
-processes = []
-done = 0
-for f in files:
-    f = f.removeprefix("\"").removeprefix("\'").removesuffix("\"").replace('./', '')
-    print(f"file: {f}")
-    path = f.removesuffix(f.split('/')[-1])
-    name = (f.split('/')[-1]).split('.')[0] # just the patient name (without extension)
-    
-    json_data = json.load(open(path+name+'.json'))
-    image_orientation = json_data["ImageOrientationPatientDICOM"]
-    
-    # 'EchoSpacing' can be 'Effective' or 'EstimatedEffective'
-    es_codename = "EffectiveEchoSpacing"
-    if es_codename not in json_data.keys():
-        es_codename = "Estimated"+es_codename
-        if es_codename not in json_data.keys():
-            es_codename = "EchoTime"
-    ees = json_data[es_codename]
-    amPE = json_data["AcquisitionMatrixPE"]
-    freq = round(ees * (amPE - 1), 4)
-    acq_f = open(path+"acqparams.txt", "w")
-    acq_f.write(f"{image_orientation[0]} {image_orientation[1]} {image_orientation[2]} {freq}\n")
-    acq_f.write(f"{image_orientation[3]} {image_orientation[4]} {image_orientation[5]} {freq}\n")
-    acq_f.close()
-    
-    index = open(path+"index.txt", "w")
-    bvals = open(path+name+".bval", "r")
-    volumes = len(bvals.readline().split(' '))
-    for v in range(volumes):
-        index.write('1 ' if v%2==0 else '2 ')
-    index.close()
+    procs = []
+    re_img_type = re.compile(r".*(dwi|pet|anat).*")
 
-    print("path: ", path)
-    # 'name' will not be overwritten because output of preprocessing is .nii.gz (input image is expected to be a .nii)
-    command = f"./preprocessing.sh -i {path+name} -p {path} -t dwi"
-    # loading processes queue
-    print(f"command: {command}")
-    p = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, executable="/bin/bash")
-    processes.append(p)
-    done = done + 1
-    # every 8 files stop and wait
-    if len(processes)%8==0:
-        for p in processes:
-            p.wait()
-        print(f"{done}/{len(files)}")
+    for i in tqdm(range(len(files))):
         
-	
-for p in processes:
-    p.wait()
+        # this ensure the preprocessing pipeline will execute the right steps for each file (it allows heterogeneity in the list)
+        img_type = re_img_type.search(files[i]).group()
+        
+        #dispatcher(files[i], atlas_file, img_type)
+        p = multiprocessing.Process(target=dispatcher, args=(files[i], atlas_file, img_type))
+        p.start()
+        procs.append(p)
+        
+        while len(procs)%num_cores == 0 and len(procs) > 0:
+            for p in procs:
+                # wait for 10 seconds to wait process termination
+                p.join(timeout=10)
+                # when a process is done, remove it from processes queue
+                if not p.is_alive():
+                    procs.remove(p)
+                    
+        # final chunk could be shorter than num_cores, so it's handled waiting for its completion (join without arguments wait for the end of the process)
+        if i == len(files) - 1:
+            for p in procs:
+                p.join()
 
-print("PREPROCESSING DONE")
-"""
+
+    logging.info("Preprocessing done")
