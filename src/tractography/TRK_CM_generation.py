@@ -32,28 +32,30 @@ from generate_CM import ConnectivityMatrix
 from utils import parallelize
 from glob import glob
 
-def get_paths(stem_dwi, stem_t1, config, general_dir):
+def get_paths(stem_dwi, stem_anat, config, general_dir):
     ''' Generate paths based on configuration file and selected subject. '''
  
-    img_path = stem_dwi + '.nii'
+    img_path = stem_dwi + '.nii.gz'
     bval_path = stem_dwi + '.bval'
     bvec_path = stem_dwi + '.bvec'
     # output dir is in the derivatives folder (which is also the input folder)
     output_dir = stem_dwi.removesuffix(stem_dwi.split(os.sep)[-1])
       
+    bm_path = stem_dwi + '_bm.nii.gz'
+      
     # CerebroSpinal Fluid (CSF) is _pve_0
-    csf_path = stem_t1 + '_pve-0.nii'
+    csf_path = stem_anat + '_pve-0.nii.gz'
     
     # Grey Matter is _pve_1
-    gm_path = stem_t1 + '_pve-1.nii'
+    gm_path = stem_anat + '_pve-1.nii.gz'
     
     # White Matter is _pve_2
-    wm_path = stem_t1 + '_pve-2.nii'
+    wm_path = stem_anat + '_pve-2.nii.gz'
 
     # AAL atlas path
     atlas_path = general_dir + config['paths']['atlas_path']
 
-    return (img_path, bval_path, bvec_path, output_dir, 
+    return (img_path, bval_path, bvec_path, output_dir, bm_path,
             csf_path, gm_path, wm_path, atlas_path)
     
 
@@ -127,9 +129,8 @@ def compute_streamline_length(streamline, is_dipy=True):
                     for i in range(0, len(streamline)-1)])
     return s_length
 
-def generate_tractogram(config, data, affine, hardi_img, gtab, 
+def generate_tractogram(config, data, affine, hardi_img, gtab, data_bm,
                         data_wm, data_gm, data_csf):
-    data_bm = median_otsu(data[:,:,:,0])[0]
     seeds = utils.seeds_from_mask(data_bm, affine, density=config['tractogram_config']['seed_density'])
 
     response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=config['tractogram_config']['fa_thres'])
@@ -162,15 +163,16 @@ def save_tractogram(tractogram, output_dir, image_path):
     save_trk(tractogram, os.path.join(output_dir, f"{file_stem}_sc-act.trk"))
     logging.info(f"Current tractogram saved as {output_dir}{file_stem}_sc-act.trk")
 
-def run(stem_dwi, stem_t1, config=None, general_dir = ''):
+def run(stem_dwi, stem_anat, config=None, general_dir = ''):
     ''' Run workflow for selected subject. '''
     
     # get paths
-    (img_path, bval_path, bvec_path, output_dir, 
-     csf_path, gm_path, wm_path, atlas_path) = get_paths(stem_dwi, stem_t1, config, general_dir)
+    (img_path, bval_path, bvec_path, output_dir, bm_path,
+     csf_path, gm_path, wm_path, atlas_path) = get_paths(stem_dwi, stem_anat, config, general_dir)
 
     # load data 
     data, affine, hardi_img = load_nifti(img_path, return_img=True) 
+    data_bm = load_nifti_data(bm_path)
     data_wm = load_nifti_data(wm_path)
     data_gm = load_nifti_data(gm_path)
     data_csf = load_nifti_data(csf_path)
@@ -183,7 +185,7 @@ def run(stem_dwi, stem_t1, config=None, general_dir = ''):
     try:
         # generate tractogram
         tractogram = generate_tractogram(config, data, affine, hardi_img, 
-                                        gradient_table, data_wm, data_gm, data_csf)
+                                        gradient_table, data_bm, data_wm, data_gm, data_csf)
         save_tractogram(tractogram, output_dir, img_path)
         
         # generate connectivity matrix
