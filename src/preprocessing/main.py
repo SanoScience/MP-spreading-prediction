@@ -236,17 +236,14 @@ if __name__=='__main__':
     if len(sys.argv) > 1:
         img_type = sys.argv[1]
     else:
-        img_type = input('Provide type of image [dwi/anat/pet/*] or csv filename containing images to process: ')
+        img_type = input('Provide type of image [dwi/anat/pet/*] or txt filename containing images to process (1 line per file): ')
     #logging.info(f"PreProcessing {img_type} files")
 
-    if img_type.endswith('.csv'):
-        files = []
+    if img_type.endswith('.txt'):
         # the output 'derivative' folder will be created in the same path of passed csv file
         dataset_path = img_type.removesuffix(img_type.split(os.sep)[-1])
-        with open(img_type, newline='') as csvfile:
-            reader = csv.reader(csvfile, delimiter='')
-            for row in reader:
-                files.append(row)
+        f = open(img_type, "r")
+        files = f.readlines()
     else:
         if len(sys.argv) > 2:
             dataset_path = sys.argv[2]
