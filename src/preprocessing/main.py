@@ -201,7 +201,7 @@ def dispatcher(f, atlas_file, img_type):
     ### FINAL DWI BINARY MASK ###
     #############################
     
-    # get the binary mask of dwi after preprocessing
+    # get the binary mask of dwi after preprocessing (simple sweep of median_otsu, without particular settings)
     if img_type == 'dwi':
         try:
             bm = median_otsu(data[:,:,:,0])[0]
@@ -228,9 +228,9 @@ if __name__=='__main__':
         txt_list = sys.argv[1]
     else:
         try:
-            img_type = input('Provide txt filename containing images to process (1 line per file) [optional, Enter to process all images]: ')
+            txt_list = input('Provide txt filename containing images to process (1 line per file) [optional, Enter to process all images]: ')
         except:
-            img_type = ''
+            txt_list = ''
     #logging.info(f"PreProcessing {img_type} files")
         
     if len(sys.argv) > 2:
@@ -238,8 +238,8 @@ if __name__=='__main__':
     else:
         dataset_path = input('Insert local path of the dataset (enter to look in the current directory): ')
         
-    if img_type.endswith('.txt'):
-        f = open(img_type, "r")
+    if txt_list.endswith('.txt'):
+        f = open(txt_list, "r")
         files = f.readlines()
     else:
         #logging.info(f"Looking for all '.nii' files in the path {dataset_path} (excluding \'derivatives\' folder)...")

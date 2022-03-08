@@ -25,7 +25,7 @@ class EddyMotionCorrection:
         self.bvec_path = name_bvec
         self.mask_path = mask_path
         self.json_path = name_json
-        self.base = 'eddy_corrected.nii.gz'
+        self.base = 'eddy_corrected'
 
         # The acqparams.txt is manually writen if the fields are not present in the json file
         json_data = json.load(open(self.json_path))
@@ -62,7 +62,7 @@ class EddyMotionCorrection:
         index.close()
 
     def run(self):        
-        os.system(f"eddy --imain={self.name_nii} --mask={self.mask_path} --acqp={self.acqp_path} --index={self.index_path} --bvecs={self.bvec_path} --bvals={self.bval_path} --out={self.base} --repol --interp=trilinear --niter=3 --nvoxhp=500")
+        os.system(f"eddy --imain={self.name_nii} --mask={self.mask_path} --acqp={self.acqp_path} --index={self.index_path} --bvecs={self.bvec_path} --bvals={self.bval_path} --out={self.base} --repol --interp=trilinear --niter=4 --nvoxhp=1000")
         '''
         The --out parameter specifies the basename for all output files of eddy. It is used as the name for all eddy output files, but with different extensions. If we assume that user specified --out=my_eddy_output, the files that are always written are
 
