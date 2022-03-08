@@ -25,7 +25,7 @@ class EddyMotionCorrection:
         self.bvec_path = name_bvec
         self.mask_path = mask_path
         self.json_path = name_json
-        self.base = 'eddy_corrected'
+        self.base = 'eddy_corrected.nii.gz'
 
         # The acqparams.txt is manually writen if the fields are not present in the json file
         json_data = json.load(open(self.json_path))
@@ -75,11 +75,8 @@ class EddyMotionCorrection:
         self.out_image = 'eddy_corrected.nii.gz'
         self.out_bvecs = 'eddy_corrected.eddy_rotated_bvecs'
 
-        # extracting .nii.gz
-        with gzip.open(self.out_image, 'rb') as f_in:
-            with open(self.name+'.nii', 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)    
-        self.out_image = self.name+'.nii'
+        os.system(f" mv {self.out_image} intermediate/{self.name+'_eddy.nii.gz'}") 
+        self.out_image = 'intermediate/'+self.name+'_eddy.nii.gz'
 
         os.system(f"mv {self.out_bvecs} {self.name+'.bvec'}")
         self.out_bvecs = self.name+'.bvec'

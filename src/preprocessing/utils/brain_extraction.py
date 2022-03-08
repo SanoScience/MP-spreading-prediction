@@ -19,7 +19,7 @@ class BrainExtraction:
         self.affine = affine
         self.name = name
 
-    def run(self, numpass = 4, median_radius = 4, dilate = 1):
+    def run(self, numpass = 5, median_radius = 5, dilate = 1):
         if len(self.data.shape)==4:
             vol_idx = range(len(self.data[0,0,0,:]))
         else:
