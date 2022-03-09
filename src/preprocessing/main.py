@@ -237,6 +237,7 @@ if __name__=='__main__':
         dataset_path = sys.argv[2]
     else:
         dataset_path = input('Insert local path of the dataset (enter to look in the current directory): ')
+        if len(dataset_path) == 0: dataset_path = '.'
         
     if txt_list.endswith('.txt'):
         f = open(txt_list, "r")
