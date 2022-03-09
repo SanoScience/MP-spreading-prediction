@@ -29,5 +29,5 @@ class Denoising_LPCA:
         if not gtab:
             gtab = gradient_table(self.bvals, self.bvecs)
         sigma = pca_noise_estimate(self.data, gtab, correct_bias=True, smooth=2)
-        self.data = localpca(self.data, sigma, self.binary_mask, tau_factor=None, patch_radius=1) # tau_factor = None implies the automatic computation of threshold for PCA eigenvalues
+        self.data = localpca(self.data, sigma, self.binary_mask, tau_factor=None, patch_radius=2) # tau_factor = None implies the automatic computation of threshold for PCA eigenvalues
         return self.data, self.affine, self.header

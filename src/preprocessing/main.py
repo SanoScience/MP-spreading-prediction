@@ -107,7 +107,7 @@ def dispatcher(f, atlas_file, img_type):
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Gibbs')
-        
+            
         try:
             ec = EddyMotionCorrection(name, name_nii, name_bval, name_bvec, name_json, name_bm)
             data, affine, header = ec.run()

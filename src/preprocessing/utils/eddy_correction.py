@@ -5,8 +5,6 @@ from dipy.io.gradients import read_bvals_bvecs
 from dipy.core.gradients import gradient_table
 import json
 import os
-import gzip
-import logging
 
 class EddyMotionCorrection:
     out_image = ''
@@ -55,10 +53,9 @@ class EddyMotionCorrection:
         acq_f.close()
         
         index = open(self.index_path, "w")
-        bvals = open(self.bval_path, "r")
-        volumes = len(bvals.readline().split(' '))
-        for v in range(volumes):
-            index.write('1 ' if v%2==0 else '2 ')
+        bvals, _ = read_bvals_bvecs(self.bval_path, self.bvec_path)
+        for _ in bvals:
+            index.write('1 ')
         index.close()
 
     def run(self):        
