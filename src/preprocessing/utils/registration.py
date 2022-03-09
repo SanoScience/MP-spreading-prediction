@@ -37,7 +37,7 @@ class Registration():
             
         
         if self.img_type == 'mask':
-            fl.inputs.out_matrix_file = 'reg_matrix.mat'
+            fl.inputs.out_matrix_file = self.name + '_reg_matrix.mat'
                 
         elif self.img_type == 'pet':
             fl.inputs.apply_xfm = True

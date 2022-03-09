@@ -151,11 +151,11 @@ def dispatcher(f, atlas_file, img_type):
     if img_type == 'pet':
         try: 
             # NOTE: binary mask is obtained on the first slice of PET, which is not moved by motion correction nor by flattening
-            bm_reg = Registration(name_bm, atlas_file, name_nii, 'mask')
+            bm_reg = Registration(name_bm, atlas_file, intermediate_dir+name, 'mask')
             bm_data, bm_affine, bm_header = bm_reg.run()
             save(Nifti1Image(bm_data, bm_affine, bm_header), name_bm)
             
-            atl_regs = Registration(name_nii, atlas_file, name_nii, img_type)
+            atl_regs = Registration(name_nii, atlas_file, intermediate_dir+name, img_type)
             data, affine, header = atl_regs.run()
             name_nii = intermediate_dir + name + '_reg.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
