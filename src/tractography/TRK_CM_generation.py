@@ -207,7 +207,7 @@ def main():
     general_dir = os.getcwd()
     general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src') + os.sep
     subject = config['paths']['subject'] if config['paths']['subject'] != 'all' else 'sub-*'
-    dwi_dir = general_dir + config['paths']['dataset_dir'] + subject  + os.sep + 'ses-*' + os.sep + 'dwi' + os.sep + '*_dwi.nii'
+    dwi_dir = general_dir + config['paths']['dataset_dir'] + subject  + os.sep + 'ses-*' + os.sep + 'dwi' + os.sep + '*_dwi.nii.gz'
     dwi_files = glob(dwi_dir)
     
     logging.info(f'{len(dwi_files)} DWI files found ')
