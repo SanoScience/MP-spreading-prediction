@@ -26,8 +26,8 @@ class CerebellumNormalization:
         math = MathsCommand()
         math.inputs.in_file = self.name_nii
         math.inputs.args = f'-sub {total_mean - 1} -thr 0'
-        math.inputs.out_file =  self.name + '.nii'
-        math.inputs.output_type = 'NIFTI'
+        math.inputs.out_file =  self.name + '.nii.gz'
+        math.inputs.output_type = 'NIFTI_GZ'
         out_math = math.run()
         flattened_path = out_math.outputs.out_file
         
@@ -41,8 +41,8 @@ class CerebellumNormalization:
         # threshold on values below 95 (non-cerebellum voxels are cut off)
         thr.inputs.direction = 'below'
         thr.inputs.nan2zeros = True
-        thr.inputs.out_file = self.name + '_cb-mask.nii'
-        thr.inputs.output_type = 'NIFTI'
+        thr.inputs.out_file = self.name + '_cb-mask.nii.gz'
+        thr.inputs.output_type = 'NIFTI_GZ'
         
         try:
             out_thr = thr.run()
@@ -56,8 +56,8 @@ class CerebellumNormalization:
         thr.inputs.thresh = 112.1
         thr.inputs.direction = 'above'
         thr.inputs.nan2zeros = True
-        thr.inputs.out_file = self.name + '_cb-mask.nii'
-        thr.inputs.output_type = 'NIFTI'
+        thr.inputs.out_file = self.name + '_cb-mask.nii.gz'
+        thr.inputs.output_type = 'NIFTI_GZ'
         
         try:
             out_thr = thr.run()
@@ -72,8 +72,8 @@ class CerebellumNormalization:
         am = ApplyMask()
         am.inputs.in_file = flattened_path
         am.inputs.mask_file = cerebellum_mask_path
-        am.inputs.out_file = self.name + '_cb-only.nii'
-        am.inputs.output_type = 'NIFTI'
+        am.inputs.out_file = self.name + '_cb-only.nii.gz'
+        am.inputs.output_type = 'NIFTI_GZ'
         out_am = am.run()
         cerebellum_image_path = out_am.outputs.out_file
         
@@ -92,8 +92,8 @@ class CerebellumNormalization:
         math = MathsCommand()
         math.inputs.in_file = flattened_path
         math.inputs.args = f'-sub {cerebellum_mean} -thr 0'
-        math.inputs.out_file =  self.name + '.nii'
-        math.inputs.output_type = 'NIFTI'
+        math.inputs.out_file =  self.name + '.nii.gz'
+        math.inputs.output_type = 'NIFTI_GZ'
         out_math = math.run()
         flattened_normalized_path = out_math.outputs.out_file
 

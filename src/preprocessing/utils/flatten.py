@@ -19,8 +19,8 @@ class Flatten:
         mi.inputs.in_file = self.name_nii
         mi.inputs.dimension = 'T'
         mi.inputs.nan2zeros = True
-        mi.inputs.out_file = self.name + '.nii'
-        mi.inputs.output_type = 'NIFTI'
+        mi.inputs.out_file = self.name + '.nii.gz'
+        mi.inputs.output_type = 'NIFTI_GZ'
 
         try:
             out_mi = mi.run()

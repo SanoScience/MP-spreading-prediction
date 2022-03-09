@@ -22,42 +22,28 @@ import logging
 import os
 
 class Registration():
-    def __init__(self, name_nii, atlas_path, name, img_type='dwi'):
+    def __init__(self, name_nii, atlas_path, name, img_type='mask'):
         self.name_nii = name_nii
         self.atlas = atlas_path
         self.name = name
         self.img_type = img_type
 
     def run(self):
-        fl = fsl.FLIRT(bins=1080, cost_func='mutualinfo')
+        fl = fsl.FLIRT()
         fl.inputs.in_file = self.name_nii
         fl.inputs.reference = self.atlas
-        fl.inputs.cost = 'mutualinfo'
         fl.inputs.out_file = self.name + '.nii.gz'
         fl.inputs.output_type = 'NIFTI_GZ'
-        fl.inputs.out_matrix_file = self.name + '_reg_matrix.mat'
             
-        # for dwi, create the matrix and apply it to all volumes. Masks use the already existing registration matrix
-        if self.img_type == 'dwi':
-            '''
-            echo "creating matrix"
-            flirt -ref $atlas -in $flirt_input -cost mutualinfo -searchcost mutualinfo -omat $mat
-
-            echo "atlas registration"
-            flirt -ref $atlas -in $flirt_input -applyxfm -init $mat -out $output 
-            '''
-            try:
-                out_fl = fl.run()
-            except Exception as e:
-                logging.error(e)
+        
+        if self.img_type == 'mask':
+            fl.inputs.out_matrix_file = 'reg_matrix.mat'
                 
-        if self.img_type == 'dwi' or self.img_type == 'mask':
+        elif self.img_type == 'pet':
             fl.inputs.apply_xfm = True
             fl.inputs.in_matrix_file = self.name + '_reg_matrix.mat'   
-        
-        if self.img_type == 'pet':
-            fl.inputs.no_resample = True
 
+    
         try:
             out_fl = fl.run()
         except Exception as e:
