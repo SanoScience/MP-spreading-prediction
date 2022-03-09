@@ -21,7 +21,7 @@ class BrainSegmentation:
         fst.inputs.no_bias = b1_corr
         fst.inputs.no_pve = False
         fst.inputs.number_classes = nclass
-        fst.inputs.output_type = 'NIFTI'
+        fst.inputs.output_type = 'NIFTI_GZ'
         fst.inputs.out_basename = self.name
 
         try:
@@ -32,10 +32,10 @@ class BrainSegmentation:
         self.seg = out_fst.outputs.tissue_class_map
         self.pves = out_fst.outputs.partial_volume_files
         
-        name_p = self.name+'_pve-{}.nii'
-        Path(self.name+'_pve_0.nii').rename(name_p.format('0'))
-        Path(self.name+'_pve_1.nii').rename(name_p.format('1'))
-        Path(self.name+'_pve_2.nii').rename(name_p.format('2'))
+        name_p = self.name+'_pve-{}.nii.gz'
+        Path(self.name+'_pve_0.nii.gz').rename(name_p.format('0'))
+        Path(self.name+'_pve_1.nii.gz').rename(name_p.format('1'))
+        Path(self.name+'_pve_2.nii.gz').rename(name_p.format('2'))
                 
         img = nib.load(self.seg)
         return img.get_fdata(), img.affine, img.header

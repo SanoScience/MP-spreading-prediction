@@ -33,8 +33,8 @@ class Registration():
         fl.inputs.in_file = self.name_nii
         fl.inputs.reference = self.atlas
         fl.inputs.cost = 'mutualinfo'
-        fl.inputs.out_file = self.name + '.nii'
-        fl.inputs.output_type = 'NIFTI'
+        fl.inputs.out_file = self.name + '.nii.gz'
+        fl.inputs.output_type = 'NIFTI_GZ'
         fl.inputs.out_matrix_file = self.name + '_reg_matrix.mat'
             
         # for dwi, create the matrix and apply it to all volumes. Masks use the already existing registration matrix

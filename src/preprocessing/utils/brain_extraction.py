@@ -46,14 +46,14 @@ class BET_FSL:
         self.path_file = path_file
         self.binary_mask = binary_mask
 
-    def run(self, frac=.1, vertical_gradient=-.5, output_type='NIFTI'):
+    def run(self, frac=.1, vertical_gradient=-.5, output_type='NIFTI_GZ'):
         bet = fsl.BET()
         bet.inputs.in_file = self.path_file
         bet.inputs.frac = frac
         bet.inputs.vertical_gradient = vertical_gradient
         bet.inputs.output_type = output_type
         bet.inputs.mask = self.binary_mask
-        bet.inputs.out_file = self.name + '.nii'
+        bet.inputs.out_file = self.name + '.nii.gz'
         bet.inputs.reduce_bias = True
 
         try:
@@ -65,8 +65,8 @@ class BET_FSL:
         # os.system(f"mv {self.output_file} {self.name+'.nii'}")
 
         self.binary_mask = out_bet.outputs.mask_file
-        os.system(f"mv {self.binary_mask} {self.name+'_bm.nii'}")
-        self.binary_mask = self.name + '_bm.nii'
+        os.system(f"mv {self.binary_mask} {self.name+'_bm.nii.gz'}")
+        self.binary_mask = self.name + '_bm.nii.gz'
         img = load(self.output_file)
         return img.get_fdata(), img.affine, img.header
 
