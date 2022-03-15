@@ -57,12 +57,7 @@ def dispatcher(f, atlas_file, img_type):
             return
         bvals, bvecs = read_bvals_bvecs(name_bval, name_bvec)
         gtab = gradient_table(bvals, bvecs)  
-    
-    logging.info(f"{name_nii}\n",
-                 f"Input path: {path}",
-                 f"Output path (with \'intermediate\' folder inside): {output_directory}",                 
-                 )    
-    
+        
     ########################
     ### BRAIN EXTRACTION ###
     ########################
