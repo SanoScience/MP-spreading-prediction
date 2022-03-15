@@ -23,6 +23,7 @@ from tqdm import tqdm
 from datetime import datetime
 from dipy.segment.mask import median_otsu
 from nilearn.image import crop_img
+import gc
 
 def check_path(path):
     if not os.path.isdir(path):
@@ -42,6 +43,8 @@ def dispatcher(f, atlas_file, img_type):
 
     # Output name (without path, because the process is already in the output directory)
     name = (f.split('/')[-1]).split('.')[0]
+    
+    del f
 
     # Inputs
     name_nii = path + name + '.nii'
@@ -58,7 +61,10 @@ def dispatcher(f, atlas_file, img_type):
             return
         bvals, bvecs = read_bvals_bvecs(name_bval, name_bvec)
         gtab = gradient_table(bvals, bvecs)  
-        
+    
+    del path 
+    del output_directory
+    gc.collect()    
     ########################
     ### BRAIN EXTRACTION ###
     ########################
@@ -82,6 +88,7 @@ def dispatcher(f, atlas_file, img_type):
         try:
             data, affine, header = be.run()
             bm_data = be.get_mask()
+            del be   
             name_nii = intermediate_dir + name + '_be.nii.gz'
             name_bm = name + '_bm.nii.gz'
             
@@ -90,18 +97,22 @@ def dispatcher(f, atlas_file, img_type):
             save(Nifti1Image(data, affine, header), name_nii)
             img = crop_img(name_nii)
             save(img, name_nii)
-            data, affine, header = img.get_fdata(), img.affine, img.header
-            
+            data, affine, header = img.get_fdata(), img.affine, img.header  
+            del img
+                        
             save(Nifti1Image(bm_data, affine, header), name_bm)
             bm_img = crop_img(name_bm)
             save(bm_img, name_bm)
             bm_data = bm_img.get_fdata()
+            del bm_img
+                        
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at brain_extraction (common)')
             print(e)
             print(name_nii + ' at brain_extraction (common}')
-                
+           
+    gc.collect()
     #######################
     ### DENOISING (DWI) ###
     #######################
@@ -111,6 +122,8 @@ def dispatcher(f, atlas_file, img_type):
         try:
             lpca = Denoising_LPCA(data, affine, header, name, bm_img.get_fdata())
             data, affine, header = lpca.run(gtab)
+            del lpca
+            del gtab
             name_nii = intermediate_dir + name + '_lpca.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
@@ -123,6 +136,7 @@ def dispatcher(f, atlas_file, img_type):
         try:
             gib = Gibbs(data, affine, header, name)
             data, affine, header = gib.run()
+            del gib 
             name_nii = intermediate_dir + name + '_gibbs.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
@@ -137,6 +151,7 @@ def dispatcher(f, atlas_file, img_type):
             data, affine, header = ec.run()
             name_bvec, name_bval = ec.get_bvec_bval()
             gtab = ec.get_BMatrix()
+            del ec
             name_nii = intermediate_dir + name + '_eddy.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
@@ -144,7 +159,8 @@ def dispatcher(f, atlas_file, img_type):
             logging.error(name_nii + ' at Eddy')
             print(e)
             print(name_nii + ' at Eddy')
-    
+
+    gc.collect()
     ######################################
     ### PET PREPARATION & REGISTRATION ###
     ######################################
@@ -152,12 +168,14 @@ def dispatcher(f, atlas_file, img_type):
     if img_type == 'pet':
         img = load(name_nii)
         data, affine, header = img.get_fdata(), img.affine, img.header
+        del img
         # Motion Correction is needed BEFORE atlas registration (only if the image has more than 1 volume)
         if len(np.shape(data)) > 3 and np.shape(data)[3] > 1: 
             logging.info(f"{name_nii} starting Motion Correction")
             try:
                 mc = MotionCorrection(data, affine, header, name)
                 data, affine, header = mc.run()
+                del mc
                 name_nii = intermediate_dir + name + '_mc.nii.gz'
                 save(Nifti1Image(data, affine, header), name_nii)
             except Exception as e:
@@ -170,6 +188,7 @@ def dispatcher(f, atlas_file, img_type):
             try:
                 flat = Flatten(name_nii, name)
                 data, affine, header = flat.run()
+                del flat
                 name_nii = intermediate_dir + name + '_fl.nii.gz'
                 save(Nifti1Image(data, affine, header), name_nii)
             except Exception as e:
@@ -181,9 +200,10 @@ def dispatcher(f, atlas_file, img_type):
         # Binary mask is made after flattening, in order to have the greatest surface available for the mask 
         logging.info(f"{name_nii} starting Brain Extraction (PET)")
         try:
-            be = BrainExtraction(img.get_fdata(), img.affine, img.header , name)
+            be = BrainExtraction(data, affine, header , name)
             data, affine, header = be.run()
             bm_data = be.get_mask()
+            del be
             name_nii = intermediate_dir + name + '_be.nii.gz'
             name_bm = name + '_bm.nii.gz'
             
@@ -191,9 +211,11 @@ def dispatcher(f, atlas_file, img_type):
             img = crop_img(name_nii)
             save(img, name_nii)
             data, affine, header = img.get_fdata(), img.affine, img.header
+            del img
             
             save(Nifti1Image(bm_data, affine, header), name_bm)
             save(crop_img(name_bm), name_bm)
+            del name_bm
             # no need to reload bm_img, it won't be used anymore
             
         except Exception as e:
@@ -207,11 +229,13 @@ def dispatcher(f, atlas_file, img_type):
             logging.info(f"{name_nii} starting Registration of binary mask (PET)")
             bm_reg = Registration(name_bm, atlas_file, intermediate_dir+name, 'mask')
             bm_data, bm_affine, bm_header = bm_reg.run()
+            del bm_reg
             save(Nifti1Image(bm_data, bm_affine, bm_header), name_bm)
             
             logging.info(f"{name_nii} starting Registration (PET)")
             pet_reg = Registration(name_nii, atlas_file, intermediate_dir+name, img_type)
             data, affine, header = pet_reg.run()
+            del pet_reg
             name_nii = intermediate_dir + name + '_reg.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
@@ -220,6 +244,7 @@ def dispatcher(f, atlas_file, img_type):
             print(e)
             print(name_nii + ' at Registration (PET)')
     
+        gc.collect()
     ###################################
     ### REGISTRATION (DWI and ANAT) ###
     ###################################
@@ -228,6 +253,7 @@ def dispatcher(f, atlas_file, img_type):
         try:
             atl_regs = Registration(name_nii, atlas_file, name, img_type)
             data, affine, header = atl_regs.run()
+            del atl_regs
             name_nii = intermediate_dir + name + '_reg.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
@@ -251,6 +277,7 @@ def dispatcher(f, atlas_file, img_type):
         #logging.info(name + " Cerebellum Normalization done")
     '''
     
+    gc.collect()
     #########################
     ### ANAT SEGMENTATION ###
     #########################
@@ -260,6 +287,7 @@ def dispatcher(f, atlas_file, img_type):
         try:
             tissue_class = BrainSegmentation(name_nii, name)
             data, affine, header = tissue_class.run()
+            del tissue_class
             name_nii = intermediate_dir + name + '_segm.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
@@ -268,6 +296,7 @@ def dispatcher(f, atlas_file, img_type):
             print(e)
             print(name_nii + ' at Brain Segmentation (ANAT)')
     
+    gc.collect()
     #############################
     ### FINAL DWI BINARY MASK ###
     #############################

@@ -22,7 +22,7 @@ import logging
 import os
 
 class Registration():
-    def __init__(self, name_nii, atlas_path, name, img_type='mask'):
+    def __init__(self, name_nii, atlas_path, name, img_type):
         self.name_nii = name_nii
         self.atlas = atlas_path
         self.name = name
