@@ -1,4 +1,5 @@
 from subprocess import Popen, PIPE, STDOUT
+from tracemalloc import start
 from nibabel import load, save, Nifti1Image
 from dipy.io.gradients import read_bvals_bvecs
 from dipy.core.gradients import gradient_table
@@ -14,13 +15,14 @@ from utils.gibbs import Gibbs
 from utils.motion_correction import MotionCorrection
 from utils.registration import Registration, Registration
 from utils.brain_segmentation import BrainSegmentation
-from utils.cerebellum_normalization import CerebellumNormalization
 import logging
+import logging.handlers
 import multiprocessing
 import numpy as np
 from tqdm import tqdm
-import csv
+from datetime import datetime
 from dipy.segment.mask import median_otsu
+from nilearn.image import crop_img
 
 def check_path(path):
     if not os.path.isdir(path):
@@ -56,49 +58,72 @@ def dispatcher(f, atlas_file, img_type):
         bvals, bvecs = read_bvals_bvecs(name_bval, name_bvec)
         gtab = gradient_table(bvals, bvecs)  
     
+    logging.info(f"{name_nii}\n",
+                 f"Input path: {path}",
+                 f"Output path (with \'intermediate\' folder inside): {output_directory}",                 
+                 )    
+    
     ########################
     ### BRAIN EXTRACTION ###
     ########################
     
-    if img_type == 'anat':
-        try:
-            be = BET_FSL(name_nii, name, binary_mask=False)
-        except Exception as e:
-            logging.error(e)
-            logging.error(name_nii + ' at brain_extraction')
-    else:
-        img = load(name_nii)
-        try:
-            be = BrainExtraction(img.get_fdata(), img.affine, img.header , name)
-        except Exception as e:
-            logging.error(e)
-            logging.error(name_nii + ' at brain_extraction')
-    
     try:
-        data, affine, header = be.run()
-        bm = be.get_mask()
-        name_nii = intermediate_dir + name + '_be.nii.gz'
-        name_bm = name + '_bm.nii.gz'
-        save(Nifti1Image(data, affine, header), name_nii)
-        save(Nifti1Image(bm, affine, header), name_bm)
+        if img_type == 'anat':  
+            logging.info(f"{name_nii} preparing brain extraction")
+            be = BET_FSL(name_nii, name, binary_mask=False)
+        elif img_type == 'dwi':
+            logging.info(f"{name_nii} preparing brain extraction")
+            img = load(name_nii)
+            be = BrainExtraction(img.get_fdata(), img.affine, img.header, name)
     except Exception as e:
+        logging.error(e)
+        logging.error(name_nii + ' at brain_extraction')
+        print(e)
+        print(name_nii + ' at brain_extraction')
+    
+    if img_type == 'anat' or img_type == 'dwi':
+        logging.info(f"{name_nii} starting brain extraction")
+        try:
+            data, affine, header = be.run()
+            bm_data = be.get_mask()
+            name_nii = intermediate_dir + name + '_be.nii.gz'
+            name_bm = name + '_bm.nii.gz'
+            
+            logging.info(f"{name_nii} finished brain extraction, saving...")
+            ### Crop images to save space...
+            save(Nifti1Image(data, affine, header), name_nii)
+            img = crop_img(name_nii)
+            save(img, name_nii)
+            data, affine, header = img.get_fdata(), img.affine, img.header
+            
+            save(Nifti1Image(bm_data, affine, header), name_bm)
+            bm_img = crop_img(name_bm)
+            save(bm_img, name_bm)
+            bm_data = bm_img.get_fdata()
+        except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at brain_extraction (common)')
-
+            print(e)
+            print(name_nii + ' at brain_extraction (common}')
+                
     #######################
     ### DENOISING (DWI) ###
     #######################
 
     if img_type == 'dwi':
+        logging.info(f"{name_nii} starting LPCA")
         try:
-            lpca = Denoising_LPCA(data, affine, header, name, bm)
+            lpca = Denoising_LPCA(data, affine, header, name, bm_img.get_fdata())
             data, affine, header = lpca.run(gtab)
             name_nii = intermediate_dir + name + '_lpca.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at LPCA')
+            print(e)
+            print(name_nii + ' at LPCA')
         
+        logging.info(f"{name_nii} starting Gibbs")
         try:
             gib = Gibbs(data, affine, header, name)
             data, affine, header = gib.run()
@@ -107,7 +132,10 @@ def dispatcher(f, atlas_file, img_type):
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Gibbs')
+            print(e)
+            print(name_nii + ' at Gibbs')
             
+        logging.info(f"{name_nii} starting Eddy")
         try:
             ec = EddyMotionCorrection(name, name_nii, name_bval, name_bvec, name_json, name_bm)
             data, affine, header = ec.run()
@@ -118,14 +146,17 @@ def dispatcher(f, atlas_file, img_type):
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Eddy')
+            print(e)
+            print(name_nii + ' at Eddy')
     
-    #######################
-    ### PET PREPARATION ###
-    #######################
+    ######################################
+    ### PET PREPARATION & REGISTRATION ###
+    ######################################
     
     if img_type == 'pet':
         # Motion Correction is needed BEFORE atlas registration (only if the image has more than 1 volume)
         if len(np.shape(data)) > 3 and np.shape(data)[3] > 1: 
+            logging.info(f"{name_nii} starting Motion Correction")
             try:
                 mc = MotionCorrection(data, affine, header, name)
                 data, affine, header = mc.run()
@@ -134,36 +165,68 @@ def dispatcher(f, atlas_file, img_type):
             except Exception as e:
                 logging.error(e)
                 logging.error(name_nii + ' at Motion Correction')
+                print(e)
+                print(name_nii + ' at Motion Correction')
 
+            logging.info(f"{name_nii} starting Flatten")
+            try:
+                flat = Flatten(name_nii, name)
+                data, affine, header = flat.run()
+                name_nii = intermediate_dir + name + '_fl.nii.gz'
+                save(Nifti1Image(data, affine, header), name_nii)
+            except Exception as e:
+                logging.error(e)
+                logging.error(name_nii + ' at Flatten')
+                print(e)
+                print(name_nii + ' at Flatten')
+            
+        # Binary mask is made after flattening, in order to have the greatest surface available for the mask 
+        logging.info(f"{name_nii} starting Brain Extraction (PET)")
         try:
-            flat = Flatten(name_nii, name)
-            data, affine, header = flat.run()
-            name_nii = intermediate_dir + name + '_fl.nii.gz'
+            be = BrainExtraction(img.get_fdata(), img.affine, img.header , name)
+            data, affine, header = be.run()
+            bm_data = be.get_mask()
+            name_nii = intermediate_dir + name + '_be.nii.gz'
+            name_bm = name + '_bm.nii.gz'
+            
             save(Nifti1Image(data, affine, header), name_nii)
+            img = crop_img(name_nii)
+            save(img, name_nii)
+            data, affine, header = img.get_fdata(), img.affine, img.header
+            
+            save(Nifti1Image(bm_data, affine, header), name_bm)
+            save(crop_img(name_bm), name_bm)
+            # no need to reload bm_img, it won't be used anymore
+            
         except Exception as e:
             logging.error(e)
-            logging.error(name_nii + ' at Flatten')
+            logging.error(name_nii + ' at Brain Extraction (PET)')
+            print(e)
+            print(name_nii + ' at Brain Extraction (PET)')
 
-    ####################
-    ### REGISTRATION ###
-    ####################
-
-    if img_type == 'pet':
         try: 
             # NOTE: binary mask is obtained on the first slice of PET, which is not moved by motion correction nor by flattening
+            logging.info(f"{name_nii} starting Registration of binary mask (PET)")
             bm_reg = Registration(name_bm, atlas_file, intermediate_dir+name, 'mask')
             bm_data, bm_affine, bm_header = bm_reg.run()
             save(Nifti1Image(bm_data, bm_affine, bm_header), name_bm)
             
-            atl_regs = Registration(name_nii, atlas_file, intermediate_dir+name, img_type)
-            data, affine, header = atl_regs.run()
+            logging.info(f"{name_nii} starting Registration (PET)")
+            pet_reg = Registration(name_nii, atlas_file, intermediate_dir+name, img_type)
+            data, affine, header = pet_reg.run()
             name_nii = intermediate_dir + name + '_reg.nii.gz'
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
-            logging.error(name_nii + ' at Registration')
+            logging.error(name_nii + ' at Registration (PET)')
+            print(e)
+            print(name_nii + ' at Registration (PET)')
 
+    ###################################
+    ### REGISTRATION (DWI and ANAT) ###
+    ###################################
     else:
+        logging.info(f"{name_nii} starting Registration")
         try:
             atl_regs = Registration(name_nii, atlas_file, name, img_type)
             data, affine, header = atl_regs.run()
@@ -172,6 +235,8 @@ def dispatcher(f, atlas_file, img_type):
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Registration')
+            print(e)
+            print(name_nii + ' at Registration')
         
     '''
     NOTE: DEPRECATED
@@ -193,6 +258,7 @@ def dispatcher(f, atlas_file, img_type):
     #########################
     
     if img_type == 'anat':
+        logging.info(f"{name_nii} starting Brain Segmentation (ANAT)")
         try:
             tissue_class = BrainSegmentation(name_nii, name)
             data, affine, header = tissue_class.run()
@@ -200,7 +266,9 @@ def dispatcher(f, atlas_file, img_type):
             save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
-            logging.error(name_nii + ' at BrainSegmentation')
+            logging.error(name_nii + ' at Brain Segmentation (ANAT)')
+            print(e)
+            print(name_nii + ' at Brain Segmentation (ANAT)')
     
     #############################
     ### FINAL DWI BINARY MASK ###
@@ -208,32 +276,34 @@ def dispatcher(f, atlas_file, img_type):
     
     # get the binary mask of dwi after preprocessing (simple sweep of median_otsu, without particular settings)
     if img_type == 'dwi':
+        logging.info(f"{name_nii} starting Final Brain Extraction (DWI)")
         try:
             bm = median_otsu(data[:,:,:,0])[0]
             name_bm = name + '_bm.nii.gz'
             save(Nifti1Image(bm, affine, header), name_bm)
         except Exception as e:
-                logging.error(e)
-                logging.error(name_nii + ' at brain_extraction (final)')
+            logging.error(e)
+            logging.error(name_nii + ' at Final Brain Extraction (DWI)')
+            print(e)
+            print(name_nii + ' at Final Brain Extraction (DWI)')
 
     save(Nifti1Image(data, affine, header), name + '.nii.gz')
+    logging.info(f"{name_nii} final image saved")
 
     return 
 
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
-logging.getLogger('nipype.workflow').setLevel(0)
-logging.getLogger('nipype.interface').setLevel(0)
+start_time = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, filename = f"{start_time}_trace.log")
 
 if __name__=='__main__':
     # assuming atlas is in the current dir
     atlas_file = os.getcwd() + '/AAL3v1.nii.gz'
-    logging.info(f"Using atlas {atlas_file}")
 
     if len(sys.argv) > 1:
         txt_list = sys.argv[1]
     else:
         try:
-            txt_list = input('Provide txt filename containing images to process (1 line per file) [optional, Enter to process all images]: ')
+            txt_list = input('Provide txt filename containing images to process (1 line per file) [optional, Enter to process all images, or enter [dwi,anat,pet] to process a specific category]: ')
         except:
             txt_list = ''
     #logging.info(f"PreProcessing {img_type} files")
@@ -248,12 +318,13 @@ if __name__=='__main__':
         f = open(txt_list, "r")
         files = f.readlines()
     else:
+        if len(txt_list)>0:
+            img_type = txt_list
+        else:
+            img_type = '*'
         #logging.info(f"Looking for all '.nii' files in the path {dataset_path} (excluding \'derivatives\' folder)...")
-        output = Popen(f"find {dataset_path} ! -path '*derivatives*' ! -wholename '{atlas_file}' -name \'*.nii\'", shell=True, stdout=PIPE)
+        output = Popen(f"find {dataset_path} ! -path '*derivatives*' ! -wholename '{atlas_file}' -name \'{img_type}*.nii\'", shell=True, stdout=PIPE)
         files = str(output.stdout.read()).removeprefix('b\'').removesuffix('\'').removesuffix('\\n').split('\\n')
-
-        logging.info("Found {} files".format(len(files)))
-        logging.info(files)
         
     # If it starts with '/' it is an absolute path, otherwise make it absolute
     if not dataset_path.startswith('/'): dataset_path = os.sep.join(os.getcwd(), dataset_path) if dataset_path != '.' else os.getcwd() + os.sep
@@ -271,6 +342,15 @@ if __name__=='__main__':
     # TODO
     # skip_temporary = True if input('Do you want to skip already processed temp files? [Y/n]') != 'n' else False
 
+    logging.info(f"Atlas: {atlas_file}")
+    logging.info(f"Images list or type: {txt_list}")
+    logging.info(f"Dataset path provided: {dataset_path}")
+    logging.info(f"Cores: {num_cores}")
+    logging.info(f"Number of images to process: {len(files)}")
+    logging.info('**********************')
+    logging.info("List of images to process: ")
+    logging.info(files)
+
     procs = []
     re_img_type = re.compile(r"(dwi|pet|anat)")
 
@@ -282,6 +362,7 @@ if __name__=='__main__':
         p = multiprocessing.Process(target=dispatcher, args=(files[i], atlas_file, img_type))
         p.start()
         procs.append(p)
+        logging.info(f"Image {files[i]} queued")
         
         while len(procs)%num_cores == 0 and len(procs) > 0:
             for p in procs:
@@ -296,4 +377,6 @@ if __name__=='__main__':
             for p in procs:
                 p.join()
 
-    logging.info("Preprocessing done")
+    total_time = datetime.today().strftime('%Y-%m-%d-%H:%M:%S') - start_time
+    print("Preprocessing done in ", total_time)
+    logging.info("Preprocessing done in ", total_time)

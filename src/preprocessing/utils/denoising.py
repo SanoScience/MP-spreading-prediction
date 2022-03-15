@@ -28,6 +28,8 @@ class Denoising_LPCA:
     def run(self, gtab=None):
         if not gtab:
             gtab = gradient_table(self.bvals, self.bvecs)
-        sigma = pca_noise_estimate(self.data, gtab, correct_bias=True, smooth=2)
-        self.data = localpca(self.data, sigma, self.binary_mask, tau_factor=None, patch_radius=2) # tau_factor = None implies the automatic computation of threshold for PCA eigenvalues
+        sigma = pca_noise_estimate(self.data, gtab, correct_bias = True, smooth=2, patch_radius = 2)
+        self.data = localpca(self.data, sigma, self.binary_mask, tau_factor=2.3, patch_radius = 2) 
+        # tau_factor = None implies the automatic computation of threshold for PCA eigenvalues
+        # patch_radius too big will result in a smaller but less refined image
         return self.data, self.affine, self.header

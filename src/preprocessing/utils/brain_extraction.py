@@ -19,12 +19,12 @@ class BrainExtraction:
         self.affine = affine
         self.name = name
 
-    def run(self, numpass = 5, median_radius = 5, dilate = 1):
+    def run(self, numpass = 4, median_radius = 4, dilate = 1):
         if len(self.data.shape)==4:
             vol_idx = range(len(self.data[0,0,0,:]))
         else:
             vol_idx = None
-        self.mask, self.binary_mask = median_otsu(self.data, vol_idx=vol_idx, numpass=numpass, median_radius=median_radius, dilate=dilate)
+        self.mask, self.binary_mask = median_otsu(self.data, vol_idx=vol_idx, numpass=numpass, median_radius=median_radius, dilate=dilate) #Note: autocrop is suggested only for DWI images with voxel resolution upsampled to 1x1x1
         return self.mask, self.affine, self.header
     
     def get_mask(self):
