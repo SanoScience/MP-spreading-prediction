@@ -76,7 +76,7 @@ def dispatcher(f, atlas_file, img_type):
         logging.error(name_nii + ' at brain_extraction')
         print(e)
         print(name_nii + ' at brain_extraction')
-    '''
+    
     if img_type == 'anat' or img_type == 'dwi':
         logging.info(f"{name_nii} starting brain extraction")
         try:
@@ -224,18 +224,17 @@ def dispatcher(f, atlas_file, img_type):
     ### REGISTRATION (DWI and ANAT) ###
     ###################################
     else:
-        '''
-    logging.info(f"{name_nii} starting Registration")
-    try:
-        atl_regs = Registration(name_nii, atlas_file, name, img_type)
-        data, affine, header = atl_regs.run()
-        name_nii = intermediate_dir + name + '_reg.nii.gz'
-        save(Nifti1Image(data, affine, header), name_nii)
-    except Exception as e:
-        logging.error(e)
-        logging.error(name_nii + ' at Registration')
-        print(e)
-        print(name_nii + ' at Registration')
+        logging.info(f"{name_nii} starting Registration")
+        try:
+            atl_regs = Registration(name_nii, atlas_file, name, img_type)
+            data, affine, header = atl_regs.run()
+            name_nii = intermediate_dir + name + '_reg.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)
+        except Exception as e:
+            logging.error(e)
+            logging.error(name_nii + ' at Registration')
+            print(e)
+            print(name_nii + ' at Registration')
         
     '''
     NOTE: DEPRECATED
