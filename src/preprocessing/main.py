@@ -104,7 +104,6 @@ def dispatcher(f, atlas_file, img_type):
             bm_img = crop_img(name_bm)
             save(bm_img, name_bm)
             bm_data = bm_img.get_fdata()
-            del bm_img
                         
         except Exception as e:
             logging.error(e)
@@ -122,6 +121,7 @@ def dispatcher(f, atlas_file, img_type):
         try:
             lpca = Denoising_LPCA(data, affine, header, name, bm_img.get_fdata())
             data, affine, header = lpca.run(gtab)
+            del bm_img
             del lpca
             del gtab
             name_nii = intermediate_dir + name + '_lpca.nii.gz'
