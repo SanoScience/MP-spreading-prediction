@@ -21,9 +21,9 @@ import logging
 
 class MotionCorrection:
     """
-    ==========================================
+    ==============================
     Motion correction of PET data
-    ==========================================
+    ==============================
     """
     data = None
     header = None 
@@ -43,7 +43,6 @@ class MotionCorrection:
         Implements an affine registration between just two images.
         static_affine and moving_affine are always self.affine ONLY in motion correction (in atlas reg. they are not)
         """
-        assert np.shape(static_img) != (4,4)
         c_of_mass = transform_centers_of_mass(static_img,
                                         static_affine,
                                         moving_img,
@@ -107,27 +106,5 @@ class MotionCorrection:
                 logging.error(self.name)
                 transformed = self.data[...,i]
             self.corrected_data[...,i] = transformed
-        """
-        procs = []
-        queues = []
-        for i in tqdm(range(1, self.data.shape[-1])):
-            q = Queue()
-            p = Process(target = self.affine_reg, args=(static_img, self.affine, self.data[...,i], self.affine, q))
-            p.start()
-            procs.append(p)
-            if len(procs)%6 == 0 or i == (self.data.shape[-1] - 1):
-                for p in procs:
-                    p.join()
-            #transformed, v_at = self.affine_reg(static_img, self.affine, self.data[...,i], self.affine)
-            #self.corrected_data[...,i] = transformed
-        
-        for i in tqdm(range(1, self.data.shape[-1])):
-            transformed = queues[i].get()
-            v_at = queues[i].get()
-            self.corrected_data[...,i] = transformed
-            
-            if not gtab.b0s_mask[i]:
-                self.volumes_at.append(v_at)
-        """
 
         return self.corrected_data, self.affine, self.header 

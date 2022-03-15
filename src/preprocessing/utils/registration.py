@@ -34,18 +34,25 @@ class Registration():
         fl.inputs.reference = self.atlas
         fl.inputs.out_file = self.name + '.nii.gz'
         fl.inputs.output_type = 'NIFTI_GZ'
+        fl.inputs.out_matrix_file = self.name + '_reg_matrix.mat'
         
-        if self.img_type == 'mask':
-            fl.inputs.out_matrix_file = self.name + '_reg_matrix.mat'
-        elif self.img_type == 'pet':
-            fl.inputs.apply_xfm = True
-            fl.inputs.in_matrix_file = self.name + '_reg_matrix.mat'   
-    
+        # PET images use directly the matrix previously computed registering the binary mask
+        if self.img_type != 'pet':
+            # Produce the registration matrix on the first volume of the image...
+            try:
+                out_fl = fl.run()
+            except Exception as e:
+                logging.error(e)
+        
+        # ... and use the matrix to register all the volumes
+        fl.inputs.apply_xfm = True
+        fl.inputs.in_matrix_file = self.name + '_reg_matrix.mat'
+        
         try:
             out_fl = fl.run()
         except Exception as e:
             logging.error(e)
-
+        
         registered = out_fl.outputs.out_file
         img = nib.load(registered)
         

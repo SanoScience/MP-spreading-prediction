@@ -76,7 +76,7 @@ def dispatcher(f, atlas_file, img_type):
         logging.error(name_nii + ' at brain_extraction')
         print(e)
         print(name_nii + ' at brain_extraction')
-    
+    '''
     if img_type == 'anat' or img_type == 'dwi':
         logging.info(f"{name_nii} starting brain extraction")
         try:
@@ -219,22 +219,23 @@ def dispatcher(f, atlas_file, img_type):
             logging.error(name_nii + ' at Registration (PET)')
             print(e)
             print(name_nii + ' at Registration (PET)')
-
+    
     ###################################
     ### REGISTRATION (DWI and ANAT) ###
     ###################################
     else:
-        logging.info(f"{name_nii} starting Registration")
-        try:
-            atl_regs = Registration(name_nii, atlas_file, name, img_type)
-            data, affine, header = atl_regs.run()
-            name_nii = intermediate_dir + name + '_reg.nii.gz'
-            save(Nifti1Image(data, affine, header), name_nii)
-        except Exception as e:
-            logging.error(e)
-            logging.error(name_nii + ' at Registration')
-            print(e)
-            print(name_nii + ' at Registration')
+        '''
+    logging.info(f"{name_nii} starting Registration")
+    try:
+        atl_regs = Registration(name_nii, atlas_file, name, img_type)
+        data, affine, header = atl_regs.run()
+        name_nii = intermediate_dir + name + '_reg.nii.gz'
+        save(Nifti1Image(data, affine, header), name_nii)
+    except Exception as e:
+        logging.error(e)
+        logging.error(name_nii + ' at Registration')
+        print(e)
+        print(name_nii + ' at Registration')
         
     '''
     NOTE: DEPRECATED
@@ -290,8 +291,8 @@ def dispatcher(f, atlas_file, img_type):
 
     return 
 
-start_time = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
-logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, filename = f"{start_time}_trace.log")
+start_time = datetime.today()
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
 
 if __name__=='__main__':
     # assuming atlas is in the current dir
@@ -375,6 +376,6 @@ if __name__=='__main__':
             for p in procs:
                 p.join()
 
-    total_time = (datetime.today().strftime('%Y-%m-%d-%H:%M:%S') - start_time).seconds
+    total_time = (datetime.today() - start_time).seconds
     print(f"Preprocessing done in {total_time} seconds")
     logging.info(f"Preprocessing done in {total_time} seconds")
