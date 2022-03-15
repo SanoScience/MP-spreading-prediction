@@ -54,6 +54,7 @@ def dispatcher(f, atlas_file, img_type):
             name_bvec = path + name + ".bvec"
         except Exception as e:
             logging.error(e)
+            print(e)
             return
         bvals, bvecs = read_bvals_bvecs(name_bval, name_bvec)
         gtab = gradient_table(bvals, bvecs)  
@@ -149,6 +150,8 @@ def dispatcher(f, atlas_file, img_type):
     ######################################
     
     if img_type == 'pet':
+        img = load(name_nii)
+        data, affine, header = img.get_fdata(), img.affine, img.header
         # Motion Correction is needed BEFORE atlas registration (only if the image has more than 1 volume)
         if len(np.shape(data)) > 3 and np.shape(data)[3] > 1: 
             logging.info(f"{name_nii} starting Motion Correction")
@@ -349,7 +352,7 @@ if __name__=='__main__':
     procs = []
     re_img_type = re.compile(r"(dwi|pet|anat)")
 
-    for i in tqdm(range(len(files))):
+    for i in tqdm(range(len(files)), file=sys.stdout):
         
         # this ensure the preprocessing pipeline will execute the right steps for each file (it allows heterogeneity in the list)
         img_type = re_img_type.search(files[i]).group()
@@ -372,6 +375,6 @@ if __name__=='__main__':
             for p in procs:
                 p.join()
 
-    total_time = datetime.today().strftime('%Y-%m-%d-%H:%M:%S') - start_time
-    print("Preprocessing done in ", total_time)
-    logging.info("Preprocessing done in ", total_time)
+    total_time = (datetime.today().strftime('%Y-%m-%d-%H:%M:%S') - start_time).seconds
+    print(f"Preprocessing done in {total_time} seconds")
+    logging.info(f"Preprocessing done in {total_time} seconds")
