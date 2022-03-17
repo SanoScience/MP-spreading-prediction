@@ -215,7 +215,6 @@ def dispatcher(f, atlas_file, img_type):
             
             save(Nifti1Image(bm_data, affine, header), name_bm)
             save(crop_img(name_bm), name_bm)
-            del name_bm
             # no need to reload bm_img, it won't be used anymore
             
         except Exception as e:
