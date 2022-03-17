@@ -166,7 +166,8 @@ def dispatcher(f, atlas_file, img_type):
     ######################################
     
     if img_type == 'pet':
-        img = load(name_nii)
+        img = crop_img(name_nii)
+        # Don't save, otherwise you'll overwrite the original image
         data, affine, header = img.get_fdata(), img.affine, img.header
         del img
         # Motion Correction is needed BEFORE atlas registration (only if the image has more than 1 volume)
@@ -215,8 +216,7 @@ def dispatcher(f, atlas_file, img_type):
             
             save(Nifti1Image(bm_data, affine, header), name_bm)
             save(crop_img(name_bm), name_bm)
-            # no need to reload bm_img, it won't be used anymore
-            
+            # no need to reload bm_img, it won't be used anymore            
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Brain Extraction (PET)')
@@ -349,7 +349,7 @@ if __name__=='__main__':
         else:
             img_type = '*'
         #logging.info(f"Looking for all '.nii' files in the path {dataset_path} (excluding \'derivatives\' folder)...")
-        output = Popen(f"find {dataset_path} ! -path '*derivatives*' ! -wholename '{atlas_file}' -name \'{img_type}*.nii\'", shell=True, stdout=PIPE)
+        output = Popen(f"find {dataset_path} ! -path '*derivatives*' ! -wholename '{atlas_file}' -name \'*{img_type}.nii\'", shell=True, stdout=PIPE)
         files = str(output.stdout.read()).removeprefix('b\'').removesuffix('\'').removesuffix('\\n').split('\\n')
         
     # If it starts with '/' it is an absolute path, otherwise make it absolute
@@ -368,14 +368,15 @@ if __name__=='__main__':
     # TODO
     # skip_temporary = True if input('Do you want to skip already processed temp files? [Y/n]') != 'n' else False
 
+    logging.info('******************************************')
     logging.info(f"Atlas: {atlas_file}")
     logging.info(f"Images list or type: {txt_list}")
     logging.info(f"Dataset path provided: {dataset_path}")
     logging.info(f"Cores: {num_cores}")
     logging.info(f"Number of images to process: {len(files)}")
-    logging.info('**********************')
     logging.info("List of images to process: ")
     logging.info(files)
+    logging.info('******************************************')
 
     procs = []
     re_img_type = re.compile(r"(dwi|pet|anat)")
@@ -393,10 +394,12 @@ if __name__=='__main__':
         while len(procs)%num_cores == 0 and len(procs) > 0:
             for p in procs:
                 # wait for 10 seconds to wait process termination
-                p.join(timeout=10)
+                p.join(timeout=2)
                 # when a process is done, remove it from processes queue
                 if not p.is_alive():
                     procs.remove(p)
+                    del p 
+                    gc.collect()
                     
         # final chunk could be shorter than num_cores, so it's handled waiting for its completion (join without arguments wait for the end of the process)
         if i == len(files) - 1:
@@ -405,4 +408,6 @@ if __name__=='__main__':
 
     total_time = (datetime.today() - start_time).seconds
     print(f"Preprocessing done in {total_time} seconds")
+    
     logging.info(f"Preprocessing done in {total_time} seconds")
+    logging.info('******************************************')

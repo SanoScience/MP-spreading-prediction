@@ -34,6 +34,10 @@ class Registration():
         fl.inputs.reference = self.atlas
         fl.inputs.out_file = self.name + '.nii.gz'
         fl.inputs.output_type = 'NIFTI_GZ'
+        fl.inputs.bins = 1024
+        #fl.inputs.rigid2D = True
+        fl.inputs.dof = 12
+        # For 3D to 3D mode the DOF can be set to 12 (affine), 9 (traditional), 7 (global rescale) or 6 (rigid body)
         fl.inputs.out_matrix_file = self.name + '_reg_matrix.mat'
         
         # PET images use directly the matrix previously computed registering the binary mask
