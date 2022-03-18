@@ -166,8 +166,33 @@ def dispatcher(f, atlas_file, img_type):
     ######################################
     
     if img_type == 'pet':
+        img = load(name_nii)
+        data, affine, header = img.get_fdata(), img.affine, img.header
+        logging.info(f"{name_nii} starting Brain Extraction (PET)")
+        try:
+            be = BrainExtraction(data, affine, header , name)
+            data, affine, header = be.run()
+            bm_data = be.get_mask()
+            del be
+            name_nii = intermediate_dir + name + '_be.nii.gz'
+            name_bm = name + '_bm.nii.gz'
+            
+            save(Nifti1Image(data, affine, header), name_nii)
+            img = crop_img(name_nii)
+            save(img, name_nii)
+            data, affine, header = img.get_fdata(), img.affine, img.header
+            del img
+            
+            save(Nifti1Image(bm_data, affine, header), name_bm)
+            save(crop_img(name_bm), name_bm)
+            # no need to reload bm_img, it won't be used anymore            
+        except Exception as e:
+            logging.error(e)
+            logging.error(name_nii + ' at Brain Extraction (PET)')
+            print(e)
+            print(name_nii + ' at Brain Extraction (PET)')
+            
         img = crop_img(name_nii)
-        # Don't save, otherwise you'll overwrite the original image
         data, affine, header = img.get_fdata(), img.affine, img.header
         del img
         # Motion Correction is needed BEFORE atlas registration (only if the image has more than 1 volume)
@@ -197,31 +222,6 @@ def dispatcher(f, atlas_file, img_type):
                 logging.error(name_nii + ' at Flatten')
                 print(e)
                 print(name_nii + ' at Flatten')
-            
-        # Binary mask is made after flattening, in order to have the greatest surface available for the mask 
-        logging.info(f"{name_nii} starting Brain Extraction (PET)")
-        try:
-            be = BrainExtraction(data, affine, header , name)
-            data, affine, header = be.run()
-            bm_data = be.get_mask()
-            del be
-            name_nii = intermediate_dir + name + '_be.nii.gz'
-            name_bm = name + '_bm.nii.gz'
-            
-            save(Nifti1Image(data, affine, header), name_nii)
-            img = crop_img(name_nii)
-            save(img, name_nii)
-            data, affine, header = img.get_fdata(), img.affine, img.header
-            del img
-            
-            save(Nifti1Image(bm_data, affine, header), name_bm)
-            save(crop_img(name_bm), name_bm)
-            # no need to reload bm_img, it won't be used anymore            
-        except Exception as e:
-            logging.error(e)
-            logging.error(name_nii + ' at Brain Extraction (PET)')
-            print(e)
-            print(name_nii + ' at Brain Extraction (PET)')
 
         try: 
             # NOTE: binary mask is obtained on the first slice of PET, which is not moved by motion correction nor by flattening
