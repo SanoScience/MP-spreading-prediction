@@ -98,10 +98,12 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             bm_data = bm_img.get_fdata()
             del bm_img
             
+            # Binary mask has to be mandatorily saved for Eddy
+            name_bm = name + '_bm.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)
+            
             if temp_file:
                 name_nii = intermediate_dir + name + '_be.nii.gz'
-                name_bm = name + '_bm.nii.gz'
-                save(Nifti1Image(data, affine, header), name_nii)
                 save(Nifti1Image(bm_data, affine, header), name_bm)
                 
                         
