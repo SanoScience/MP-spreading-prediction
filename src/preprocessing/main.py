@@ -30,7 +30,7 @@ def check_path(path):
         os.system("mkdir -p {}".format(path))
     return 
 
-def dispatcher(f, atlas_file, img_type, temp_file):
+def dispatcher(f, atlas_file, img_type):
     f = f.removeprefix("\"").removeprefix("\'").removesuffix("\"").replace('./', '')
     path = os.getcwd() + os.sep + f.removesuffix(f.split('/')[-1])
     output_directory = dataset_path + 'derivatives/' + str(re.split(dataset_path, path)[-1])
@@ -72,10 +72,8 @@ def dispatcher(f, atlas_file, img_type, temp_file):
     
     try:
         if img_type == 'anat':  
-            logging.info(f"{name_nii} preparing brain extraction")
-            be = BET_FSL(name_nii, name, binary_mask=False)
+            be = BET_FSL(name_nii, intermediate_dir + name + '_be', binary_mask=False)
         elif img_type == 'dwi':
-            logging.info(f"{name_nii} preparing brain extraction")
             img = load(name_nii)
             be = BrainExtraction(img.get_fdata(), img.affine, img.header, name)
     except Exception as e:
@@ -91,7 +89,6 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             bm_data = be.get_mask()
             del be               
             
-            logging.info(f"{name_nii} finished brain extraction, saving...")
             ### Crop images to save space...
             img = crop_img(Nifti1Image(data, affine, header))
             data, affine, header = img.get_fdata(), img.affine, img.header 
@@ -105,11 +102,8 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             bm_data = bm_img.get_fdata()
             del bm_img
             
-            if temp_file:
-                name_nii = intermediate_dir + name + '_be.nii.gz'
-                save(Nifti1Image(data, affine, header), name_nii)
-                
-                        
+            name_nii = intermediate_dir + name + '_be.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at brain_extraction (common)')
@@ -129,9 +123,8 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             del lpca
             del gtab
             
-            if temp_file:
-                name_nii = intermediate_dir + name + '_lpca.nii.gz'
-                save(Nifti1Image(data, affine, header), name_nii)
+            name_nii = intermediate_dir + name + '_lpca.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at LPCA')
@@ -144,9 +137,8 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             data, affine, header = gib.run()
             del gib 
             
-            if temp_file:
-                name_nii = intermediate_dir + name + '_gibbs.nii.gz'
-                save(Nifti1Image(data, affine, header), name_nii)
+            name_nii = intermediate_dir + name + '_gibbs.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Gibbs')
@@ -161,9 +153,8 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             gtab = ec.get_BMatrix()
             del ec
             
-            if temp_file:
-                name_nii = intermediate_dir + name + '_eddy.nii.gz'
-                save(Nifti1Image(data, affine, header), name_nii)
+            name_nii = intermediate_dir + name + '_eddy.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Eddy')
@@ -191,10 +182,9 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             # cropped binary mask has to be saved before registration
             save(crop_img(Nifti1Image(bm_data, affine, header)), name_bm)
             
-            if temp_file:
-                name_nii = intermediate_dir + name + '_be.nii.gz'
-                name_bm = name + '_bm.nii.gz'
-                save(Nifti1Image(data, affine, header), name_nii)         
+            name_nii = intermediate_dir + name + '_be.nii.gz'
+            name_bm = name + '_bm.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)         
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Brain Extraction (PET)')
@@ -211,9 +201,8 @@ def dispatcher(f, atlas_file, img_type, temp_file):
                 mc = MotionCorrection(data, affine, header, name)
                 data, affine, header = mc.run()
                 del mc
-                if temp_file:
-                    name_nii = intermediate_dir + name + '_mc.nii.gz'
-                    save(Nifti1Image(data, affine, header), name_nii)
+                name_nii = intermediate_dir + name + '_mc.nii.gz'
+                save(Nifti1Image(data, affine, header), name_nii)
             except Exception as e:
                 logging.error(e)
                 logging.error(name_nii + ' at Motion Correction')
@@ -225,9 +214,9 @@ def dispatcher(f, atlas_file, img_type, temp_file):
                 flat = Flatten(name_nii, name)
                 data, affine, header = flat.run()
                 del flat
-                if temp_file:
-                    name_nii = intermediate_dir + name + '_fl.nii.gz'
-                    save(Nifti1Image(data, affine, header), name_nii)
+                
+                name_nii = intermediate_dir + name + '_fl.nii.gz'
+                save(Nifti1Image(data, affine, header), name_nii)
             except Exception as e:
                 logging.error(e)
                 logging.error(name_nii + ' at Flatten')
@@ -247,9 +236,9 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             pet_reg = Registration(name_nii, atlas_file, intermediate_dir+name, img_type)
             data, affine, header = pet_reg.run()
             del pet_reg
-            if temp_file:
-                name_nii = intermediate_dir + name + '_reg.nii.gz'
-                save(Nifti1Image(data, affine, header), name_nii)
+            
+            name_nii = intermediate_dir + name + '_reg.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Registration (PET)')
@@ -266,9 +255,8 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             atl_regs = Registration(name_nii, atlas_file, name, img_type)
             data, affine, header = atl_regs.run()
             del atl_regs
-            if temp_file:
-                name_nii = intermediate_dir + name + '_reg.nii.gz'
-                save(Nifti1Image(data, affine, header), name_nii)
+            name_nii = intermediate_dir + name + '_reg.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Registration')
@@ -301,9 +289,8 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             tissue_class = BrainSegmentation(name_nii, name)
             data, affine, header = tissue_class.run()
             del tissue_class
-            if temp_file:
-                name_nii = intermediate_dir + name + '_segm.nii.gz'
-                save(Nifti1Image(data, affine, header), name_nii)
+            name_nii = intermediate_dir + name + '_segm.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Brain Segmentation (ANAT)')
@@ -331,7 +318,7 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             
     # final save is mandatory
     save(Nifti1Image(data, affine, header), name + '.nii.gz')
-    logging.info(f"{name_nii} final image saved")
+    logging.info(f"{name + '.nii.gz'} final image saved")
 
     return 
 
@@ -381,15 +368,6 @@ if __name__=='__main__':
     else:
         num_cores = input("Insert the number of cores you want to use (default, 4): ")
         num_cores = int(num_cores) if len(num_cores) > 0 else 4
-        
-    if len(sys.argv) > 4:
-        temp_file = sys.argv[4]
-    else:
-        try: 
-            temp_file = input("Do you want to produce intermediate outputs [y/N]? ")
-        except:
-            temp_file = ''
-    temp_file = True if temp_file == 'y' or temp_file == 'Y' else False        
 
     # TODO
     # skip_temporary = True if input('Do you want to skip already processed temp files? [Y/n]') != 'n' else False
@@ -399,7 +377,6 @@ if __name__=='__main__':
     logging.info(f"Images list or type: {txt_list}")
     logging.info(f"Dataset path provided: {dataset_path}")
     logging.info(f"Cores: {num_cores}")
-    logging.info(f"Intermediate files {'enabled' if temp_file else 'disabled'}")
     logging.info(f"Number of images to process: {len(files)}")
     logging.info("List of images to process: ")
     logging.info(files)
@@ -413,7 +390,7 @@ if __name__=='__main__':
         # this ensure the preprocessing pipeline will execute the right steps for each file (it allows heterogeneity in the list)
         img_type = re_img_type.search(files[i]).group()
         
-        p = multiprocessing.Process(target=dispatcher, args=(files[i], atlas_file, img_type, temp_file))
+        p = multiprocessing.Process(target=dispatcher, args=(files[i], atlas_file, img_type))
         p.start()
         procs.append(p)
         logging.info(f"Image {files[i]} queued")

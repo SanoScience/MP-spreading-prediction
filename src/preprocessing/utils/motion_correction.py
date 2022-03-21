@@ -97,21 +97,18 @@ class MotionCorrection:
 
         q = multiprocessing.Queue()
         procs = []
-        counter = 0
         for i in range(1, self.data.shape[-1]):
             # We do not need to correct the first volume to itself
             
             p = multiprocessing.Process(target=self.affine_reg, args=(static_img, self.affine, self.data[...,i], self.affine, i, q))
             p.start()
             procs.append(p)
-            logging.info(f"queued process {i}")
-            if i%4==0 or i == self.data.shape[-1] -1:   
-                logging.info(f"{i} processes, collect before proceeding...")
-                while counter < i:
-                    index, volume = q.get()
-                    self.corrected_data[...,index] = volume
-                    counter += 1
-                logging.info(f"{counter} volumes collected, queueing other processes")
-        logging.info("MC finished")
+        
+        counter = 0            
+        while counter < self.data.shape[-1]-1:
+            index, volume = q.get()
+            self.corrected_data[...,index] = volume
+            counter += 1
 
+        assert self.corrected_data.shape[-1] == self.data.shape[-1]
         return self.corrected_data, self.affine, self.header 
