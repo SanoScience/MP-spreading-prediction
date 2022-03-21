@@ -72,8 +72,10 @@ def dispatcher(f, atlas_file, img_type, temp_file):
     
     try:
         if img_type == 'anat':  
-            be = BET_FSL(name_nii, intermediate_dir + name + '_be', binary_mask=False)
+            logging.info(f"{name_nii} preparing brain extraction")
+            be = BET_FSL(name_nii, name, binary_mask=False)
         elif img_type == 'dwi':
+            logging.info(f"{name_nii} preparing brain extraction")
             img = load(name_nii)
             be = BrainExtraction(img.get_fdata(), img.affine, img.header, name)
     except Exception as e:
@@ -89,6 +91,7 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             bm_data = be.get_mask()
             del be               
             
+            logging.info(f"{name_nii} finished brain extraction, saving...")
             ### Crop images to save space...
             img = crop_img(Nifti1Image(data, affine, header))
             data, affine, header = img.get_fdata(), img.affine, img.header 
@@ -328,7 +331,7 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             
     # final save is mandatory
     save(Nifti1Image(data, affine, header), name + '.nii.gz')
-    logging.info(f"{name + '.nii.gz'} final image saved")
+    logging.info(f"{name_nii} final image saved")
 
     return 
 
