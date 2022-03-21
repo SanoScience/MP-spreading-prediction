@@ -89,14 +89,10 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             bm_data = be.get_mask()
             del be               
             
-            logging.info("1")
-            
             ### Crop images to save space...
             img = crop_img(Nifti1Image(data, affine, header))
             data, affine, header = img.get_fdata(), img.affine, img.header 
             del img
-            
-            logging.info("2")
             
             # Binary mask has to be mandatorily saved for Eddy
             name_bm = name + '_bm.nii.gz'
@@ -105,8 +101,6 @@ def dispatcher(f, atlas_file, img_type, temp_file):
             save(bm_img, name_bm)
             bm_data = bm_img.get_fdata()
             del bm_img
-            
-            logging.info("3")
             
             if temp_file:
                 name_nii = intermediate_dir + name + '_be.nii.gz'
