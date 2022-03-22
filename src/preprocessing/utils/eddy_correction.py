@@ -10,7 +10,7 @@ class EddyMotionCorrection:
     out_image = ''
     out_bvecs = ''
 
-    def __init__(self, name, name_nii, name_bval, name_bvec, name_json, mask_path):
+    def __init__(self, name, name_nii, name_bval, name_bvec, name_json, mask_path, intermediate_dir):
         # Binary mask for skull is mandatory, so input file has been surely submitted to 'brain_extraction' module
 
         self.name = name 
@@ -23,6 +23,7 @@ class EddyMotionCorrection:
         self.bvec_path = name_bvec
         self.mask_path = mask_path
         self.json_path = name_json
+        self.intermediate_dir = intermediate_dir
         self.base = 'eddy_corrected'
 
         # The acqparams.txt is manually writen if the fields are not present in the json file
@@ -59,7 +60,7 @@ class EddyMotionCorrection:
         index.close()
 
     def run(self):        
-        os.system(f"eddy --imain={self.name_nii} --mask={self.mask_path} --acqp={self.acqp_path} --index={self.index_path} --bvecs={self.bvec_path} --bvals={self.bval_path} --out={self.base} --repol --interp=trilinear --niter=3 --nvoxhp=1000")
+        os.system(f"eddy --imain={self.name_nii} --mask={self.mask_path} --acqp={self.acqp_path} --index={self.index_path} --bvecs={self.bvec_path} --bvals={self.bval_path} --out={self.intermediate_dir + self.base} --repol --interp=trilinear --niter=3 --nvoxhp=1000")
         '''
         The --out parameter specifies the basename for all output files of eddy. It is used as the name for all eddy output files, but with different extensions. If we assume that user specified --out=my_eddy_output, the files that are always written are
 
@@ -69,11 +70,11 @@ class EddyMotionCorrection:
             my_eddy_output.eddy_rotated_bvecs
             When a subject moves such that it constitutes a rotation around some axis and this is subsequently reoriented, it will create an inconsistency in the relationship between the data and the "bvecs" (directions of diffusion weighting). This can be remedied by using the my_eddy_output.rotated_bvecs file for subsequent analysis. For the rotation to work correctly the bvecs need to be "correct" for FSL before being fed into eddy. The easiest way to check that this is the case for your data is to run FDT and display the _V1 files in fslview or FSLeyes to make sure that the eigenvectors line up across voxels.
         '''
-        self.out_image = 'eddy_corrected.nii.gz'
-        self.out_bvecs = 'eddy_corrected.eddy_rotated_bvecs'
+        self.out_image = self.intermediate_dir + 'eddy_corrected.nii.gz'
+        self.out_bvecs = self.intermediate_dir + 'eddy_corrected.eddy_rotated_bvecs'
 
-        os.system(f" mv {self.out_image} intermediate/{self.name+'_eddy.nii.gz'}") 
-        self.out_image = 'intermediate/'+self.name+'_eddy.nii.gz'
+        os.system(f" mv {self.out_image} {self.intermediate_dir + self.name + '_eddy.nii.gz'}") 
+        self.out_image = self.intermediate_dir + self.name + '_eddy.nii.gz'
 
         os.system(f"mv {self.out_bvecs} {self.name+'.bvec'}")
         self.out_bvecs = self.name+'.bvec'

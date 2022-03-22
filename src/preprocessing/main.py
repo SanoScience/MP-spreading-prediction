@@ -8,6 +8,7 @@ import re
 import sys
 from utils.brain_extraction import BrainExtraction, BET_FSL
 from utils.brain_extraction import BrainExtraction
+from utils.cerebellum_normalization import CerebellumNormalization
 from utils.denoising import Denoising_LPCA
 from utils.eddy_correction import EddyMotionCorrection
 from utils.flatten import Flatten
@@ -50,6 +51,8 @@ def dispatcher(f, atlas_file, img_type):
     # Inputs
     name_nii = path + name + '.nii'
     name_json = path + name + '.json'
+    name_bm = name + '_bm.nii.gz'
+
     os.system(f"cp {name_json} {name+'.json'}") # copy json in the output folder
     gtab = None # if gtab is 'None' (example, for anat and pet images) don't use it in registration
     if img_type == 'dwi':
@@ -95,7 +98,6 @@ def dispatcher(f, atlas_file, img_type):
             del img
             
             # Binary mask has to be mandatorily saved for Eddy
-            name_bm = name + '_bm.nii.gz'
             save(Nifti1Image(bm_data, affine, header), name_bm)
             bm_img = crop_img(name_bm) 
             save(bm_img, name_bm)
@@ -147,7 +149,7 @@ def dispatcher(f, atlas_file, img_type):
             
         logging.info(f"{name_nii} starting Eddy")
         try:
-            ec = EddyMotionCorrection(name, name_nii, name_bval, name_bvec, name_json, name_bm)
+            ec = EddyMotionCorrection(name, name_nii, name_bval, name_bvec, name_json, name_bm, intermediate_dir)
             data, affine, header = ec.run()
             name_bvec, name_bval = ec.get_bvec_bval()
             gtab = ec.get_BMatrix()
@@ -176,15 +178,21 @@ def dispatcher(f, atlas_file, img_type):
             bm_data = be.get_mask()
             del be
             
-            img = crop_img(Nifti1Image(data, affine, header))
-            data, affine, header = img.get_fdata(), img.affine, img.header
-            del img
-            # cropped binary mask has to be saved before registration
-            save(crop_img(Nifti1Image(bm_data, affine, header)), name_bm)
-            
             name_nii = intermediate_dir + name + '_be.nii.gz'
             name_bm = name + '_bm.nii.gz'
-            save(Nifti1Image(data, affine, header), name_nii)         
+            
+            ### Crop images to save space...
+            img = crop_img(Nifti1Image(data, affine, header))
+            data, affine, header = img.get_fdata(), img.affine, img.header 
+            save(img, name_nii)    
+            del img
+            
+            save(Nifti1Image(bm_data, affine, header), name_bm)
+            bm_img = crop_img(name_bm) 
+            save(bm_img, name_bm)
+            bm_data = bm_img.get_fdata()
+            del bm_img
+                 
         except Exception as e:
             logging.error(e)
             logging.error(name_nii + ' at Brain Extraction (PET)')
@@ -226,14 +234,14 @@ def dispatcher(f, atlas_file, img_type):
         try: 
             # NOTE: binary mask is obtained on the first slice of PET, which is not moved by motion correction nor by flattening
             logging.info(f"{name_nii} starting Registration of binary mask (PET)")
-            bm_reg = Registration(name_bm, atlas_file, intermediate_dir+name, 'mask')
+            bm_reg = Registration(name_bm, atlas_file, intermediate_dir, name, 'mask')
             bm_data, bm_affine, bm_header = bm_reg.run()
             del bm_reg
             # Binary mask is always saved (it is not an intermediate output)
             save(Nifti1Image(bm_data, bm_affine, bm_header), name_bm)
             
             logging.info(f"{name_nii} starting Registration (PET)")
-            pet_reg = Registration(name_nii, atlas_file, intermediate_dir+name, img_type)
+            pet_reg = Registration(name_nii, atlas_file, intermediate_dir, name, img_type)
             data, affine, header = pet_reg.run()
             del pet_reg
             
@@ -244,6 +252,19 @@ def dispatcher(f, atlas_file, img_type):
             logging.error(name_nii + ' at Registration (PET)')
             print(e)
             print(name_nii + ' at Registration (PET)')
+            
+        # registration is required prior Cerebellum Normalization
+        try:
+            logging.info(f"{name_nii} starting Cerebellum Normalization")
+            ce = CerebellumNormalization(name_nii, atlas_file, intermediate_dir, name)
+            data, affine, header = ce.run()
+            name_nii = intermediate_dir + name + '_norm.nii.gz'
+            save(Nifti1Image(data, affine, header), name_nii)
+        except Exception as e:
+            logging.error(e)
+            logging.error(name_nii + ' at CerebellumNormalization')
+            print(e)
+            print(name_nii + ' at CerebellumNormalization')
     
         gc.collect()
     ###################################
@@ -263,21 +284,6 @@ def dispatcher(f, atlas_file, img_type):
             print(e)
             print(name_nii + ' at Registration')
         
-    '''
-    NOTE: DEPRECATED
-    if img_type == 'pet':    
-        #logging.info(name + " Starting Cerebellum Normalization")
-        try:
-            ce = CerebellumNormalization(name_nii, atlas_file, name)
-            data, affine, header = ce.run()
-            name_nii = intermediate_dir + name + '_norm.nii.gz'
-            save(Nifti1Image(data, affine, header), name_nii)
-        except Exception as e:
-            logging.error(e)
-            logging.error(name_nii + ' at CerebellumNormalization')
-        #logging.info(name + " Cerebellum Normalization done")
-    '''
-    
     gc.collect()
     #########################
     ### ANAT SEGMENTATION ###
@@ -353,7 +359,7 @@ if __name__=='__main__':
         else:
             img_type = '*'
         #logging.info(f"Looking for all '.nii' files in the path {dataset_path} (excluding \'derivatives\' folder)...")
-        output = Popen(f"find {dataset_path} ! -path '*derivatives*' ! -wholename '{atlas_file}' -name \'*{img_type}.nii\'", shell=True, stdout=PIPE)
+        output = Popen(f"find {dataset_path} ! -path \'*derivatives*\' ! -name \'{atlas_file.split(os.sep)[-1]}\' -name \'*{img_type}.nii\'", shell=True, stdout=PIPE)
         files = str(output.stdout.read()).removeprefix('b\'').removesuffix('\'').removesuffix('\\n').split('\\n')
         
     # If it starts with '/' it is an absolute path, otherwise make it absolute

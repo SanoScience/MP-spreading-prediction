@@ -63,11 +63,11 @@ def save_concentrations(concentrations, path):
 def run(dataset_dir, subject, atlas_data):
     # get the preprocessed PET data
     pet_files_paths = glob(os.path.join(dataset_dir, subject, 
-                                        'ses-*', 'pet', '*_pet.nii'))
+                                        'ses-*', 'pet', '*_pet.nii.gz'))
     
     for path in pet_files_paths:
         # logging.info(f'Found pet file {path}')   
-        output_path = path.replace('.nii', '.csv')
+        output_path = path.replace('.nii.gz', '.csv')
                
         pet_data = load_pet(path)
         if emptiness_test(path, pet_data): continue
@@ -77,7 +77,7 @@ def run(dataset_dir, subject, atlas_data):
     
 def main():
     dataset_dir = '../../data/ADNI/derivatives/'
-    atlas_path = '../../data/atlas/AAL3v1_1mm.nii.gz'
+    atlas_path = '../../data/atlas/AAL3v1.nii.gz'
     
     atlas_data = load_atlas(atlas_path)
     
