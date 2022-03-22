@@ -173,7 +173,7 @@ def dispatcher(f, atlas_file, img_type):
         data, affine, header = img.get_fdata(), img.affine, img.header
         logging.info(f"{name_nii} starting Brain Extraction (PET)")
         try:
-            be = BrainExtraction(data, affine, header , name)
+            be = BrainExtraction(data, affine, header, name)
             data, affine, header = be.run()
             bm_data = be.get_mask()
             del be

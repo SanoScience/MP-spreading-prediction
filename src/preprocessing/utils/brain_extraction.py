@@ -31,29 +31,26 @@ class BrainExtraction:
         return self.binary_mask
 
 class BET_FSL:
-    path_file = None
 
-    def __init__(self, path_file, name, binary_mask=True):
+    def __init__(self, name_nii, output_dir, name, binary_mask=True):
         """
         This object demands a path file, not the data. 
         Be aware that this object is a wrapper for the fsl toolkit, meaning that you need to have
         fsl in your machine: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSL
         """
+        self.name_nii = name_nii
+        self.output_dir = output_dir
         self.name = name
-        img = load(path_file)
-        self.affine = img.affine
-        self.header = img.header
-        self.path_file = path_file
         self.binary_mask = binary_mask
 
     def run(self, frac=.1, vertical_gradient=-.5, output_type='NIFTI_GZ'):
         bet = fsl.BET()
-        bet.inputs.in_file = self.path_file
+        bet.inputs.in_file = self.name_nii
         bet.inputs.frac = frac
         bet.inputs.vertical_gradient = vertical_gradient
         bet.inputs.output_type = output_type
         bet.inputs.mask = self.binary_mask
-        bet.inputs.out_file = self.name + '.nii.gz'
+        bet.inputs.out_file = self.output_dir + self.name + '_be.nii.gz'
         bet.inputs.reduce_bias = True
 
         try:
@@ -65,8 +62,6 @@ class BET_FSL:
         # os.system(f"mv {self.output_file} {self.name+'.nii'}")
 
         self.binary_mask = out_bet.outputs.mask_file
-        os.system(f"mv {self.binary_mask} {self.name+'_bm.nii.gz'}")
-        self.binary_mask = self.name + '_bm.nii.gz'
         img = load(self.output_file)
         return img.get_fdata(), img.affine, img.header
 
