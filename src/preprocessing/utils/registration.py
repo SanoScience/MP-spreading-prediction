@@ -36,7 +36,6 @@ class Registration():
         fl.inputs.out_file = self.output_dir + self.name + '_reg.nii.gz'
         fl.inputs.output_type = 'NIFTI_GZ'
         fl.inputs.bins = 1500
-        #fl.inputs.rigid2D = True
         fl.inputs.dof = 12
         # For 3D to 3D mode the DOF can be set to 12 (affine), 9 (traditional), 7 (global rescale) or 6 (rigid body)
         fl.inputs.out_matrix_file = self.output_dir + self.name + '_reg_matrix.mat'

@@ -273,7 +273,7 @@ def dispatcher(f, atlas_file, img_type):
     else:
         logging.info(f"{name_nii} starting Registration")
         try:
-            atl_regs = Registration(name_nii, atlas_file, name, img_type)
+            atl_regs = Registration(name_nii, atlas_file, intermediate_dir, name, img_type)
             data, affine, header = atl_regs.run()
             del atl_regs
             name_nii = intermediate_dir + name + '_reg.nii.gz'
