@@ -32,7 +32,7 @@ class BrainExtraction:
 
 class BET_FSL:
 
-    def __init__(self, path_file, name, binary_mask=True):
+    def __init__(self, path_file, name):
         """
         This object demands a path file, not the data. 
         Be aware that this object is a wrapper for the fsl toolkit, meaning that you need to have
@@ -43,30 +43,15 @@ class BET_FSL:
         self.affine = img.affine
         self.header = img.header
         self.path_file = path_file
-        self.binary_mask = binary_mask
 
-    def run(self, frac=.1, vertical_gradient=-.5, output_type='NIFTI_GZ'):
-        bet = fsl.BET()
-        bet.inputs.in_file = self.path_file
-        bet.inputs.frac = frac
-        bet.inputs.vertical_gradient = vertical_gradient
-        bet.inputs.output_type = output_type
-        bet.inputs.mask = self.binary_mask
-        bet.inputs.out_file = self.name + '.nii.gz'
-        bet.inputs.reduce_bias = True
+    def run(self, frac=.1, vertical_gradient=-.5):
+        # Nipype wrapping of BET is skipped due to instability
+        os.system(f"bet {self.path_file} {self.name + '.nii.gz'} -f {frac} -B -g {vertical_gradient}")
 
-        try:
-            out_bet = bet.run()
-        except Exception as e:
-            logging.error(e)
-
-        self.output_file = out_bet.outputs.out_file
-        # os.system(f"mv {self.output_file} {self.name+'.nii'}")
-
-        self.binary_mask = out_bet.outputs.mask_file
+        self.binary_mask = self.name + '_mask.nii.gz'
         os.system(f"mv {self.binary_mask} {self.name+'_bm.nii.gz'}")
         self.binary_mask = self.name + '_bm.nii.gz'
-        img = load(self.output_file)
+        img = load(self.name + '.nii.gz')
         return img.get_fdata(), img.affine, img.header
 
     def get_mask(self):

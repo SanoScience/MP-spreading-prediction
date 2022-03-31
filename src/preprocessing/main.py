@@ -1,3 +1,4 @@
+import fractions
 from subprocess import Popen, PIPE, STDOUT
 from tracemalloc import start
 from nibabel import load, save, Nifti1Image
@@ -173,8 +174,10 @@ def dispatcher(f, atlas_file, img_type):
         data, affine, header = img.get_fdata(), img.affine, img.header
         logging.info(f"{name_nii} starting Brain Extraction (PET)")
         try:
-            be = BrainExtraction(data, affine, header, name)
-            data, affine, header = be.run()
+            # if the temporary image already exists, you have to remove it, or BET will give an error
+            #os.system(f"rm {intermediate_dir + name}_be*")
+            be = BET_FSL(name_nii, intermediate_dir + name + '_be')
+            data, affine, header = be.run(vertical_gradient=0.0)
             bm_data = be.get_mask()
             del be
             
