@@ -172,40 +172,8 @@ def dispatcher(f, atlas_file, img_type):
     if img_type == 'pet':
         img = load(name_nii)
         data, affine, header = img.get_fdata(), img.affine, img.header
-        logging.info(f"{name_nii} starting Brain Extraction (PET)")
-        try:
-            # if the temporary image already exists, you have to remove it, or BET will give an error
-            #os.system(f"rm {intermediate_dir + name}_be*")
-            be = BET_FSL(name_nii, intermediate_dir + name + '_be')
-            data, affine, header = be.run(vertical_gradient=0.0)
-            bm_data = be.get_mask()
-            del be
-            
-            name_nii = intermediate_dir + name + '_be.nii.gz'
-            name_bm = name + '_bm.nii.gz'
-            
-            ### Crop images to save space...
-            img = crop_img(Nifti1Image(data, affine, header))
-            data, affine, header = img.get_fdata(), img.affine, img.header 
-            save(img, name_nii)    
-            del img
-            
-            save(Nifti1Image(bm_data, affine, header), name_bm)
-            bm_img = crop_img(name_bm) 
-            save(bm_img, name_bm)
-            bm_data = bm_img.get_fdata()
-            del bm_img
-                 
-        except Exception as e:
-            logging.error(e)
-            logging.error(name_nii + ' at Brain Extraction (PET)')
-            print(e)
-            print(name_nii + ' at Brain Extraction (PET)')
-            
-        img = crop_img(name_nii)
-        data, affine, header = img.get_fdata(), img.affine, img.header
-        del img
-        # Motion Correction is needed BEFORE atlas registration (only if the image has more than 1 volume)
+        
+        # Motion Correction is needed BEFORE brain extraction, because output will be truncated to one single volume
         if len(np.shape(data)) > 3 and np.shape(data)[3] > 1: 
             logging.info(f"{name_nii} starting Motion Correction")
             try:
@@ -233,6 +201,38 @@ def dispatcher(f, atlas_file, img_type):
                 logging.error(name_nii + ' at Flatten')
                 print(e)
                 print(name_nii + ' at Flatten')
+                
+        logging.info(f"{name_nii} starting Brain Extraction (PET)")
+        try:
+            be = BET_FSL(name_nii, intermediate_dir + name + '_be')
+            data, affine, header = be.run(frac=0.2, vertical_gradient=-0.3)
+            bm_data = be.get_mask()
+            del be
+            
+            name_nii = intermediate_dir + name + '_be.nii.gz'
+            name_bm = name + '_mask.nii.gz'
+            
+            ### Crop images to save space...
+            img = crop_img(Nifti1Image(data, affine, header))
+            data, affine, header = img.get_fdata(), img.affine, img.header 
+            save(img, name_nii)    
+            del img
+            
+            save(Nifti1Image(bm_data, affine, header), name_bm)
+            bm_img = crop_img(name_bm) 
+            save(bm_img, name_bm)
+            bm_data = bm_img.get_fdata()
+            del bm_img
+                 
+        except Exception as e:
+            logging.error(e)
+            logging.error(name_nii + ' at Brain Extraction (PET)')
+            print(e)
+            print(name_nii + ' at Brain Extraction (PET)')
+            
+        img = crop_img(name_nii)
+        data, affine, header = img.get_fdata(), img.affine, img.header
+        del img        
 
         try: 
             # NOTE: binary mask is obtained on the first slice of PET, which is not moved by motion correction nor by flattening
