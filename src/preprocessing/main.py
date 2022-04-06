@@ -205,7 +205,7 @@ def dispatcher(f, atlas_file, img_type):
         logging.info(f"{name_nii} starting Brain Extraction (PET)")
         try:
             be = BET_FSL(name_nii, intermediate_dir + name + '_be')
-            data, affine, header = be.run(frac=0.2, vertical_gradient=-0.3)
+            data, affine, header = be.run(frac=0.1, vertical_gradient=-0.3)
             bm_data = be.get_mask()
             del be
             
