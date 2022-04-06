@@ -39,18 +39,13 @@ class BET_FSL:
         fsl in your machine: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSL
         """
         self.name = name
-        img = load(path_file)
-        self.affine = img.affine
-        self.header = img.header
         self.path_file = path_file
 
     def run(self, frac=.1, vertical_gradient=-.5):
         # Nipype wrapping of BET is skipped due to instability
-        os.system(f"bet {self.path_file} {self.name + '.nii.gz'} -f {frac} -B -g {vertical_gradient}")
+        os.system(f"bet2 {self.path_file} {self.name} -m -f {frac} -g {vertical_gradient}")
 
         self.binary_mask = self.name + '_mask.nii.gz'
-        os.system(f"mv {self.binary_mask} {self.name+'_bm.nii.gz'}")
-        self.binary_mask = self.name + '_bm.nii.gz'
         img = load(self.name + '.nii.gz')
         return img.get_fdata(), img.affine, img.header
 
