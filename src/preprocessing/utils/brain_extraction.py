@@ -41,7 +41,7 @@ class BET_FSL:
         self.name = name
         self.path_file = path_file
 
-    def run(self, frac=.3, vertical_gradient=-.5):
+    def run(self, frac=.4, vertical_gradient=-.5):
         # Nipype wrapping of BET is skipped due to instability
         os.system(f"bet2 {self.path_file} {self.name} -m -f {frac} -g {vertical_gradient}")
 
