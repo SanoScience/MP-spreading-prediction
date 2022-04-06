@@ -59,6 +59,7 @@ class MotionCorrection:
             transform = TranslationTransform3D()
             params0 = None
             starting_affine = c_of_mass.affine
+            del c_of_mass
             translation = affreg.optimize(static_img, moving_img, transform, params0,
                                         static_affine, moving_affine,
                                         starting_affine=starting_affine)
@@ -67,6 +68,7 @@ class MotionCorrection:
             transform = RigidTransform3D()
             params0 = None
             starting_affine = translation.affine
+            del translation
             rigid = affreg.optimize(static_img, moving_img, transform, params0,
                                     static_affine, moving_affine,
                                     starting_affine=starting_affine)
@@ -75,6 +77,7 @@ class MotionCorrection:
             transform = AffineTransform3D()
             params0 = None
             starting_affine = rigid.affine
+            del rigid
             align = affreg.optimize(static_img, moving_img, transform, params0,
                                     static_affine, moving_affine,
                                     starting_affine=starting_affine)

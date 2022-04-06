@@ -76,7 +76,7 @@ def dispatcher(f, atlas_file, img_type):
     
     try:
         if img_type == 'anat':  
-            be = BET_FSL(name_nii, intermediate_dir + name + '_be', binary_mask=False)
+            be = BET_FSL(name_nii, intermediate_dir + name + '_be')
         elif img_type == 'dwi':
             img = load(name_nii)
             be = BrainExtraction(img.get_fdata(), img.affine, img.header, name)
