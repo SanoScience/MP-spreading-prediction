@@ -337,6 +337,7 @@ logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5
 if __name__=='__main__':
     # assuming atlas is in the current dir
     atlas_file = os.getcwd() + '/AAL3v1.nii.gz'
+    re_img_type = re.compile(r"(dwi|pet|anat)")
 
     if len(sys.argv) > 1:
         txt_list = sys.argv[1]
@@ -357,7 +358,7 @@ if __name__=='__main__':
         f = open(txt_list, "r")
         files = f.readlines()
     else:
-        if len(txt_list)>0:
+        if re.match(re_img_type, txt_list):
             img_type = txt_list
         else:
             img_type = '*'
@@ -383,7 +384,7 @@ if __name__=='__main__':
 
     logging.info('******************************************')
     logging.info(f"Atlas: {atlas_file}")
-    logging.info(f"Images list or type: {txt_list}")
+    logging.info(f"Images list or type: {img_type}")
     logging.info(f"Dataset path provided: {dataset_path}")
     logging.info(f"Cores: {num_cores}")
     logging.info(f"Number of images to process: {len(files)}")
@@ -392,11 +393,11 @@ if __name__=='__main__':
     logging.info('******************************************')
 
     procs = []
-    re_img_type = re.compile(r"(dwi|pet|anat)")
 
     for i in tqdm(range(len(files)), file=sys.stdout):
         
         # this ensure the preprocessing pipeline will execute the right steps for each file (it allows heterogeneity in the list)
+        # NOTE: even if this overwrites "img_type", the images belonging to the specified type have been already loaded
         img_type = re_img_type.search(files[i]).group()
         
         p = multiprocessing.Process(target=dispatcher, args=(files[i], atlas_file, img_type))
