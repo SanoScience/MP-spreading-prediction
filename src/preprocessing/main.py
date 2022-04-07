@@ -340,12 +340,12 @@ if __name__=='__main__':
     re_img_type = re.compile(r"(dwi|pet|anat)")
 
     if len(sys.argv) > 1:
-        txt_list = sys.argv[1]
+        img_type = sys.argv[1]
     else:
         try:
-            txt_list = input('Provide txt filename containing images to process (1 line per file) [optional, Enter to process all images, or enter [dwi,anat,pet] to process a specific category]: ')
+            img_type = input('Provide txt filename containing images to process (1 line per file) [optional, Enter to process all images, or enter [dwi,anat,pet] to process a specific category]: ')
         except:
-            txt_list = ''
+            img_type = ''
     #logging.info(f"PreProcessing {img_type} files")
         
     if len(sys.argv) > 2:
@@ -354,13 +354,11 @@ if __name__=='__main__':
         dataset_path = input('Insert local path of the dataset (enter to look in the current directory): ')
         if len(dataset_path) == 0: dataset_path = '.'
         
-    if txt_list.endswith('.txt'):
-        f = open(txt_list, "r")
+    if img_type.endswith('.txt'):
+        f = open(img_type, "r")
         files = f.readlines()
     else:
-        if re.match(re_img_type, txt_list):
-            img_type = txt_list
-        else:
+        if not re.match(re_img_type, img_type):
             img_type = '*'
         #logging.info(f"Looking for all '.nii' files in the path {dataset_path} (excluding \'derivatives\' folder)...")
         output = Popen(f"find {dataset_path} ! -path \'*derivatives*\' ! -name \'{atlas_file.split(os.sep)[-1]}\' -name \'*{img_type}.nii\'", shell=True, stdout=PIPE)
