@@ -75,18 +75,14 @@ def dispatcher(f, atlas_file, img_type):
     ########################
     
     try:
-        if img_type == 'anat':  
+        if img_type == 'anat' or img_type == 'dwi':  
             be = BET_FSL(name_nii, intermediate_dir + name + '_be')
-        elif img_type == 'dwi':
-            img = load(name_nii)
-            be = BrainExtraction(img.get_fdata(), img.affine, img.header, name)
     except Exception as e:
         logging.error(e)
         logging.error(name_nii + ' at brain_extraction')
         print(e)
         print(name_nii + ' at brain_extraction')
-    
-    if img_type == 'anat' or img_type == 'dwi':
+        
         logging.info(f"{name_nii} starting brain extraction")
         try:
             data, affine, header = be.run()

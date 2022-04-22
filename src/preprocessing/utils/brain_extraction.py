@@ -46,6 +46,9 @@ class BET_FSL:
         os.system(f"bet2 {self.path_file} {self.name} -m -f {frac} -g {vertical_gradient}")
 
         self.binary_mask = self.name + '_mask.nii.gz'
+        
+        os.system(f"fslmaths {self.path_file} -mas {self.binary_mask} {self.name}")
+        
         img = load(self.name + '.nii.gz')
         return img.get_fdata(), img.affine, img.header
 
