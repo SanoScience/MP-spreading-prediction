@@ -19,12 +19,14 @@ def parallelize(dwi_files, num_cores, func, config, general_dir):
     logging.info(f'Parallelization started ({num_cores} cores).')
     
     procs = []
-    sub_re = re.compile("sub-.+/")
-    ses_re = re.compile(r"ses-(baseline|followup)")
+    #sub_re = re.compile("sub-.+/")
+    #ses_re = re.compile(r"ses-(baseline|followup)")
+    
     # instantiating process with arguments
     for i in tqdm(range(len(dwi_files))):
-        session = ses_re.search(dwi_files[i]).group()
-        stem_t1 = glob(general_dir + config['paths']['dataset_dir'] + os.sep + sub_re.search(dwi_files[i]).group() + os.sep + session + os.sep + 'anat' + os.sep + '*_anat.nii.gz')[0].split('.')[0]
+        #session = ses_re.search(dwi_files[i]).group()
+        stem_t1 = glob(dwi_files[i].split('/dwi/')[0] + os.sep + 'anat' + os.sep + '*_anat.nii.gz')[0].split('.')[0]
+        #stem_t1 = glob(general_dir + config['paths']['dataset_dir'] + os.sep + sub_re.search(dwi_files[i]).group() + os.sep + session + os.sep + 'anat' + os.sep + '*_anat.nii.gz')[0].split('.')[0]
 
         proc = multiprocessing.Process(target=func, args=(dwi_files[i].split('.')[0], stem_t1, config, general_dir))
         procs.append(proc)

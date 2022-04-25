@@ -32,7 +32,7 @@ class BrainExtraction:
 
 class BET_FSL:
 
-    def __init__(self, path_file, name):
+    def __init__(self, path_file, name, img_type):
         """
         This object demands a path file, not the data. 
         Be aware that this object is a wrapper for the fsl toolkit, meaning that you need to have
@@ -40,16 +40,23 @@ class BET_FSL:
         """
         self.name = name
         self.path_file = path_file
+        self.img_type = img_type
 
-    def run(self, frac=.3, vertical_gradient=-.5):
+    def run(self, frac=.3):
         # Nipype wrapping of BET is skipped due to instability
-        os.system(f"bet2 {self.path_file} {self.name} -m -f {frac} -g {vertical_gradient}")
-
+        
+        # TWo cuts: the first with a very negative vertical gradient to cut the neck, the second more balanced to extract all the brain
+        if self.img_type == 'anat':
+            os.system(f"bet2 {self.path_file} {self.name} -f {frac} -g -1")
+            self.path_file = self.name
+        
+        os.system(f"bet2 {self.path_file} {self.name} -m -f {frac} -g 0")
         self.binary_mask = self.name + '_mask.nii.gz'
-        
-        os.system(f"fslmaths {self.path_file} -mas {self.binary_mask} {self.name}")
-        
-        img = load(self.name + '.nii.gz')
+
+        if self.img_type == 'dwi':        
+            os.system(f"fslmaths {self.path_file} -mas {self.binary_mask} {self.name}.nii.gz")
+
+        img = load(self.name+'.nii.gz')
         return img.get_fdata(), img.affine, img.header
 
     def get_mask(self):

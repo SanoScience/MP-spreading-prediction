@@ -74,15 +74,15 @@ def dispatcher(f, atlas_file, img_type):
     ### BRAIN EXTRACTION ###
     ########################
     
-    try:
-        if img_type == 'anat' or img_type == 'dwi':  
-            be = BET_FSL(name_nii, intermediate_dir + name + '_be')
-    except Exception as e:
-        logging.error(e)
-        logging.error(name_nii + ' at brain_extraction')
-        print(e)
-        print(name_nii + ' at brain_extraction')
-        
+    if img_type == 'anat' or img_type == 'dwi': 
+        try: 
+            be = BET_FSL(name_nii, intermediate_dir + name + '_be', img_type)
+        except Exception as e:
+            logging.error(e)
+            logging.error(name_nii + ' at brain_extraction')
+            print(e)
+            print(name_nii + ' at brain_extraction')
+            
         logging.info(f"{name_nii} starting brain extraction")
         try:
             data, affine, header = be.run()
@@ -200,7 +200,7 @@ def dispatcher(f, atlas_file, img_type):
                 
         logging.info(f"{name_nii} starting Brain Extraction (PET)")
         try:
-            be = BET_FSL(name_nii, intermediate_dir + name + '_be')
+            be = BET_FSL(name_nii, intermediate_dir + name + '_be', img_type)
             data, affine, header = be.run(frac=0.1, vertical_gradient=-0.3)
             bm_data = be.get_mask()
             del be
@@ -397,7 +397,7 @@ if __name__=='__main__':
         p = multiprocessing.Process(target=dispatcher, args=(files[i], atlas_file, img_type))
         p.start()
         procs.append(p)
-        logging.info(f"Image {files[i]} queued")
+        logging.info(f"Image {files[i]} ({img_type}) queued")
         
         while len(procs)%num_cores == 0 and len(procs) > 0:
             for p in procs:

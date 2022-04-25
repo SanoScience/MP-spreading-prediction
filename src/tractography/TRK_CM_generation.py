@@ -38,7 +38,7 @@ def get_paths(stem_dwi, stem_anat, config, general_dir):
     img_path = stem_dwi + '.nii.gz'
     bval_path = stem_dwi + '.bval'
     bvec_path = stem_dwi + '.bvec'
-    # output dir is in the derivatives folder (which is also the input folder)
+    # outputs are saved in the same folder of dwi files
     output_dir = stem_dwi.removesuffix(stem_dwi.split(os.sep)[-1])
       
     bm_path = stem_dwi + '_bm.nii.gz'
@@ -207,10 +207,22 @@ def main():
     general_dir = os.getcwd()
     general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src') + os.sep
     subject = config['paths']['subject'] if config['paths']['subject'] != 'all' else 'sub-*'
-    dwi_dir = general_dir + config['paths']['dataset_dir'] + subject  + os.sep + 'ses-*' + os.sep + 'dwi' + os.sep + '*_dwi.nii.gz'
+    # NOTE: sub*_dwi.nii.gz won't catch harmonized or other harmonization files, they will be checked later to avoid including intermediate harmonization files
+    # NOTE: narrowing tractography on baseline images!
+    dwi_dir = general_dir + config['paths']['dataset_dir'] + subject  + os.sep + 'ses-baseline' + os.sep + 'dwi' + os.sep + 'sub*_dwi.nii.gz'
     dwi_files = glob(dwi_dir)
-    
-    logging.info(f'{len(dwi_files)} DWI files found ')
+    harm_counter = 0
+    for dwi in dwi_files:
+        if 'harmonized' not in dwi:
+            k = dwi.rfind('sub')
+            harm = dwi[:k] + 'harmonized_' + dwi[k:]
+            if os.path.isfile(harm):
+                logging.info(f"Harmonized version of {dwi} found, using it instead of the standard one")
+                dwi_files.append(harm)
+                dwi_files.remove(dwi)
+                harm_counter += 1
+                
+    logging.info(f'{len(dwi_files)} DWI files found (of which {harm_counter} harmonized)')
     logging.info(dwi_files)
     parallelize(dwi_files, config['tractogram_config']['cores'], run, config, general_dir)
 
