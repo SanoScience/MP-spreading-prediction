@@ -1,6 +1,4 @@
-import fractions
 from subprocess import Popen, PIPE, STDOUT
-from tracemalloc import start
 from nibabel import load, save, Nifti1Image
 from dipy.io.gradients import read_bvals_bvecs
 from dipy.core.gradients import gradient_table
@@ -52,7 +50,7 @@ def dispatcher(f, atlas_file, img_type):
     # Inputs
     name_nii = path + name + '.nii'
     name_json = path + name + '.json'
-    name_bm = name + '_bm.nii.gz'
+    name_bm = name + '_mask.nii.gz'
 
     os.system(f"cp {name_json} {name+'.json'}") # copy json in the output folder
     gtab = None # if gtab is 'None' (example, for anat and pet images) don't use it in registration
@@ -311,8 +309,8 @@ def dispatcher(f, atlas_file, img_type):
     if img_type == 'dwi':
         logging.info(f"{name_nii} starting Final Brain Extraction (DWI)")
         try:
-            bm = median_otsu(data[:,:,:,0])[0]
-            name_bm = name + '_bm.nii.gz'
+            bm = median_otsu(data[:,:,:,0])[1]
+            name_bm = name + '_mask.nii.gz'
             # binary mask is always saved
             save(Nifti1Image(bm, affine, header), name_bm)
         except Exception as e:

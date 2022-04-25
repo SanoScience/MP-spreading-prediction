@@ -4,7 +4,6 @@ dipy
 numpy 
 nibabel
 matplotlib
-fury
 pyyaml
 sklearn
 prettytable

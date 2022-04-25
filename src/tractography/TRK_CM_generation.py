@@ -4,6 +4,7 @@ Compute and visualize connectivity matrix. '''
 import os
 import logging
 import re
+import sys
 from statistics import median
 
 from dipy.core.gradients import gradient_table
@@ -41,8 +42,6 @@ def get_paths(stem_dwi, stem_anat, config, general_dir):
     # outputs are saved in the same folder of dwi files
     output_dir = stem_dwi.removesuffix(stem_dwi.split(os.sep)[-1])
       
-    bm_path = stem_dwi + '_bm.nii.gz'
-      
     # CerebroSpinal Fluid (CSF) is _pve_0
     csf_path = stem_anat + '_pve-0.nii.gz'
     
@@ -55,7 +54,7 @@ def get_paths(stem_dwi, stem_anat, config, general_dir):
     # AAL atlas path
     atlas_path = general_dir + config['paths']['atlas_path']
 
-    return (img_path, bval_path, bvec_path, output_dir, bm_path,
+    return (img_path, bval_path, bvec_path, output_dir,
             csf_path, gm_path, wm_path, atlas_path)
     
 
@@ -129,8 +128,9 @@ def compute_streamline_length(streamline, is_dipy=True):
                     for i in range(0, len(streamline)-1)])
     return s_length
 
-def generate_tractogram(config, data, affine, hardi_img, gtab, data_bm,
+def generate_tractogram(config, data, affine, hardi_img, gtab,
                         data_wm, data_gm, data_csf):
+    data_bm = median_otsu(data[:,:,:,0])[1]
     seeds = utils.seeds_from_mask(data_bm, affine, density=config['tractogram_config']['seed_density'])
 
     response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=config['tractogram_config']['fa_thres'])
@@ -167,12 +167,11 @@ def run(stem_dwi, stem_anat, config=None, general_dir = ''):
     ''' Run workflow for selected subject. '''
     
     # get paths
-    (img_path, bval_path, bvec_path, output_dir, bm_path,
+    (img_path, bval_path, bvec_path, output_dir,
      csf_path, gm_path, wm_path, atlas_path) = get_paths(stem_dwi, stem_anat, config, general_dir)
 
     # load data 
     data, affine, hardi_img = load_nifti(img_path, return_img=True) 
-    data_bm = load_nifti_data(bm_path)
     data_wm = load_nifti_data(wm_path)
     data_gm = load_nifti_data(gm_path)
     data_csf = load_nifti_data(csf_path)
@@ -185,7 +184,7 @@ def run(stem_dwi, stem_anat, config=None, general_dir = ''):
     try:
         # generate tractogram
         tractogram = generate_tractogram(config, data, affine, hardi_img, 
-                                        gradient_table, data_bm, data_wm, data_gm, data_csf)
+                                        gradient_table, data_wm, data_gm, data_csf)
         save_tractogram(tractogram, output_dir, img_path)
         
         # generate connectivity matrix
@@ -203,14 +202,19 @@ def main():
 
     with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-
-    general_dir = os.getcwd()
-    general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src') + os.sep
-    subject = config['paths']['subject'] if config['paths']['subject'] != 'all' else 'sub-*'
-    # NOTE: sub*_dwi.nii.gz won't catch harmonized or other harmonization files, they will be checked later to avoid including intermediate harmonization files
-    # NOTE: narrowing tractography on baseline images!
-    dwi_dir = general_dir + config['paths']['dataset_dir'] + subject  + os.sep + 'ses-baseline' + os.sep + 'dwi' + os.sep + 'sub*_dwi.nii.gz'
-    dwi_files = glob(dwi_dir)
+        
+    if len(sys.argv)> 1:
+        dwi_files = open(sys.argv[1]).readlines()
+    else:
+        general_dir = os.getcwd()
+        general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src') + os.sep
+        print(general_dir)
+        subject = config['paths']['subject'] if config['paths']['subject'] != 'all' else 'sub-*'
+        # NOTE: sub*_dwi.nii.gz won't catch harmonized or other harmonization files, they will be checked later to avoid including intermediate harmonization files
+        # NOTE: narrowing tractography on baseline images!
+        dwi_dir = general_dir + config['paths']['dataset_dir'] + subject  + os.sep + 'ses-baseline' + os.sep + 'dwi' + os.sep + 'sub*_dwi.nii.gz'
+        dwi_files = glob(dwi_dir)
+        
     harm_counter = 0
     for dwi in dwi_files:
         if 'harmonized' not in dwi:
