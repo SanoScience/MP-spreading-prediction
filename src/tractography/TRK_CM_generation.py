@@ -42,6 +42,8 @@ def get_paths(stem_dwi, stem_anat, config, general_dir):
     # outputs are saved in the same folder of dwi files
     output_dir = stem_dwi.removesuffix(stem_dwi.split(os.sep)[-1])
       
+    bm_path = stem_dwi + '_mask.nii.gz'
+      
     # CerebroSpinal Fluid (CSF) is _pve_0
     csf_path = stem_anat + '_pve-0.nii.gz'
     
@@ -54,7 +56,7 @@ def get_paths(stem_dwi, stem_anat, config, general_dir):
     # AAL atlas path
     atlas_path = general_dir + config['paths']['atlas_path']
 
-    return (img_path, bval_path, bvec_path, output_dir,
+    return (img_path, bval_path, bvec_path, output_dir, bm_path,
             csf_path, gm_path, wm_path, atlas_path)
     
 
@@ -128,9 +130,8 @@ def compute_streamline_length(streamline, is_dipy=True):
                     for i in range(0, len(streamline)-1)])
     return s_length
 
-def generate_tractogram(config, data, affine, hardi_img, gtab,
+def generate_tractogram(config, data, affine, hardi_img, gtab, data_bm,
                         data_wm, data_gm, data_csf):
-    data_bm = median_otsu(data[:,:,:,0])[1]
     seeds = utils.seeds_from_mask(data_bm, affine, density=config['tractogram_config']['seed_density'])
 
     response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=config['tractogram_config']['fa_thres'])
@@ -167,11 +168,12 @@ def run(stem_dwi, stem_anat, config=None, general_dir = ''):
     ''' Run workflow for selected subject. '''
     
     # get paths
-    (img_path, bval_path, bvec_path, output_dir,
+    (img_path, bval_path, bvec_path, output_dir, bm_path,
      csf_path, gm_path, wm_path, atlas_path) = get_paths(stem_dwi, stem_anat, config, general_dir)
 
     # load data 
     data, affine, hardi_img = load_nifti(img_path, return_img=True) 
+    data_bm = load_nifti_data(bm_path)
     data_wm = load_nifti_data(wm_path)
     data_gm = load_nifti_data(gm_path)
     data_csf = load_nifti_data(csf_path)
@@ -184,7 +186,7 @@ def run(stem_dwi, stem_anat, config=None, general_dir = ''):
     try:
         # generate tractogram
         tractogram = generate_tractogram(config, data, affine, hardi_img, 
-                                        gradient_table, data_wm, data_gm, data_csf)
+                                        gradient_table, data_bm, data_wm, data_gm, data_csf)
         save_tractogram(tractogram, output_dir, img_path)
         
         # generate connectivity matrix

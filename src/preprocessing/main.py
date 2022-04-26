@@ -24,6 +24,7 @@ from datetime import datetime
 from dipy.segment.mask import median_otsu
 from nilearn.image import crop_img
 import gc
+from glob import glob
 
 def check_path(path):
     if not os.path.isdir(path):
@@ -51,6 +52,20 @@ def dispatcher(f, atlas_file, img_type):
     name_nii = path + name + '.nii'
     name_json = path + name + '.json'
     name_bm = name + '_mask.nii.gz'
+    """
+    NOTE: Optionally, you can use registered anatomical (if any) to register the dwi
+    if img_type == 'dwi':
+        try:
+            # NOTE: the search is always directed under the 'ses-baseline' folder, to be sure to have always an anatomical
+            atlas_file = glob(output_directory + '..' + os.sep + '..' + os.sep + 'ses-baseline' + os.sep + 'anat' + os.sep + 'sub*_anat.nii.gz')[0]
+            logging.info(f"Found image {atlas_file} to register {name_nii} to")
+            print(f"Found image {atlas_file} to register {name_nii} to")
+        except Exception as e:
+            logging.error(e)
+            logging.info(f"Using standard atlas for registration of {name_nii}")
+            print(e)
+            print(f"Using standard atlas for registration of {name_nii}")
+    """
 
     os.system(f"cp {name_json} {name+'.json'}") # copy json in the output folder
     gtab = None # if gtab is 'None' (example, for anat and pet images) don't use it in registration
@@ -58,6 +73,9 @@ def dispatcher(f, atlas_file, img_type):
         try:
             name_bval = path + name + ".bval"
             name_bvec = path + name + ".bvec"
+            # NOTE: bval and bvec files will be overwritten by Eddy and by registration
+            os.system(f"cp {name_bval} {name+'.bval'}")
+            os.system(f"cp {name_bvec} {name+'.bvec'}")
         except Exception as e:
             logging.error(e)
             print(e)
@@ -111,7 +129,7 @@ def dispatcher(f, atlas_file, img_type):
     #######################
     ### DENOISING (DWI) ###
     #######################
-
+    
     if img_type == 'dwi':
         logging.info(f"{name_nii} starting LPCA")
         try:
@@ -305,19 +323,19 @@ def dispatcher(f, atlas_file, img_type):
     ### FINAL DWI BINARY MASK ###
     #############################
     
-    # get the binary mask of dwi after preprocessing (simple sweep of median_otsu, without particular settings)
+    # get the binary mask of dwi after preprocessing (without cropping anything)
     if img_type == 'dwi':
-        logging.info(f"{name_nii} starting Final Brain Extraction (DWI)")
+        logging.info(f"{name_nii} starting Final Masking (DWI)")
         try:
-            bm = median_otsu(data[:,:,:,0])[1]
+            bm = np.where(data>0, 1, 0)
             name_bm = name + '_mask.nii.gz'
             # binary mask is always saved
             save(Nifti1Image(bm, affine, header), name_bm)
         except Exception as e:
             logging.error(e)
-            logging.error(name_nii + ' at Final Brain Extraction (DWI)')
+            logging.error(name_nii + ' at Final Masking (DWI)')
             print(e)
-            print(name_nii + ' at Final Brain Extraction (DWI)')
+            print(name_nii + ' at Final Masking (DWI)')
             
     # final save is mandatory
     save(Nifti1Image(data, affine, header), name + '.nii.gz')
