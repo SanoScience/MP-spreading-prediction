@@ -129,7 +129,7 @@ def dispatcher(f, atlas_file, img_type):
     #######################
     ### DENOISING (DWI) ###
     #######################
-    
+    """
     if img_type == 'dwi':
         logging.info(f"{name_nii} starting LPCA")
         try:
@@ -180,7 +180,7 @@ def dispatcher(f, atlas_file, img_type):
     ######################################
     ### PET PREPARATION & REGISTRATION ###
     ######################################
-    
+    """
     if img_type == 'pet':
         img = load(name_nii)
         data, affine, header = img.get_fdata(), img.affine, img.header

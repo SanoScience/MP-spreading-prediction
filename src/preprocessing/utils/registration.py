@@ -6,6 +6,7 @@ from dipy.core.gradients import gradient_table, reorient_bvecs
 
 from nipype.interfaces import fsl
 import logging
+import os
 
 class Registration():
     def __init__(self, name_nii, ref, output_dir, name, img_type):
@@ -36,7 +37,6 @@ class Registration():
         fl.inputs.dof = 12
         # For 3D to 3D mode the DOF can be set to 12 (affine), 9 (traditional), 7 (global rescale) or 6 (rigid body)
         fl.inputs.out_matrix_file = matrix_name
-        
         # PET images use directly the matrix previously computed registering the binary mask
         if self.img_type != 'pet':
             # Produce the registration matrix on the first volume of the image...
@@ -51,7 +51,8 @@ class Registration():
         # After registration matrix is computed, pass the whole image to which apply the registration matrix
         if self.img_type == 'dwi':
             fl.inputs.in_file = self.name_nii
-        
+            os.system(f"rm {input_reg}")
+            
         # Anatomical images are done with the first invocation, DWIs need two and PETs needs additional settings 
         if self.img_type != 'anat':
             # ... and use the matrix to register all the volumes
@@ -62,7 +63,6 @@ class Registration():
                 out_fl = fl.run()
             except Exception as e:
                 logging.error(e)
-        
         if self.img_type == 'dwi':
             # reorient bvectors
             reg_mat = open(matrix_name)

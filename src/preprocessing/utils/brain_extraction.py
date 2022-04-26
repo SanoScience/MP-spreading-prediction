@@ -45,16 +45,25 @@ class BET_FSL:
     def run(self, frac=.3):
         # Nipype wrapping of BET is skipped due to instability
         
-        # TWo cuts: the first with a very negative vertical gradient to cut the neck, the second more balanced to extract all the brain
+        if self.img_type == 'dwi': # multiple volumes images are truncated to the first volume to do the brain extraction
+            input_be = 'first_slice.nii.gz'
+            img = load(self.path_file)
+            data, affine, header = img.get_fdata()[:,:,:,0], img.affine, img.header
+            save(Nifti1Image(data, affine, header), input_be)
+        else:
+            input_be = self.path_file
+        
+        # Two cuts: the first with a very negative vertical gradient to cut the neck, the second more balanced to extract all the brain
         if self.img_type == 'anat':
             os.system(f"bet2 {self.path_file} {self.name} -f {frac} -g -1")
             self.path_file = self.name
         
-        os.system(f"bet2 {self.path_file} {self.name} -m -f {frac} -g 0")
+        os.system(f"bet2 {input_be} {self.name} -m -f {frac} -g 0")
         self.binary_mask = self.name + '_mask.nii.gz'
 
         if self.img_type == 'dwi':        
             os.system(f"fslmaths {self.path_file} -mas {self.binary_mask} {self.name}.nii.gz")
+            os.system(f"rm {input_be}")
 
         img = load(self.name+'.nii.gz')
         return img.get_fdata(), img.affine, img.header
