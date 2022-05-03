@@ -327,7 +327,7 @@ def dispatcher(f, atlas_file, img_type):
     if img_type == 'dwi':
         logging.info(f"{name_nii} starting Final Masking (DWI)")
         try:
-            bm = np.where(data>0, 1, 0)[:,:,:,0]
+            bm = np.where(data[:,:,:,0]>0, 1, 0)
             name_bm = name + '_mask.nii.gz'
             # binary mask is always saved
             save(Nifti1Image(bm, affine, header), name_bm)
