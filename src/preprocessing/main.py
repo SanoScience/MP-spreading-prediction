@@ -52,9 +52,9 @@ def dispatcher(f, atlas_file, img_type):
     name_nii = path + name + '.nii'
     name_json = path + name + '.json'
     name_bm = name + '_mask.nii.gz'
-    """
-    NOTE: Optionally, you can use registered anatomical (if any) to register the dwi
-    if img_type == 'dwi':
+    
+    # NOTE: Optionally, you can use registered anatomical (if any) to register the dwi
+    if img_type != 'anat' and atlas_file == 'anat':
         try:
             # NOTE: the search is always directed under the 'ses-baseline' folder, to be sure to have always an anatomical
             atlas_file = glob(output_directory + '..' + os.sep + '..' + os.sep + 'ses-baseline' + os.sep + 'anat' + os.sep + 'sub*_anat.nii.gz')[0]
@@ -65,7 +65,6 @@ def dispatcher(f, atlas_file, img_type):
             logging.info(f"Using standard atlas for registration of {name_nii}")
             print(e)
             print(f"Using standard atlas for registration of {name_nii}")
-    """
 
     os.system(f"cp {name_json} {name+'.json'}") # copy json in the output folder
     gtab = None # if gtab is 'None' (example, for anat and pet images) don't use it in registration
@@ -89,7 +88,7 @@ def dispatcher(f, atlas_file, img_type):
     ########################
     ### BRAIN EXTRACTION ###
     ########################
-    
+    """
     if img_type == 'anat' or img_type == 'dwi': 
         try: 
             be = BET_FSL(name_nii, intermediate_dir + name + '_be', img_type)
@@ -280,12 +279,12 @@ def dispatcher(f, atlas_file, img_type):
             logging.error(name_nii + ' at CerebellumNormalization')
             print(e)
             print(name_nii + ' at CerebellumNormalization')
-    
         gc.collect()
+    """
     ###################################
     ### REGISTRATION (DWI and ANAT) ###
     ###################################
-    else:
+    if img_type == 'dwi' or img_type == 'anat':
         logging.info(f"{name_nii} starting Registration")
         try:
             atl_regs = Registration(name_nii, atlas_file, intermediate_dir, name, img_type)
@@ -347,8 +346,6 @@ start_time = datetime.today()
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
 
 if __name__=='__main__':
-    # assuming atlas is in the current dir
-    atlas_file = os.getcwd() + '/AAL3v1.nii.gz'
     re_img_type = re.compile(r"(dwi|pet|anat)")
 
     if len(sys.argv) > 1:
@@ -373,7 +370,7 @@ if __name__=='__main__':
         if not re.match(re_img_type, img_type):
             img_type = '*'
         #logging.info(f"Looking for all '.nii' files in the path {dataset_path} (excluding \'derivatives\' folder)...")
-        output = Popen(f"find {dataset_path} ! -path \'*derivatives*\' ! -name \'{atlas_file.split(os.sep)[-1]}\' -name \'*{img_type}.nii\'", shell=True, stdout=PIPE)
+        output = Popen(f"find {dataset_path} ! -path \'*derivatives*\' -name \'*{img_type}.nii\'", shell=True, stdout=PIPE)
         files = str(output.stdout.read()).removeprefix('b\'').removesuffix('\'').removesuffix('\\n').split('\\n')
         
     # If it starts with '/' it is an absolute path, otherwise make it absolute
@@ -388,6 +385,15 @@ if __name__=='__main__':
     else:
         num_cores = input("Insert the number of cores you want to use (default, 4): ")
         num_cores = int(num_cores) if len(num_cores) > 0 else 4
+        
+    if len(sys.argv) > 4:
+        # assuming atlas is in the current dir
+        atlas_file = sys.argv[4]
+    else:
+        atlas_file = input("Insert the path to the atlas you want to use [default, register to the anatomical image]: ")
+        if len(atlas_file) == 0:
+            atlas_file = 'anat'
+        #os.getcwd() + '/AAL3v1.nii.gz'
 
     # TODO
     # skip_temporary = True if input('Do you want to skip already processed temp files? [Y/n]') != 'n' else False
@@ -400,7 +406,7 @@ if __name__=='__main__':
     logging.info(f"Number of images to process: {len(files)}")
     logging.info("List of images to process: ")
     logging.info(files)
-    logging.info('******************************************')
+    logging.info('******************************************')    
 
     procs = []
 
