@@ -40,7 +40,7 @@ def get_paths(stem_dwi, stem_anat, config, general_dir):
     bval_path = stem_dwi + '.bval'
     bvec_path = stem_dwi + '.bvec'
     # outputs are saved in the same folder of dwi files
-    output_dir = stem_dwi.removesuffix(stem_dwi.split(os.sep)[-1])
+    output_dir = stem_dwi.rstrip(stem_dwi.split(os.sep)[-1])
       
     bm_path = stem_dwi + '_mask.nii.gz'
       
@@ -136,7 +136,7 @@ def generate_tractogram(config, data, affine, hardi_img, gtab, data_bm,
 
     response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=config['tractogram_config']['fa_thres'])
 
-    csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=config['tractogram_config']['sh_order'])  
+    csd_model = ConstrainedSphericalDeconvModel(gtab, response, convergence=100, sh_order=config['tractogram_config']['sh_order'])  
     csd_fit = csd_model.fit(data, mask=data_bm)
 
     if config['tractogram_config']['stop_method'] == 'FA':
@@ -196,11 +196,14 @@ def run(stem_dwi, stem_anat, config=None, general_dir = ''):
         cm.process()
     except Exception as e:
         logging.error(e)
+        f = open('log.txt', 'a')
+        f.write(stem_dwi + '\n')
+        f.close()
         logging.error(stem_dwi)
       
 def main():
-    #logging.basicConfig(level=logging.INFO)
-    logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
+    logging.basicConfig(level=logging.INFO)
+    #logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 
     with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
@@ -208,18 +211,24 @@ def main():
     if len(sys.argv)> 1:
         dwi_files = open(sys.argv[1]).readlines()
     else:
-        general_dir = os.getcwd()
-        general_dir = general_dir.removesuffix(os.sep + 'tractography').removesuffix(os.sep + 'src') + os.sep
-        print(general_dir)
+        os.chdir(os.getcwd() + '/../..')
+        general_dir = os.getcwd() + os.sep
+        logging.info(general_dir)
         subject = config['paths']['subject'] if config['paths']['subject'] != 'all' else 'sub-*'
+        keep_tract = config['tractogram_config']['keep_tract']
         # NOTE: sub*_dwi.nii.gz won't catch harmonized or other harmonization files, they will be checked later to avoid including intermediate harmonization files
         # NOTE: narrowing tractography on baseline images!
         dwi_dir = general_dir + config['paths']['dataset_dir'] + subject  + os.sep + 'ses-baseline' + os.sep + 'dwi' + os.sep + 'sub*_dwi.nii.gz'
+        logging.info(dwi_dir)
+
         dwi_files = glob(dwi_dir)
         
     harm_counter = 0
     for dwi in dwi_files:
-        if 'harmonized' not in dwi:
+        if keep_tract and os.path.isfile(dwi.replace('.nii.gz', '_sc-act.trk')): 
+            logging.info(f"{dwi} has already a tractography, skipping")
+            dwi_files.remove(dwi)
+        elif 'harmonized' not in dwi:
             k = dwi.rfind('sub')
             harm = dwi[:k] + 'harmonized_' + dwi[k:]
             if os.path.isfile(harm):
@@ -227,8 +236,8 @@ def main():
                 dwi_files.append(harm)
                 dwi_files.remove(dwi)
                 harm_counter += 1
-                
-    logging.info(f'{len(dwi_files)} DWI files found (of which {harm_counter} harmonized)')
+             
+    logging.info(f'{len(dwi_files)} DWI files to process ({harm_counter} named \'harmonized\')')
     logging.info(dwi_files)
     parallelize(dwi_files, config['tractogram_config']['cores'], run, config, general_dir)
 

@@ -1,10 +1,11 @@
 paths:
-  dataset_dir: "data/"
-  output_dir: "data/output/"
-  atlas_path: "data/atlas/AAL3v1.nii.gz"
+  dataset_dir: "ADNI/derivatives/"
+  output_dir: "ADNI/output/"
+  atlas_path: "AAL3v1.nii.gz"
   subject: 'all'                                                                 # if 'all' (aka None): scripts are run on the whole dataset 
 
 tractogram_config:
+  keep_tract: False # Skips already processed tractographies
   stop_method: 'ACT'                                                                    # type of stopping citerion
   fa_thres: 0.1                                                                         # fractional anisotropy threshold; originally =0.7
   seed_density: 1                                                                       # the number of seeds to place along each dimension
@@ -15,4 +16,4 @@ tractogram_config:
   take_log: True                                                                        # take the logarithm of values in connectivity matrix 
   stream_min_len: 20                                                                    # minimum length of streamlines 
 
-  cores: 4                                                                              # Cores to use for parallel tractographies (-1 to use all available)
+  cores: 1                                                               # Cores to use for parallel tractographies (-1 to use all available)

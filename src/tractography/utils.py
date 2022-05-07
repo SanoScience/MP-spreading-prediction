@@ -7,7 +7,7 @@ import re
 from glob import glob
 
 def task_completion_info(sound_duration=1, sound_freq=440):
-    print('Process completed.')
+    logging.info('Process completed.')
     os.system(f'play -nq -t alsa synth {sound_duration} sine {sound_freq}')  
     
 def parallelize(dwi_files, num_cores, func, config, general_dir):
@@ -24,6 +24,7 @@ def parallelize(dwi_files, num_cores, func, config, general_dir):
     
     # instantiating process with arguments
     for i in tqdm(range(len(dwi_files))):
+        logging.info(f"Queueing {dwi_files[i]}")
         #session = ses_re.search(dwi_files[i]).group()
         stem_t1 = glob(dwi_files[i].split('/dwi/')[0] + os.sep + 'anat' + os.sep + '*_anat.nii.gz')[0].split('.')[0]
         #stem_t1 = glob(general_dir + config['paths']['dataset_dir'] + os.sep + sub_re.search(dwi_files[i]).group() + os.sep + session + os.sep + 'anat' + os.sep + '*_anat.nii.gz')[0].split('.')[0]
