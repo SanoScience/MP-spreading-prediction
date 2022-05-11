@@ -343,7 +343,7 @@ def dispatcher(f, atlas_file, img_type):
     return 
 
 start_time = datetime.today()
-logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force = True, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
 
 if __name__=='__main__':
     re_img_type = re.compile(r"(dwi|pet|anat)")

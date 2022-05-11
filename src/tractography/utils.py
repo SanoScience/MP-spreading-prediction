@@ -1,9 +1,7 @@
-from distutils.command.config import config
 import os
 import multiprocessing
 import logging
 from tqdm import tqdm
-import re
 from glob import glob
 
 def task_completion_info(sound_duration=1, sound_freq=440):

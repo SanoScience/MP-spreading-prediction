@@ -16,4 +16,4 @@ tractogram_config:
   take_log: True                                # take the logarithm of values in connectivity matrix 
   stream_min_len: 10                            # minimum length of streamlines 
 
-  cores: -1                                     # Cores to use for parallel tractographies (-1 to use all available)
+  cores: 8                                      # Cores to use for parallel tractographies (-1 to use all available)

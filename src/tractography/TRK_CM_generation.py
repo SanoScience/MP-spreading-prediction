@@ -1,35 +1,27 @@
 ''' Generate tractogram using FA threshold or ACT stopping criterion. 
 Compute and visualize connectivity matrix. '''
 
-from dataclasses import dataclass
 from datetime import datetime
 import os
 import logging
-import re
 import sys
-from statistics import median
 
 from dipy.core.gradients import gradient_table
 from dipy.data import default_sphere
-from dipy.direction import (DeterministicMaximumDirectionGetter,
-                            ProbabilisticDirectionGetter)
+from dipy.direction import ProbabilisticDirectionGetter
 from dipy.io.gradients import read_bvals_bvecs
 from dipy.io.image import load_nifti, load_nifti_data
 from dipy.io.stateful_tractogram import Space, StatefulTractogram
 from dipy.io.streamline import save_trk, load_trk
-from dipy.reconst.csdeconv import (ConstrainedSphericalDeconvModel,
-                                   auto_response_ssst)
-from dipy.reconst.shm import CsaOdfModel
+from dipy.reconst.csdeconv import ConstrainedSphericalDeconvModel, auto_response_ssst
 from dipy.tracking import utils
-from dipy.tracking.local_tracking import (LocalTracking,
-                                          ParticleFilteringTracking)
-from dipy.tracking.stopping_criterion import (ThresholdStoppingCriterion, 
-                                              ActStoppingCriterion)
+from dipy.tracking.local_tracking import ParticleFilteringTracking
+from dipy.tracking.stopping_criterion import ThresholdStoppingCriterion, ActStoppingCriterion
 from dipy.tracking.streamline import Streamlines, length
-from dipy.segment.mask import median_otsu
 import nibabel
 import yaml
 import numpy as np
+import matplotlib.pyplot as plt
 
 from utils import parallelize
 from glob import glob
@@ -299,14 +291,15 @@ def run(stem_dwi = '', stem_anat = '', tractogram_file = '', config = None, gene
     logging.info(f"{cm.__str__} created")
     return
     
-      
-def main():
-    start_time = datetime.today()
-    logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
+
+start_time = datetime.today()
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
+
+if __name__ == '__main__':
 
     with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-        
+
     if len(sys.argv)> 1:
         dwi_files = open(sys.argv[1]).readlines()
     else:
@@ -321,7 +314,7 @@ def main():
         logging.info(dwi_dir)
 
         dwi_files = glob(dwi_dir)
-        
+
     harm_counter = 0
     tract_files = []
     for dwi in dwi_files:
@@ -337,11 +330,8 @@ def main():
                 dwi_files.append(harm)
                 dwi_files.remove(dwi)
                 harm_counter += 1
-             
+
     logging.info(f'{len(dwi_files)} DWI files to process ({harm_counter} named \'harmonized\')')
     logging.info(dwi_files)
     logging.info(f"{len(tract_files)} tractograms found to do only CM")
     parallelize(dwi_files, tract_files, config['tractogram_config']['cores'], run, config, general_dir)
-
-if __name__ == '__main__':
-    main()
