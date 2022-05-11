@@ -14,7 +14,7 @@ from dipy.direction import (DeterministicMaximumDirectionGetter,
 from dipy.io.gradients import read_bvals_bvecs
 from dipy.io.image import load_nifti, load_nifti_data
 from dipy.io.stateful_tractogram import Space, StatefulTractogram
-from dipy.io.streamline import save_trk
+from dipy.io.streamline import save_trk, load_trk
 from dipy.reconst.csdeconv import (ConstrainedSphericalDeconvModel,
                                    auto_response_ssst)
 from dipy.reconst.shm import CsaOdfModel
@@ -53,11 +53,8 @@ def get_paths(stem_dwi, stem_anat, config, general_dir):
     # White Matter is _pve_2
     wm_path = stem_anat + '_pve-2.nii.gz'
 
-    # AAL atlas path
-    atlas_path = general_dir + config['paths']['atlas_path']
-
     return (img_path, bval_path, bvec_path, output_dir, bm_path,
-            csf_path, gm_path, wm_path, atlas_path)
+            csf_path, gm_path, wm_path)
     
 
 def get_gradient_table(bval_path, bvec_path):
@@ -163,43 +160,54 @@ def save_tractogram(tractogram, output_dir, image_path):
     file_stem = os.path.basename(image_path).split('.')[0]
     save_trk(tractogram, os.path.join(output_dir, f"{file_stem}_sc-act.trk"))
     logging.info(f"Current tractogram saved as {output_dir}{file_stem}_sc-act.trk")
+    
+def load_tractogram(tractogram):
+    logging.info(f"Loading tractogram {tractogram}")
+    return load_trk(tractogram, 'same')
 
-def run(stem_dwi, stem_anat, config=None, general_dir = ''):
+def run(stem_dwi = '', stem_anat = '', tractogram_file = '', config = None, general_dir = ''):
     ''' Run workflow for selected subject. '''
+    # AAL atlas path
+    atlas_path = general_dir + config['paths']['atlas_path']
     
+    if tractogram_file == '':
     # get paths
-    (img_path, bval_path, bvec_path, output_dir, bm_path,
-     csf_path, gm_path, wm_path, atlas_path) = get_paths(stem_dwi, stem_anat, config, general_dir)
+        (img_path, bval_path, bvec_path, output_dir, bm_path,
+        csf_path, gm_path, wm_path) = get_paths(stem_dwi, stem_anat, config, general_dir)
 
-    # load data 
-    data, affine, hardi_img = load_nifti(img_path, return_img=True) 
-    data_bm = load_nifti_data(bm_path)
-    data_wm = load_nifti_data(wm_path)
-    data_gm = load_nifti_data(gm_path)
-    data_csf = load_nifti_data(csf_path)
-    gradient_table = get_gradient_table(bval_path, bvec_path)
-    
-    #logging.info(f"Generating tractogram using: {config['tractogram_config']['stop_method']} method")
-    logging.info(f"Processing image: {stem_dwi}")
-    #logging.info(f"No. of volumes: {data.shape[-1]}")
-
-    try:
-        # generate tractogram
-        tractogram = generate_tractogram(config, data, affine, hardi_img, 
-                                        gradient_table, data_bm, data_wm, data_gm, data_csf)
-        save_tractogram(tractogram, output_dir, img_path)
+        # load data 
+        data, affine, hardi_img = load_nifti(img_path, return_img=True) 
+        data_bm = load_nifti_data(bm_path)
+        data_wm = load_nifti_data(wm_path)
+        data_gm = load_nifti_data(gm_path)
+        data_csf = load_nifti_data(csf_path)
+        gradient_table = get_gradient_table(bval_path, bvec_path)
         
+        #logging.info(f"Generating tractogram using: {config['tractogram_config']['stop_method']} method")
+        logging.info(f"Processing image: {stem_dwi}")
+        #logging.info(f"No. of volumes: {data.shape[-1]}")
+
+        try:
+            # generate tractogram
+            tractogram = generate_tractogram(config, data, affine, hardi_img, 
+                                            gradient_table, data_bm, data_wm, data_gm, data_csf)
+            save_tractogram(tractogram, output_dir, img_path)
+        except Exception as e:
+            logging.error(e)
+            f = open('log.txt', 'a')
+            f.write(stem_dwi + '\n')
+            f.close()
+            logging.error(stem_dwi)
+    else:
+        output_dir = tractogram_file.rstrip(tractogram_file.split(os.sep)[-1])
+        tractogram = load_tractogram(tractogram_file)
         # generate connectivity matrix
-        atlas, labels  = load_atlas(atlas_path)
-        cm = ConnectivityMatrix(tractogram, labels, output_dir, 
+    
+    atlas, labels  = load_atlas(atlas_path)
+    cm = ConnectivityMatrix(tractogram, labels, output_dir, 
                                 config['tractogram_config']['take_log'])
-        cm.process()
-    except Exception as e:
-        logging.error(e)
-        f = open('log.txt', 'a')
-        f.write(stem_dwi + '\n')
-        f.close()
-        logging.error(stem_dwi)
+    cm.process()
+    
       
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -211,7 +219,7 @@ def main():
     if len(sys.argv)> 1:
         dwi_files = open(sys.argv[1]).readlines()
     else:
-        os.chdir(os.getcwd() + '/../..')
+        os.chdir(os.getcwd() + '/../../..')
         general_dir = os.getcwd() + os.sep
         logging.info(general_dir)
         subject = config['paths']['subject'] if config['paths']['subject'] != 'all' else 'sub-*'
@@ -224,10 +232,12 @@ def main():
         dwi_files = glob(dwi_dir)
         
     harm_counter = 0
+    tract_files = []
     for dwi in dwi_files:
         if keep_tract and os.path.isfile(dwi.replace('.nii.gz', '_sc-act.trk')): 
-            logging.info(f"{dwi} has already a tractography, skipping")
+            logging.info(f"{dwi} has already a tractography, doing only CM")
             dwi_files.remove(dwi)
+            tract_files.append(dwi.replace('.nii.gz', '_sc-act.trk'))
         elif 'harmonized' not in dwi:
             k = dwi.rfind('sub')
             harm = dwi[:k] + 'harmonized_' + dwi[k:]
@@ -239,7 +249,8 @@ def main():
              
     logging.info(f'{len(dwi_files)} DWI files to process ({harm_counter} named \'harmonized\')')
     logging.info(dwi_files)
-    parallelize(dwi_files, config['tractogram_config']['cores'], run, config, general_dir)
+    logging.info(f"{len(tract_files)} tractograms found to do only CM")
+    parallelize(dwi_files, tract_files, config['tractogram_config']['cores'], run, config, general_dir)
 
 if __name__ == '__main__':
     main()
