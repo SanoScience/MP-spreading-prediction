@@ -1,6 +1,8 @@
 ''' Generate tractogram using FA threshold or ACT stopping criterion. 
 Compute and visualize connectivity matrix. '''
 
+from dataclasses import dataclass
+from datetime import datetime
 import os
 import logging
 import re
@@ -29,9 +31,71 @@ import nibabel
 import yaml
 import numpy as np
 
-from generate_CM import ConnectivityMatrix
 from utils import parallelize
 from glob import glob
+
+class ConnectivityMatrix():
+    def __init__(self, tractogram, atlas_labels, output_dir, take_log):
+        # NOTE: this is a lazy solution that works assuming you are calling the script inside its folder (src/tractography)
+        self.streamlines = tractogram.streamlines
+        self.affine = tractogram.affine # transformation to align streamlines to atlas 
+        self.labels = atlas_labels  
+        self.output_dir = output_dir
+        self.take_log = take_log
+                       
+    def __create(self):
+        ''' Get the no. of connections between each pair of brain regions. '''
+        M, _ = utils.connectivity_matrix(self.streamlines, 
+                                        affine=self.affine, 
+                                        label_volume=self.labels, 
+                                        return_mapping=True,
+                                        mapping_as_streamlines=True)
+        # remove background
+        M = M[1:, 1:]
+
+        # remove connections to own regions (inplace)
+        np.fill_diagonal(M, 0) 
+        if self.take_log: M = np.log1p(M)
+
+        self.matrix = M
+        
+    def __revert(self):
+        # make all left areas first 
+        odd_odd = self.matrix[::2, ::2]
+        odd_even = self.matrix[::2, 1::2]
+        first = np.vstack((odd_odd, odd_even))
+        even_odd = self.matrix[1::2, ::2]
+        even_even= self.matrix[1::2, 1::2]
+        second = np.vstack((even_odd, even_even))
+        self.matrix = np.hstack((first,second))
+        
+    def __save(self, name='connect_matrix.csv'):
+        np.savetxt(os.path.join(self.output_dir, name), 
+                   self.matrix, delimiter=',')
+
+    def __plot(self, savefig=True):
+        plt.figure(figsize=(8, 6))
+        plt.imshow(self.matrix, interpolation='nearest')
+        plt.colorbar()
+        plt.title(f'Connectivity matrix (log values: {self.take_log})')
+        plt.tight_layout()
+        if savefig: plt.savefig(os.path.join(self.output_dir, 'connect_matrix.png'))
+        
+    def __get_info(self):
+        logging.info(f'Shape of connectivity matrix: {self.matrix.shape}. \
+        Sum of values: {np.sum(self.matrix)} (after removing background and connections to own regions)')
+        
+    def process(self, reshuffle = True):
+        self.__create()   
+        self.__get_info()
+        self.__save('connect_matrix_rough.csv') # 'Rough' means 'as it is', without reverting rois
+        if reshuffle:
+            self.__revert() # reverts rois to make rois 'left-to-right' oriented in the matrix 
+            self.__save('connect_matrix_reverted.csv') # 'Reverted' is the matrix meant to be used in BrainNetViewer and manual analysis
+        self.__plot()     
+
+    def __str__(self) -> str:
+        return self.output_dir
 
 def get_paths(stem_dwi, stem_anat, config, general_dir):
     ''' Generate paths based on configuration file and selected subject. '''
@@ -42,14 +106,11 @@ def get_paths(stem_dwi, stem_anat, config, general_dir):
     # outputs are saved in the same folder of dwi files
     output_dir = stem_dwi.rstrip(stem_dwi.split(os.sep)[-1])
       
-    bm_path = stem_dwi + '_mask.nii.gz'
-      
+    bm_path = stem_dwi + '_mask.nii.gz'      
     # CerebroSpinal Fluid (CSF) is _pve_0
-    csf_path = stem_anat + '_pve-0.nii.gz'
-    
+    csf_path = stem_anat + '_pve-0.nii.gz'    
     # Grey Matter is _pve_1
-    gm_path = stem_anat + '_pve-1.nii.gz'
-    
+    gm_path = stem_anat + '_pve-1.nii.gz'    
     # White Matter is _pve_2
     wm_path = stem_anat + '_pve-2.nii.gz'
 
@@ -68,6 +129,8 @@ def load_atlas(path):
     labels = atlas.get_fdata().astype(np.uint8)
     return atlas, labels   
 
+"""
+NOTE: DEPRECATED
 def fa_method(config, data, white_matter, gradient_table, affine, seeds, shm_coeff):
     # apply threshold stopping criterion
     csa_model = CsaOdfModel(gradient_table, sh_order=config['sh_order']) 
@@ -83,6 +146,7 @@ def fa_method(config, data, white_matter, gradient_table, affine, seeds, shm_coe
                                         step_size=config['step_size'],
                                         return_all=False)
     return streamline_generator
+"""
 
 def act_method(data_wm, data_gm, data_csf, affine, seeds, shm_coeff):
     # anatomical constraints
@@ -129,19 +193,37 @@ def compute_streamline_length(streamline, is_dipy=True):
 
 def generate_tractogram(config, data, affine, hardi_img, gtab, data_bm,
                         data_wm, data_gm, data_csf):
-    seeds = utils.seeds_from_mask(data_bm, affine, density=config['tractogram_config']['seed_density'])
+    try:
+        seeds = utils.seeds_from_mask(data_bm, affine, density=config['tractogram_config']['seed_density'])
+    except Exception as e:
+        logging.error("Error at 'seeds_from_mask'. Traceback:")
+        logging.error(e)
+    try:
+        response, _ = auto_response_ssst(gtab, data, roi_radii=20, fa_thr=config['tractogram_config']['fa_thres'])
+    except Exception as e:
+        logging.error("Error at 'auto_response_ssst'. Traceback:")
+        logging.error(e)
 
-    response, _ = auto_response_ssst(gtab, data, roi_radii=10, fa_thr=config['tractogram_config']['fa_thres'])
+    try:
+        csd_model = ConstrainedSphericalDeconvModel(gtab, response, convergence=500, sh_order=config['tractogram_config']['sh_order'])  
+        csd_fit = csd_model.fit(data, mask=data_bm)
+    except Exception as e:
+        logging.error("Error at 'ConstrainedSphericalDeconvModel'. Traceback:")
+        logging.error(e)
 
-    csd_model = ConstrainedSphericalDeconvModel(gtab, response, convergence=100, sh_order=config['tractogram_config']['sh_order'])  
-    csd_fit = csd_model.fit(data, mask=data_bm)
-
+    """
+    NOTE: DEPRECATED
     if config['tractogram_config']['stop_method'] == 'FA':
         streamline_generator = fa_method(config['tractogram_config'], data, data_bm, gtab, 
                                          affine, seeds, csd_fit.shm_coeff)  
-    elif config['tractogram_config']['stop_method'] == 'ACT':
-        streamline_generator = act_method(data_wm, data_gm, data_csf, 
+    """
+    if config['tractogram_config']['stop_method'] == 'ACT':
+        try:
+            streamline_generator = act_method(data_wm, data_gm, data_csf, 
                                           affine, seeds, csd_fit.shm_coeff)
+        except Exception as e:
+            logging.error("Error at 'act_method'. Traceback:")
+            logging.error(e)
     else:
         logging.error('Provide valid stopping criterion!')
         exit()
@@ -150,9 +232,9 @@ def generate_tractogram(config, data, affine, hardi_img, gtab, data_bm,
     try:
         streamlines = remove_short_connections(streamlines, config['tractogram_config']['stream_min_len'])
     except Exception as e:
+        logging.error("Error at 'remove_short_connections'. Traceback:")
         logging.error(e)
     
-    # generate and save tractogram 
     sft = StatefulTractogram(streamlines, hardi_img, Space.RASMM)
     return sft
 
@@ -162,7 +244,6 @@ def save_tractogram(tractogram, output_dir, image_path):
     logging.info(f"Current tractogram saved as {output_dir}{file_stem}_sc-act.trk")
     
 def load_tractogram(tractogram):
-    logging.info(f"Loading tractogram {tractogram}")
     return load_trk(tractogram, 'same')
 
 def run(stem_dwi = '', stem_anat = '', tractogram_file = '', config = None, general_dir = ''):
@@ -171,9 +252,8 @@ def run(stem_dwi = '', stem_anat = '', tractogram_file = '', config = None, gene
     atlas_path = general_dir + config['paths']['atlas_path']
     
     if tractogram_file == '':
-    # get paths
-        (img_path, bval_path, bvec_path, output_dir, bm_path,
-        csf_path, gm_path, wm_path) = get_paths(stem_dwi, stem_anat, config, general_dir)
+        # get paths
+        img_path, bval_path, bvec_path, output_dir, bm_path, csf_path, gm_path, wm_path = get_paths(stem_dwi, stem_anat, config, general_dir)
 
         # load data 
         data, affine, hardi_img = load_nifti(img_path, return_img=True) 
@@ -182,36 +262,47 @@ def run(stem_dwi = '', stem_anat = '', tractogram_file = '', config = None, gene
         data_gm = load_nifti_data(gm_path)
         data_csf = load_nifti_data(csf_path)
         gradient_table = get_gradient_table(bval_path, bvec_path)
-        
-        #logging.info(f"Generating tractogram using: {config['tractogram_config']['stop_method']} method")
-        logging.info(f"Processing image: {stem_dwi}")
-        #logging.info(f"No. of volumes: {data.shape[-1]}")
 
         try:
-            # generate tractogram
             tractogram = generate_tractogram(config, data, affine, hardi_img, 
                                             gradient_table, data_bm, data_wm, data_gm, data_csf)
             save_tractogram(tractogram, output_dir, img_path)
         except Exception as e:
+            logging.error(f"Exception during tractogram generation for file {stem_dwi}")
             logging.error(e)
             f = open('log.txt', 'a')
             f.write(stem_dwi + '\n')
             f.close()
-            logging.error(stem_dwi)
     else:
         output_dir = tractogram_file.rstrip(tractogram_file.split(os.sep)[-1])
-        tractogram = load_tractogram(tractogram_file)
-        # generate connectivity matrix
+        try:
+            tractogram = load_tractogram(tractogram_file)
+        except Exception as e:
+            logging.error("Error at 'load_tractogram'. Traceback:")
+            logging.error(e)
     
-    atlas, labels  = load_atlas(atlas_path)
-    cm = ConnectivityMatrix(tractogram, labels, output_dir, 
+    # generate connectivity matrix
+    try:
+        atlas, labels  = load_atlas(atlas_path)
+    except Exception as e:
+        logging.error("Error at 'load_atlas'. Traceback:")
+        logging.error(e)
+
+    try:
+        cm = ConnectivityMatrix(tractogram, labels, output_dir, 
                                 config['tractogram_config']['take_log'])
-    cm.process()
+        cm.process()
+    except Exception as e:
+        logging.error("Error at CM creation. Traceback:")
+        logging.error(e)
+    
+    logging.info(f"{cm.__str__} created")
+    return
     
       
 def main():
-    logging.basicConfig(level=logging.INFO)
-    #logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
+    start_time = datetime.today()
+    logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
 
     with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)

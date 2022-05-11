@@ -43,9 +43,11 @@ def parallelize(dwi_files, tract_files, num_cores, run, config, general_dir):
     logging.info("Computing tractograms")
     for i in tqdm(range(len(dwi_files))):
         logging.info(f"Queueing {dwi_files[i]}")
-        #session = ses_re.search(dwi_files[i]).group()
-        stem_t1 = glob(dwi_files[i].split('/dwi/')[0] + os.sep + 'anat' + os.sep + '*_anat.nii.gz')[0].split('.')[0]
-        #stem_t1 = glob(general_dir + config['paths']['dataset_dir'] + os.sep + sub_re.search(dwi_files[i]).group() + os.sep + session + os.sep + 'anat' + os.sep + '*_anat.nii.gz')[0].split('.')[0]
+        try:
+            stem_t1 = glob(dwi_files[i].split('/dwi/')[0] + os.sep + 'anat' + os.sep + '*_anat.nii.gz')[0].split('.')[0]
+        except Exception as e:
+            logging.error(f"Error with T1 searching for {dwi_files[i]}. Traceback:")
+            logging.error(e)
 
         proc = multiprocessing.Process(target=run, args=(dwi_files[i].split('.')[0], stem_t1, '', config, general_dir))
         procs.append(proc)
@@ -64,6 +66,7 @@ def parallelize(dwi_files, tract_files, num_cores, run, config, general_dir):
                 p.join()
         
     logging.info('Parallelization finished.')
+    return
 
         
 def parallelize_CM(trk_files, num_cores, func, config, general_dir):
