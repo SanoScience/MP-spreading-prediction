@@ -88,7 +88,7 @@ def dispatcher(f, atlas_file, img_type):
     ########################
     ### BRAIN EXTRACTION ###
     ########################
-    """
+    
     if img_type == 'anat' or img_type == 'dwi': 
         try: 
             be = BET_FSL(name_nii, intermediate_dir + name + '_be', img_type)
@@ -280,7 +280,7 @@ def dispatcher(f, atlas_file, img_type):
             print(e)
             print(name_nii + ' at CerebellumNormalization')
         gc.collect()
-    """
+
     ###################################
     ### REGISTRATION (DWI and ANAT) ###
     ###################################
