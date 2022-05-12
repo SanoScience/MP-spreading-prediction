@@ -221,7 +221,7 @@ def dispatcher(f, atlas_file, img_type):
         logging.info(f"{name_nii} starting Brain Extraction (PET)")
         try:
             be = BET_FSL(name_nii, intermediate_dir + name + '_be', img_type)
-            data, affine, header = be.run(frac=0.1, vertical_gradient=-0.3)
+            data, affine, header = be.run(frac=0.1)
             bm_data = be.get_mask()
             del be
             
@@ -399,6 +399,8 @@ if __name__=='__main__':
         atlas_file = input("Insert the path to the atlas you want to use [default, register to the anatomical image]: ")
         if len(atlas_file) == 0:
             atlas_file = 'anat'
+    if (not atlas_file == 'anat') and (not atlas_file.startswith(os.sep)):
+        atlas_file = os.getcwd() + os.sep + atlas_file
         #os.getcwd() + '/AAL3v1.nii.gz'
 
     # TODO
