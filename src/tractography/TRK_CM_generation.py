@@ -265,13 +265,15 @@ def run(stem_dwi = '', stem_anat = '', tractogram_file = '', config = None, gene
             f = open('log.txt', 'a')
             f.write(stem_dwi + '\n')
             f.close()
+            return
     else:
         output_dir = tractogram_file.rstrip(tractogram_file.split(os.sep)[-1])
         try:
             tractogram = load_tractogram(tractogram_file)
         except Exception as e:
-            logging.error("Error at 'load_tractogram'. Traceback:")
+            logging.error(f"Error at 'load_tractogram' for file {tractogram_file}. Traceback:")
             logging.error(e)
+            return
     
     # generate connectivity matrix
     try:
@@ -279,16 +281,16 @@ def run(stem_dwi = '', stem_anat = '', tractogram_file = '', config = None, gene
     except Exception as e:
         logging.error("Error at 'load_atlas'. Traceback:")
         logging.error(e)
+        return
 
     try:
         cm = ConnectivityMatrix(tractogram, labels, output_dir, 
                                 config['tractogram_config']['take_log'])
         cm.process()
+        logging.info(f"CM {cm} created")
     except Exception as e:
-        logging.error("Error at CM creation. Traceback:")
+        logging.error(f"Error at CM creation in {output_dir}. Traceback:")
         logging.error(e)
-    
-    logging.info(f"{cm.__str__} created")
     return
     
 

@@ -26,6 +26,11 @@ from nilearn.image import crop_img
 import gc
 from glob import glob
 
+""" 
+    SYNOPSYS
+    python3 main.py <img_type> <dataset_path> <cores> <atlas_file> 
+"""
+
 def check_path(path):
     if not os.path.isdir(path):
         os.system("mkdir -p {}".format(path))
@@ -374,7 +379,8 @@ if __name__=='__main__':
         files = str(output.stdout.read()).removeprefix('b\'').removesuffix('\'').removesuffix('\\n').split('\\n')
         
     # If it starts with '/' it is an absolute path, otherwise make it absolute
-    if not dataset_path.startswith('/'): dataset_path = os.sep.join(os.getcwd(), dataset_path) if dataset_path != '.' else os.getcwd() + os.sep
+    if not dataset_path.startswith('/'): 
+        dataset_path = os.sep.join(os.getcwd(), dataset_path) if dataset_path != '.' else os.getcwd() + os.sep
     os.chdir(dataset_path)
 
     if len(sys.argv) > 3:
@@ -387,7 +393,7 @@ if __name__=='__main__':
         num_cores = int(num_cores) if len(num_cores) > 0 else 4
         
     if len(sys.argv) > 4:
-        # assuming atlas is in the current dir
+        # 'anat' to coregister to the preprocessed anatomical image (if it exists)
         atlas_file = sys.argv[4]
     else:
         atlas_file = input("Insert the path to the atlas you want to use [default, register to the anatomical image]: ")
