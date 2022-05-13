@@ -45,6 +45,7 @@ class ConnectivityMatrix():
 
         # remove connections to own regions (inplace)
         np.fill_diagonal(M, 0) 
+        self.matrix = M
 
         
     def __sort(self):
