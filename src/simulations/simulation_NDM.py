@@ -18,7 +18,7 @@ import numpy as np
 from scipy.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import save_prediction_plot
-from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_rmse, prepare_cm
+from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_rmse
 from datetime import datetime
 from prettytable import PrettyTable
 
@@ -136,7 +136,7 @@ def run_simulation(subject, paths, output_dir, queue=None):
       
     try:
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
-        connect_matrix = prepare_cm(connect_matrix)
+        #connect_matrix = prepare_cm(connect_matrix)
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])
     except Exception as e:

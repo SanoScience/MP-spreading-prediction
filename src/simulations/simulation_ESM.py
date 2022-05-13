@@ -22,7 +22,7 @@ from tqdm import tqdm
 from scipy.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import save_prediction_plot
-from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, prepare_cm
+from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse
 
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 
@@ -99,7 +99,7 @@ def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noi
       
     try:
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
-        connect_matrix = prepare_cm(connect_matrix)
+        #connect_matrix = prepare_cm(connect_matrix)
         connect_matrix += 1e-2
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])

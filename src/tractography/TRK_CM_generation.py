@@ -27,13 +27,11 @@ from utils import parallelize
 from glob import glob
 
 class ConnectivityMatrix():
-    def __init__(self, tractogram, atlas_labels, output_dir, take_log):
-        # NOTE: this is a lazy solution that works assuming you are calling the script inside its folder (src/tractography)
+    def __init__(self, tractogram, atlas_labels, output_dir):
         self.streamlines = tractogram.streamlines
         self.affine = tractogram.affine # transformation to align streamlines to atlas 
         self.labels = atlas_labels  
         self.output_dir = output_dir
-        self.take_log = take_log
                        
     def __create(self):
         ''' Get the no. of connections between each pair of brain regions. '''
@@ -47,9 +45,8 @@ class ConnectivityMatrix():
 
         # remove connections to own regions (inplace)
         np.fill_diagonal(M, 0) 
-        if self.take_log: M = np.log1p(M)
 
-        self.matrix = M
+        self.matrix = M/np.max(M)
         
     def __revert(self):
         # make all left areas first 
@@ -69,7 +66,7 @@ class ConnectivityMatrix():
         plt.figure(figsize=(8, 6))
         plt.imshow(self.matrix, interpolation='nearest')
         plt.colorbar()
-        plt.title(f'Connectivity matrix (log values: {self.take_log})')
+        plt.title(f'Connectivity matrix')
         plt.tight_layout()
         if savefig: plt.savefig(os.path.join(self.output_dir, 'connect_matrix.png'))
         

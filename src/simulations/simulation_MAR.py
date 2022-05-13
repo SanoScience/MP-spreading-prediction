@@ -115,7 +115,7 @@ def run_simulation(subject, paths, output_subj, connect_matrix, lam, iter_max, r
         # load connectome ('is' works also with objects, '==' doesn't)
         if connect_matrix is None:
             connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
-            connect_matrix = prepare_cm(connect_matrix)
+            #connect_matrix = prepare_cm(connect_matrix)
         
         # load proteins concentration in brain regions
         t0_concentration = load_matrix(paths['baseline']) 
