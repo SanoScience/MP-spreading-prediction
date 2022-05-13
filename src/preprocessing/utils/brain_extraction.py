@@ -56,7 +56,7 @@ class BET_FSL:
         # Two cuts: the first with a very negative vertical gradient to cut the neck, the second more balanced to extract all the brain
         if self.img_type == 'anat':
             os.system(f"bet2 {self.path_file} {self.name} -f {frac} -g -1")
-            self.input_be = self.name
+            input_be = self.name
         
         os.system(f"bet2 {input_be} {self.name} -m -f {frac} -g 0")
         self.binary_mask = self.name + '_mask.nii.gz'

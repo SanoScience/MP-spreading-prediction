@@ -5,7 +5,7 @@ paths:
   subject: 'all'                                # if 'all' (aka None): scripts are run on the whole dataset 
 
 tractogram_config:
-  keep_tract: False                             # if 'true', Skips already processed tractographies, otherwise re-compute
+  keep_tract: True                             # if 'true', Skips already processed tractographies, otherwise re-compute
   stop_method: 'ACT'                            # type of stopping citerion
   fa_thres: 0.2                                 # fractional anisotropy threshold; originally =0.7
   seed_density: 1                               # the number of seeds to place along each dimension

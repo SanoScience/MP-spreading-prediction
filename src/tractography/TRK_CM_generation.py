@@ -46,9 +46,8 @@ class ConnectivityMatrix():
         # remove connections to own regions (inplace)
         np.fill_diagonal(M, 0) 
 
-        self.matrix = M/np.max(M)
         
-    def __revert(self):
+    def __sort(self):
         # make all left areas first 
         odd_odd = self.matrix[::2, ::2]
         odd_even = self.matrix[::2, 1::2]
@@ -77,10 +76,16 @@ class ConnectivityMatrix():
     def process(self, reshuffle = True):
         self.__create()   
         self.__get_info()
-        self.__save('connect_matrix_rough.csv') # 'Rough' means 'as it is', without reverting rois
+
+        self.__save('connect_matrix_original.csv') 
+
+        self.matrix = self.matrix/np.max(self.matrix)
+        self.__save('connect_matrix_norm.csv')
+
         if reshuffle:
-            self.__revert() # reverts rois to make rois 'left-to-right' oriented in the matrix 
-            self.__save('connect_matrix_reverted.csv') # 'Reverted' is the matrix meant to be used in BrainNetViewer and manual analysis
+            self.__sort() # sort rois to make rois 'left-to-right' oriented in the matrix 
+            self.__save('connect_matrix_sort.csv') # 'Sort' is the matrix meant to be used in BrainNetViewer and manual analysis
+        
         self.__plot()     
 
     def __str__(self) -> str:
@@ -281,8 +286,7 @@ def run(stem_dwi = '', stem_anat = '', tractogram_file = '', config = None, gene
         return
 
     try:
-        cm = ConnectivityMatrix(tractogram, labels, output_dir, 
-                                config['tractogram_config']['take_log'])
+        cm = ConnectivityMatrix(tractogram, labels, output_dir)
         cm.process()
         logging.info(f"CM {cm} created")
     except Exception as e:
