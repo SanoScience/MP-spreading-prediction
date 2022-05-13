@@ -41,7 +41,7 @@ class datasetThread(threading.Thread):
         pets_list = []
         try:
             connectivity_matrix_path = os.path.join(os.path.join(self.dataset_dir, self.subject, 
-                                                'ses-baseline', 'dwi', 'connect_matrix_rough.csv'))
+                                                'ses-baseline', 'dwi', 'connect_matrix_norm.csv'))
             if not os.path.isfile(connectivity_matrix_path): raise Exception(f"{connectivity_matrix_path} doesn't exist")
 
             for t in self.tracers:
