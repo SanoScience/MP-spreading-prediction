@@ -23,8 +23,9 @@ def parallelize(dwi_files, tract_files, num_cores, run, config, general_dir):
     #run(stem_dwi = '', stem_anat = '', tractogram = '', config = None, general_dir = '')
     
     if len(tract_files) > 0:
+        print("Computing connectivity matrices of already existing tractograms")
         logging.info("Computing connectivity matrices of already existing tractograms")
-        for i in tqdm(range(len(tract_files))):
+        for i in range(len(tract_files)):
             logging.info(f"Queueing {tract_files[i]}")
             proc = multiprocessing.Process(target=run, args=('', '', tract_files[i], config, general_dir))
             procs.append(proc)
@@ -39,7 +40,8 @@ def parallelize(dwi_files, tract_files, num_cores, run, config, general_dir):
     
     
     logging.info("Computing tractograms")
-    for i in tqdm(range(len(dwi_files))):
+    print("Computing tractograms")
+    for i in range(len(dwi_files)):
         logging.info(f"Queueing {dwi_files[i]}")
         try:
             stem_t1 = glob(dwi_files[i].split('/dwi/')[0] + os.sep + 'anat' + os.sep + '*_anat.nii.gz')[0].split('.')[0]

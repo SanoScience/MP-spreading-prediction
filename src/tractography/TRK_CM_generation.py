@@ -200,7 +200,7 @@ def generate_tractogram(config, data, affine, hardi_img, gtab, data_bm,
         logging.error(e)
 
     try:
-        csd_model = ConstrainedSphericalDeconvModel(gtab, response, convergence=500, sh_order=config['tractogram_config']['sh_order'])  
+        csd_model = ConstrainedSphericalDeconvModel(gtab, response, convergence=50, sh_order=config['tractogram_config']['sh_order'])  
         csd_fit = csd_model.fit(data, mask=data_bm)
     except Exception as e:
         logging.error("Error at 'ConstrainedSphericalDeconvModel'. Traceback:")
