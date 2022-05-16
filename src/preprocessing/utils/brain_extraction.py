@@ -59,9 +59,8 @@ class BET_FSL:
             input_be = self.name
         
         # PET images have only one pass of BET
-        if self.img_type != 'pet':
-            os.system(f"bet2 {input_be} {self.name} -m -f {frac} -g 0")
-            self.binary_mask = self.name + '_mask.nii.gz'
+        os.system(f"bet2 {input_be} {self.name} -m -f {frac} -g 0")
+        self.binary_mask = self.name + '_mask.nii.gz'
 
         if self.img_type == 'dwi':        
             os.system(f"fslmaths {self.path_file} -mas {self.binary_mask} {self.name}.nii.gz")
