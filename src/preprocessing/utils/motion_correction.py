@@ -11,6 +11,7 @@ from dipy.align.transforms import (TranslationTransform3D,
 
 from multiprocessing import Queue, Process
 import logging
+import gc
 
 class MotionCorrection:
     """
@@ -100,18 +101,20 @@ class MotionCorrection:
 
         q = multiprocessing.Queue()
         procs = []
+        counter = 0       
+        limit = 4
         for i in range(1, self.data.shape[-1]):
             # We do not need to correct the first volume to itself
             
             p = multiprocessing.Process(target=self.affine_reg, args=(static_img, self.affine, self.data[...,i], self.affine, i, q))
             p.start()
-            procs.append(p)
-        
-        counter = 0            
-        while counter < self.data.shape[-1]-1:
-            index, volume = q.get()
-            self.corrected_data[...,index] = volume
-            counter += 1
+            procs.append(p)  
+            counter +=1   
+            while counter == limit and counter < self.data.shape[-1]-1:
+                index, volume = q.get()
+                self.corrected_data[...,index] = volume
+                limit +=1 
+            gc.collect()
 
         assert self.corrected_data.shape[-1] == self.data.shape[-1]
         return self.corrected_data, self.affine, self.header 
