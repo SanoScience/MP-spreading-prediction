@@ -20,6 +20,7 @@ from utils import *
 from datetime import datetime
 import multiprocessing
 from prettytable import PrettyTable
+import yaml
 
 date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
@@ -58,7 +59,7 @@ class MARsimulation:
         ''' Construct a matrix with only zeros and ones to be used to 
         reinforce the zero connection (this is **B** in our paper).
         B has zero elements where no structural connectivity appears. '''
-        self.B = np.where(self.cm==0, 0, 1).astype('float32')
+        self.B = np.where(self.cm>0, 1, 0).astype('float32')
         
     def run_gradient_descent(self, vis_error=False):
         iter_count = 0                                                          # counter of the current iteration 
@@ -90,7 +91,7 @@ class MARsimulation:
                     logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f} (current eta {self.eta})')
                 '''
                 iter_count += 1
-                #self.eta+=1e-12
+                self.eta+= 1/np.norm(gradient)
                 prev_A = np.copy(A)
             except FloatingPointError:   
                 self.eta = 1e-10
@@ -221,10 +222,16 @@ def test(conn_matrix, test_set, dicts_subj):
 
     return avg_rmse, avg_pcc
 
+start_time = datetime.today()
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
+
 if __name__ == '__main__':
     total_time = time()
 
-    os.chdir(os.getcwd()+'/../../')
+    with open('../../config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    os.chdir(os.getcwd()+'/../../..')
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
         try:
@@ -234,7 +241,7 @@ if __name__ == '__main__':
             category = 'ALL'
         category = 'ALL' if category == '' else category
 
-    dataset_path = f'src/dataset_preparing/dataset_{category}.json'
+    dataset_path =  config['paths']['dataset_dir'] +  f'datasets/dataset_{category}.json'
     output_subj = 'results/subjects'
     output_res = 'results/benchmarks'
     if not os.path.exists(output_res):

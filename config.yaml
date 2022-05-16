@@ -1,6 +1,5 @@
 paths:
   dataset_dir: "ADNI_Dataset/ADNI/derivatives/"
-  output_dir: "ADNI_Dataset/ADNI/output/"
   atlas_path: "AAL3v1.nii.gz"
   subject: 'all'                                # if 'all' (aka None): scripts are run on the whole dataset 
 

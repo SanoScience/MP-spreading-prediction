@@ -23,12 +23,16 @@ import threading
 
 import numpy as np
 import re
+import yaml
+from datetime import datetime
 
-logging.basicConfig(level=logging.INFO)
+start_time = datetime.today()
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
+
 wrong_pet_values = []
 
 class datasetThread(threading.Thread):
-   def __init__(self, threadID, dataset_dir, subject, queue, tracers= ['av45','fbb','pib'], threshold = 10):
+   def __init__(self, threadID, dataset_dir, subject, queue, tracers= ['av45','fbb','pib'], threshold = 1):
       threading.Thread.__init__(self)
       self.threadID = threadID
       self.dataset_dir = dataset_dir
@@ -47,7 +51,38 @@ class datasetThread(threading.Thread):
             for t in self.tracers:
                 pets_list = pets_list + glob(os.path.join(os.path.join(self.dataset_dir, self.subject, 
                                                 'ses-*', 'pet', f'*trc-{t}_pet.csv')))
-            time_interval = 2
+            #NOTE: year check is deprecated (see DEPRECATED below)
+            # note: if 'tracer' is a list containing several tracers, the pairs can be made of heterogeneous tracers
+            # note: I need to compare pets in both orders, because I can't assume the retrieved list is in chronological order
+            for i in range(len(pets_list)):
+                if 'baseline' in pets_list[i]:
+                    t0_concentration_path = pets_list[i]
+                    t0_concentration = load_matrix(t0_concentration_path) 
+                if 'followup' in pets_list[i]:
+                    t1_concentration_path = pets_list[i]
+                    t1_concentration = load_matrix(t1_concentration_path)
+
+            if sum(t1_concentration) <= (sum(t0_concentration) + self.threshold):
+                wrong_pet_values.append(t1_concentration_path)
+                raise Exception(f"{self.subject} PET images ({t0_concentration_path} and {t1_concentration_path}) don't have a concentration gap greater than {self.threshold}")
+        except Exception as e:
+            logging.error(e)
+            return None   
+
+        results_dict = {
+        "connectome": connectivity_matrix_path, 
+        "baseline": t0_concentration_path, 
+        "followup": t1_concentration_path
+        }
+        # Assuring consistency while accessing dictionary
+        queueLock.acquire()
+        self.queue.put([self.subject, results_dict]) 
+        queueLock.release()  
+        logging.info(f"Subject {self.subject} loaded")
+
+        """
+        DEPRECATED
+        time_interval = 2
             # note: if 'tracer' is a list containing several tracers, the pairs can be made of heterogeneous tracers
             # note: I need to compare pets in both orders, because I can't assume the retrieved list is in chronological order
             for i in range(len(pets_list)):
@@ -77,16 +112,8 @@ class datasetThread(threading.Thread):
         except Exception as e:
             logging.error(e)
             return None   
+        """   
 
-        results_dict = {
-        "connectome": connectivity_matrix_path, 
-        "baseline": t0_concentration_path, 
-        "followup": t1_concentration_path
-        }
-        # Assuring consistency while accessing dictionary
-        queueLock.acquire()
-        self.queue.put([self.subject, results_dict]) 
-        queueLock.release()     
         return    
 
 def load_matrix(path):
@@ -98,9 +125,20 @@ def save_dataset(dataset, filename):
         json.dump(dataset, f, indent=4)
 
 if __name__ == '__main__':
-    os.chdir(os.getcwd() + '/../..') # Moving to the root folder of the project
-    dataset_filepath = 'dataset_{}.json'           
-    dataset_dir = f'data/ADNI/derivatives'
+    with open('../../config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    os.chdir(os.getcwd() + '/../../..') # Moving to the root folder of the project
+    general_dir = os.getcwd() + os.sep
+    logging.info(general_dir)
+    dataset_dir = general_dir + config['paths']['dataset_dir'] + 'sub-*'  + os.sep
+    logging.info(dataset_dir)
+    subjects = glob(dataset_dir)
+
+    dataset_output = config['paths']['dataset_dir'] + 'datasets/'
+    if not os.path.isdir(dataset_output):
+        os.mkdir(dataset_output)
+    dataset_name = 'dataset_{}.json'          
     categories = ['ALL', 'AD', 'LMCI', 'EMCI', 'CN']
     
     num_cores = ''
@@ -111,7 +149,6 @@ if __name__ == '__main__':
         num_cores = multiprocessing.cpu_count()
     logging.info(f"{num_cores} cores available")
 
-    subjects = os.listdir(dataset_dir)
     
     print(f'Initial no. of subjects: {len(subjects)}')
     for c in categories:
@@ -138,7 +175,7 @@ if __name__ == '__main__':
             element = dictQueue.get()
             dataset[element[0]] = element[1]
         
-        save_dataset(dataset, dataset_filepath.format(c))
-        logging.info(f'Size of the dataset \'{dataset_filepath.format(c)}\': {len(dataset)}')
+        save_dataset(dataset, dataset_output + dataset_name.format(c))
+        logging.info(f'Size of the dataset \'{dataset_output + dataset_name.format(c)}\': {len(dataset)}')
     logging.info(f"{len(wrong_pet_values)} \'wrong\' pets")
     logging.info(wrong_pet_values)
