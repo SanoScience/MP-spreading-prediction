@@ -12,8 +12,9 @@ import numpy as np
 from skimage.util import montage
 import matplotlib.pyplot as plt
 import multiprocessing
+import yaml
+from datetime import datetime
 
-logging.basicConfig(level=logging.INFO)
 
 def load_atlas(path):
     data = nibabel.load(path).get_fdata()
@@ -60,36 +61,32 @@ def save_concentrations(concentrations, path):
         write = csv.writer(f)
         write.writerow(concentrations)
 
-def run(dataset_dir, subject, atlas_data):
-    # get the preprocessed PET data
-    pet_files_paths = glob(os.path.join(dataset_dir, subject, 
-                                        'ses-*', 'pet', '*_pet.nii.gz'))
+def run(pet, atlas_data):    
+    output_path = pet.replace('.nii.gz', '.csv')
+            
+    pet_data = load_pet(pet)
+    if emptiness_test(pet, pet_data): return
+    region_means = extract_regions_means(pet_data, atlas_data)
+    save_concentrations(region_means, output_path)
+    logging.info(f'Extracted concentrations saved in {output_path}')
     
-    for path in pet_files_paths:
-        # logging.info(f'Found pet file {path}')   
-        output_path = path.replace('.nii.gz', '.csv')
-               
-        pet_data = load_pet(path)
-        if emptiness_test(path, pet_data): continue
-        region_means = extract_regions_means(pet_data, atlas_data)
-        save_concentrations(region_means, output_path)
-        logging.info(f'Extracted concentrations saved in {output_path}')
-    
-def main():
-    dataset_dir = '../../data/ADNI/derivatives/'
-    atlas_path = '../../data/atlas/AAL3v1.nii.gz'
-    
+
+start_time = datetime.today()
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
+
+if __name__ == '__main__':
+    with open('../../config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    os.chdir(os.getcwd() + '/../../..')
+    general_dir = os.getcwd() + os.sep
+    logging.info(general_dir)
+    dataset_dir = general_dir + config['paths']['dataset_dir'] + 'sub-*'  + os.sep + 'ses-*' + os.sep + 'pet' + os.sep + 'sub*pet.nii.gz'
+    logging.info(dataset_dir)
+
+    atlas_path = general_dir + config['paths']['atlas_path']
     atlas_data = load_atlas(atlas_path)
     
-    ## try to run it in parallel
-    # logger = logging.getLogger()
-    # logger.setLevel(logging.ERROR)
-    
-    # with concurrent.futures.ProcessPoolExecutor() as executor:
-    #     patients = os.listdir(dataset_dir)
-    #     for subj in patients:
-    #         logging.info(f'Beta-amyloid concentration extraction for subject: {subj}')
-    #         executor.submit(run, dataset_dir, subj, atlas_data)
     num_cores = ''
     try:
         num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
@@ -98,11 +95,11 @@ def main():
 
     logging.info(f"{num_cores} cores available")
 
-    patients = os.listdir(dataset_dir)
+    pets = glob(dataset_dir)
     procs = []
-    for subj in tqdm(patients):
-        logging.info(f'Beta-amyloid concentration extraction for subject: {subj}')
-        p = multiprocessing.Process(target=run, args=(dataset_dir, subj, atlas_data))
+    for img in tqdm(pets):
+        logging.info(f'Beta-amyloid concentration extraction in image: {img}')
+        p = multiprocessing.Process(target=run, args=(img, atlas_data))
         p.start()
         procs.append(p)
         
@@ -117,6 +114,3 @@ def main():
         # wait the last chunk            
         for p in procs:
             p.join() 
-    
-if __name__ == '__main__':
-    main()
