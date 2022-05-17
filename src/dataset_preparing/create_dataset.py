@@ -181,6 +181,7 @@ if __name__ == '__main__':
         datasets['ALL'].append([element[0], element[1]])
         for c in categories:
             if re.match(rf".*{c}.*", element[0]):
+                logging.info(f"Subject {element[0]} fitting in category {c}")
                 datasets[c].append([element[0], element[1]])
                 
         #dataset[element[0]] = element[1]
