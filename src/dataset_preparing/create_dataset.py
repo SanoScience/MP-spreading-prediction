@@ -2,7 +2,7 @@
 Structure:
 {
     'subj': {
-        'conncetome': connectome_path,
+        'connectome': connectome_path,
         'baseline': baseline_path,
         'followup': followup_path
     }
@@ -51,19 +51,17 @@ class datasetThread(threading.Thread):
             for t in self.tracers:
                 pets_list = pets_list + glob(os.path.join(os.path.join(self.dataset_dir, self.subject, 
                                                 'ses-*', 'pet', f'*trc-{t}_pet.csv')))
-            #NOTE: year check is deprecated (see DEPRECATED below)
-            # note: if 'tracer' is a list containing several tracers, the pairs can be made of heterogeneous tracers
-            # note: I need to compare pets in both orders, because I can't assume the retrieved list is in chronological order
+            #NOTE: year check has been manually done (see DEPRECATED below)
             for i in range(len(pets_list)):
-                if 'baseline' in pets_list[i]:
+                if 'ses-baseline' in pets_list[i]:
                     t0_concentration_path = pets_list[i]
                     t0_concentration = load_matrix(t0_concentration_path) 
-                if 'followup' in pets_list[i]:
+                if 'ses-followup' in pets_list[i]:
                     t1_concentration_path = pets_list[i]
                     t1_concentration = load_matrix(t1_concentration_path)
 
             if sum(t1_concentration) <= (sum(t0_concentration) + self.threshold):
-                wrong_pet_values.append(t1_concentration_path)
+                wrong_pet_values.append(self.subject)
                 raise Exception(f"{self.subject} PET images ({t0_concentration_path} and {t1_concentration_path}) don't have a concentration gap greater than {self.threshold}")
         except Exception as e:
             logging.error(e)
@@ -151,31 +149,42 @@ if __name__ == '__main__':
 
     
     print(f'Initial no. of subjects: {len(subjects)}')
+    """
     for c in categories:
         dataset = {}
         queueLock = threading.Lock()
         dictQueue = queue.Queue(len(subjects))
-        for subj in subjects:
-            if c == 'ALL' or re.match(rf".*{c}.*", subj):
-                try:
-                    t = datasetThread(threading.active_count(), dataset_dir, subj, dictQueue)
-                    t.start()
-                    while threading.active_count() == num_cores+1:
-                        pass # simply wait
+    """
+    datasets = {}
+    for c in categories:
+        datasets[c]= []
+        
+    queueLock = threading.Lock()
+    dictQueue = queue.Queue(len(subjects))
+    for subj in subjects:
+        try:
+            t = datasetThread(threading.active_count(), dataset_dir, subj, dictQueue)
+            t.start()
+            while threading.active_count() == num_cores+1:
+                pass # simply wait
                     
-                except Exception:
-                    logging.error(f'No valid data for subject: {subj}')
-                    continue 
+        except Exception:
+            logging.error(f'No valid data for subject: {subj}')
+            continue 
         
-        while threading.active_count() > 1:
-            # wait for the termination of all threads (Note that one thread is the current main)
-            pass
+    while threading.active_count() > 1:
+        # wait for the termination of all threads (Note that one thread is the current main)
+        pass
 
-        while not dictQueue.empty():
-            element = dictQueue.get()
-            dataset[element[0]] = element[1]
-        
-        save_dataset(dataset, dataset_output + dataset_name.format(c))
-        logging.info(f'Size of the dataset \'{dataset_output + dataset_name.format(c)}\': {len(dataset)}')
+    while not dictQueue.empty():
+        element = dictQueue.get()
+        for c in categories:
+            if c == 'ALL' or re.match(rf".*{c}.*", element[0]):
+                datasets[c].append([element[0], element[1]])
+                
+        #dataset[element[0]] = element[1]
+    for d in datasets.keys():
+        save_dataset(datasets[d], dataset_output + dataset_name.format(d))
+        logging.info(f'Size of the dataset \'{dataset_output + dataset_name.format(d)}\': {len(datasets[d])}')
     logging.info(f"{len(wrong_pet_values)} \'wrong\' pets")
     logging.info(wrong_pet_values)
