@@ -1,3 +1,8 @@
+""" 
+    SYNOPSYS
+    python3 main.py <img_type> <dataset_path> <cores> <atlas_file> 
+"""
+
 from subprocess import Popen, PIPE, STDOUT
 from nibabel import load, save, Nifti1Image
 from dipy.io.gradients import read_bvals_bvecs
@@ -26,10 +31,6 @@ from nilearn.image import crop_img
 import gc
 from glob import glob
 
-""" 
-    SYNOPSYS
-    python3 main.py <img_type> <dataset_path> <cores> <atlas_file> 
-"""
 
 def check_path(path):
     if not os.path.isdir(path):
@@ -279,6 +280,7 @@ def dispatcher(f, atlas_file, img_type):
             print(name_nii + ' at Registration (PET)')
             
         # registration is required prior Cerebellum Normalization
+        """
         try:
             logging.info(f"{name_nii} starting Cerebellum Normalization")
             ce = CerebellumNormalization(name_nii, atlas_file, intermediate_dir, name)
@@ -290,6 +292,7 @@ def dispatcher(f, atlas_file, img_type):
             logging.error(name_nii + ' at CerebellumNormalization')
             print(e)
             print(name_nii + ' at CerebellumNormalization')
+        """
         gc.collect()
 
     ###################################
@@ -386,7 +389,7 @@ if __name__=='__main__':
         
     # If it starts with '/' it is an absolute path, otherwise make it absolute
     if not dataset_path.startswith('/'): 
-        dataset_path = os.sep.join(os.getcwd(), dataset_path) if dataset_path != '.' else os.getcwd() + os.sep
+        dataset_path = os.getcwd() + os.sep + dataset_path if dataset_path != '.' else os.getcwd() + os.sep
     os.chdir(dataset_path)
 
     if len(sys.argv) > 3:
