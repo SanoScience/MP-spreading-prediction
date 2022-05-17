@@ -137,7 +137,7 @@ if __name__ == '__main__':
     if not os.path.isdir(dataset_output):
         os.mkdir(dataset_output)
     dataset_name = 'dataset_{}.json'          
-    categories = ['ALL', 'AD', 'LMCI', 'EMCI', 'CN']
+    categories = ['ALL', 'AD', 'LMCI', 'MCI', 'EMCI', 'CN']
     
     num_cores = ''
     try:

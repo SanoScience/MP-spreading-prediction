@@ -21,7 +21,7 @@ from utils_vis import save_prediction_plot
 from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_rmse
 from datetime import datetime
 from prettytable import PrettyTable
-
+import yaml
 import networkx as nx
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 
@@ -163,18 +163,21 @@ def run_simulation(subject, paths, output_dir, queue=None):
 
 if __name__ == '__main__':
     total_time = time()
-
-    os.chdir(os.getcwd()+'/../../')
+    
+    with open('../../config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+        
+    os.chdir(os.getcwd()+'/../../..')
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
         try:
-            category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
+            category = input('Insert the category [ALL, AD, LMCI, MCI, EMCI, CN; default ALL]: ')
         except Exception as e:
             logging.error(e)
             category = 'ALL'
         category = 'ALL' if category == '' else category
 
-    dataset_path = f'src/dataset_preparing/dataset_{category}.json'
+    dataset_path =  config['paths']['dataset_dir'] +  f'datasets/dataset_{category}.json'
     output_subj = 'results/subjects'
     output_res = 'results/benchmarks'
     if not os.path.exists(output_res):

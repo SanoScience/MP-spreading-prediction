@@ -16,7 +16,7 @@ import sys
 from time import time
 import warnings
 from prettytable import PrettyTable
-
+import yaml
 import numpy as np
 from tqdm import tqdm
 from scipy.stats import pearsonr as pearson_corr_coef
@@ -149,18 +149,21 @@ def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noi
 if __name__=="__main__":
     total_time = time()
 
+    with open('../../config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
     if os.getcwd().endswith('simulations'):
-        os.chdir(os.getcwd()+'/../../')
+        os.chdir(os.getcwd()+'/../../..')
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
         try:
-            category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
+            category = input('Insert the category [ALL, AD, LMCI, MCI, EMCI, CN; default ALL]: ')
         except Exception as e:
             logging.error(e)
             category = 'ALL'
         category = 'ALL' if category == '' else category
 
-    dataset_path = f'src/dataset_preparing/dataset_{category}.json'
+    dataset_path =  config['paths']['dataset_dir'] +  f'datasets/dataset_{category}.json'
     output_subj = 'results/subjects'
     output_res = 'results/benchmarks'
     if not os.path.exists(output_res):

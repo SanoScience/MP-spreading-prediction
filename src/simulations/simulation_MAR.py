@@ -232,7 +232,7 @@ if __name__ == '__main__':
     category = sys.argv[1] if len(sys.argv) > 1 else ''
     while category == '':
         try:
-            category = input('Insert the category [ALL, AD, LMCI, EMCI, CN; default ALL]: ')
+            category = input('Insert the category [ALL, AD, LMCI, MCI, EMCI, CN; default ALL]: ')
         except Exception as e:
             logging.error(e)
             category = 'ALL'
