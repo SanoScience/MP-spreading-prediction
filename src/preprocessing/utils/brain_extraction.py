@@ -53,15 +53,20 @@ class BET_FSL:
         else:
             input_be = self.path_file
         
-        # Two cuts: the first with a very negative vertical gradient to cut the neck, the second more balanced to extract all the brain
+        # ANAT: two cuts, the first with a very negative vertical gradient to cut the neck, the second more balanced to extract all the brain
+        # PET: three cuts, on -1, -0.5 and 0 vertical gradients
         if self.img_type == 'anat' or self.img_type == 'pet':
             os.system(f"bet2 {self.path_file} {self.name} -f {frac} -g -1")
             input_be = self.name
         
-        # PET images have only one pass of BET
+        if self.img_type == 'pet':
+            os.system(f"bet2 {input_be} {self.name} -f {frac} -g -0.5")
+            input_be = self.name
+        
         os.system(f"bet2 {input_be} {self.name} -m -f {frac} -g 0")
         self.binary_mask = self.name + '_mask.nii.gz'
 
+        # the mask applied to the first volume of DWI is applied to the others
         if self.img_type == 'dwi':        
             os.system(f"fslmaths {self.path_file} -mas {self.binary_mask} {self.name}.nii.gz")
             os.system(f"rm {input_be}")

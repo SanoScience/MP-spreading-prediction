@@ -223,7 +223,7 @@ def dispatcher(f, atlas_file, img_type):
         logging.info(f"{name_nii} starting Brain Extraction (PET)")
         try:
             be = BET_FSL(name_nii, intermediate_dir + name + '_be', img_type)
-            data, affine, header = be.run(frac=0.3)
+            data, affine, header = be.run(frac=0.1)
             bm_data = be.get_mask()
             del be
             
@@ -253,6 +253,7 @@ def dispatcher(f, atlas_file, img_type):
         del img        
 
         try: 
+            """
             #create binary mask (at this point the PET is 3D!)
             bm = np.where(data[:,:,:]>0, 1, 0)
             name_bm = name + '_mask.nii.gz'
@@ -265,6 +266,7 @@ def dispatcher(f, atlas_file, img_type):
             del bm_reg
             # Binary mask is always saved (it is not an intermediate output)
             save(Nifti1Image(bm_data, bm_affine, bm_header), name_bm)
+            """
             
             logging.info(f"{name_nii} starting Registration (PET)")
             pet_reg = Registration(name_nii, atlas_file, intermediate_dir, name, img_type)
@@ -278,6 +280,13 @@ def dispatcher(f, atlas_file, img_type):
             logging.error(name_nii + ' at Registration (PET)')
             print(e)
             print(name_nii + ' at Registration (PET)')
+        
+            #create binary mask (at this point the PET is 3D!)
+            bm = np.where(data[:,:,:]>0, 1, 0)
+            name_bm = name + '_mask.nii.gz'
+            # binary mask is always saved
+            save(Nifti1Image(bm, affine, header), name_bm)
+
             
         # registration is required prior Cerebellum Normalization
         """
@@ -448,10 +457,9 @@ if __name__=='__main__':
                     del p 
                     gc.collect()
                     
-        # final chunk could be shorter than num_cores, so it's handled waiting for its completion (join without arguments wait for the end of the process)
-        if i == len(files) - 1:
-            for p in procs:
-                p.join()
+    # final chunk could be shorter than num_cores, so it's handled waiting for its completion (join without arguments wait for the end of the process)
+    for p in procs:
+        p.join()
 
     total_time = (datetime.today() - start_time).seconds
     print(f"Preprocessing done in {total_time} seconds")

@@ -35,26 +35,26 @@ class Registration():
         fl.inputs.output_type = 'NIFTI_GZ'
         fl.inputs.bins = 1500
         fl.inputs.dof = 12
+        fl.inputs.cost_func = 'mutualinfo'
         # For 3D to 3D mode the DOF can be set to 12 (affine), 9 (traditional), 7 (global rescale) or 6 (rigid body)
         fl.inputs.out_matrix_file = matrix_name
-        # PET images use directly the matrix previously computed registering the binary mask
-        if self.img_type != 'pet':
-            # Produce the registration matrix on the first volume of the image...
-            try:
-                out_fl = fl.run()
-            except Exception as e:
-                logging.error(e)
-                logging.error(f"{self.name_nii} at Registration.run()")
-                print(e)
-                print(f"{self.name_nii} at Registration.run()")
+        
+        # Produce the registration matrix on the first volume of the image...
+        try:
+            out_fl = fl.run()
+        except Exception as e:
+            logging.error(e)
+            logging.error(f"{self.name_nii} at Registration.run()")
+            print(e)
+            print(f"{self.name_nii} at Registration.run()")
         
         # After registration matrix is computed, pass the whole image to which apply the registration matrix
         if self.img_type == 'dwi':
             fl.inputs.in_file = self.name_nii
             os.system(f"rm {input_reg}")
             
-        # Anatomical images are done with the first invocation, DWIs need two and PETs needs additional settings 
-        if self.img_type != 'anat':
+        # Anatomical and PET images are done with the first invocation, DWIs need two 
+        if self.img_type == 'dwi':
             # ... and use the matrix to register all the volumes
             fl.inputs.apply_xfm = True
             fl.inputs.in_matrix_file = matrix_name
@@ -63,7 +63,7 @@ class Registration():
                 out_fl = fl.run()
             except Exception as e:
                 logging.error(e)
-        if self.img_type == 'dwi':
+
             # reorient bvectors
             reg_mat = open(matrix_name)
             bval_f = self.name + '.bval'

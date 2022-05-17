@@ -29,10 +29,10 @@ from datetime import datetime
 start_time = datetime.today()
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
 
-wrong_pet_values = []
+wrong_subjects = []
 
 class datasetThread(threading.Thread):
-   def __init__(self, threadID, dataset_dir, subject, queue, tracers= ['av45','fbb','pib'], threshold = 1):
+   def __init__(self, threadID, dataset_dir, subject, queue, tracers= ['av45','fbb','pib'], threshold = 0):
       threading.Thread.__init__(self)
       self.threadID = threadID
       self.dataset_dir = dataset_dir
@@ -59,10 +59,12 @@ class datasetThread(threading.Thread):
                 if 'ses-followup' in pets_list[i]:
                     t1_concentration_path = pets_list[i]
                     t1_concentration = load_matrix(t1_concentration_path)
-
+            logging.info(f"Subject {self.subject} t0={sum(t0_concentration)} and t1={sum(t1_concentration)}")
             if sum(t1_concentration) <= (sum(t0_concentration) + self.threshold):
-                wrong_pet_values.append(self.subject)
+                wrong_subjects.append(self.subject)
                 raise Exception(f"{self.subject} PET images ({t0_concentration_path} and {t1_concentration_path}) don't have a concentration gap greater than {self.threshold}")
+            if sum(t1_concentration) > 100 and sum(t1_concentration) - sum(t0_concentration) > 0 and sum(t1_concentration) - sum(t0_concentration) < 10:
+                logging.info(f'Subject {self.subject} has close PET values')
         except Exception as e:
             logging.error(e)
             return None   
@@ -98,7 +100,7 @@ class datasetThread(threading.Thread):
                         if sum(t1_concentration) >= (sum(t0_concentration) + self.threshold):
                             break # this exits only the inner loop
                         elif year < year_next and sum(t1_concentration) < sum(t0_concentration):
-                            wrong_pet_values.append(t1_concentration_path)
+                            wrong_subjects.append(t1_concentration_path)
                 else:
                     # this means that inner loop has been completed without break statements, so the outer loop must continue
                     continue
@@ -187,5 +189,5 @@ if __name__ == '__main__':
     for d in datasets.keys():
         save_dataset(datasets[d], dataset_output + dataset_name.format(d))
         logging.info(f'Size of the dataset \'{dataset_output + dataset_name.format(d)}\': {len(datasets[d])}')
-    logging.info(f"{len(wrong_pet_values)} \'wrong\' pets")
-    logging.info(wrong_pet_values)
+    logging.info(f"{len(wrong_subjects)} \'wrong\' subjects")
+    logging.info(wrong_subjects)
