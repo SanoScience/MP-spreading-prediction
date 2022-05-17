@@ -54,13 +54,16 @@ class BET_FSL:
             input_be = self.path_file
         
         # ANAT: two cuts, the first with a very negative vertical gradient to cut the neck, the second more balanced to extract all the brain
-        # PET: three cuts, on -1, -0.5 and 0 vertical gradients
+        # PET: four cuts, on -1, -0.5, 0 and 1 vertical gradients
         if self.img_type == 'anat' or self.img_type == 'pet':
             os.system(f"bet2 {self.path_file} {self.name} -f {frac} -g -1")
             input_be = self.name
         
         if self.img_type == 'pet':
             os.system(f"bet2 {input_be} {self.name} -f {frac} -g -0.5")
+            input_be = self.name
+
+            os.system(f"bet2 {input_be} {self.name} -f {frac} -g 1")
             input_be = self.name
         
         os.system(f"bet2 {input_be} {self.name} -m -f {frac} -g 0")
