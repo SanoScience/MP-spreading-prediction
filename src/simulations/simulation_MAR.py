@@ -66,8 +66,8 @@ class MARsimulation:
         error_reconstruct = 1e10                                                # initial error of reconstruction gradients)
         if vis_error: error_buffer = []                                         # reconstruction error along iterations
         A = self.cm                                                             # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
+        gradient_th = 1
         gradient = np.ones((self.N_regions, self.N_regions)) 
-        prev_A = np.copy(A)
 
         while (error_reconstruct > self.error_th) and iter_count < self.iter_max:
             try:
@@ -77,25 +77,22 @@ class MARsimulation:
                 
                 # gradient computation
                 gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) + self.lam * np.sum(np.abs(A)) 
-                A -= self.eta * gradient       
-                # reinforce where there was no connection at the beginning 
-                A *= self.B
-                '''
+                new_A = (A - (self.eta * gradient)) * self.B
+                if np.isnan(new_A): raise Exception("Numerical overflow")
+                A = new_A    
+                
                 norm = np.linalg.norm(gradient)
-                        
-                if norm < self.gradient_th:
+                if norm < gradient_th:
                     logging.info(f"Gradient norm: {norm}.\nTermination criterion met, quitting...")
                     break    
 
                 if iter_count % 100000 == 0:
                     logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f} (current eta {self.eta})')
-                '''
+                    
                 iter_count += 1
                 self.eta+= 1/np.norm(gradient)
-                prev_A = np.copy(A)
             except FloatingPointError:   
-                self.eta = 1e-10
-                A = np.copy(prev_A)
+                self.eta /= 1e3
                 logging.warning(f'Overflow encountered at iteration {iter_count}. Resetting learning rate to: {self.eta}')
                 continue
                                           
