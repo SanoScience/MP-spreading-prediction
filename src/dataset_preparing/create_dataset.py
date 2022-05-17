@@ -32,14 +32,13 @@ logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5
 wrong_pet_values = []
 
 class datasetThread(threading.Thread):
-   def __init__(self, threadID, dataset_dir, subject, queue, tracers= ['av45','fbb','pib'], threshold = 1):
+   def __init__(self, threadID, dataset_dir, subject, queue, tracers= ['av45','fbb','pib']):
       threading.Thread.__init__(self)
       self.threadID = threadID
       self.dataset_dir = dataset_dir
       self.subject = subject
       self.queue = queue 
       self.tracers = tracers
-      self.threshold = threshold
 
    def run(self):    
         pets_list = []
@@ -60,9 +59,14 @@ class datasetThread(threading.Thread):
                     t1_concentration_path = pets_list[i]
                     t1_concentration = load_matrix(t1_concentration_path)
 
+            """
+            WARNING
+            Higher levels of Amyloid-Beta at followup are not sustained by scientific evidence, and the followup could present lower concentrations than baseline due to scanner/computational defects. We reject only pets with very negative changes in deposition levels
+            Read "PET amyloid-beta imaging in preclinical Alzheimer's disease" by Vlassenko, Andrei G. and Benzinger, Tammie L.S. and Morris, John C.
             if sum(t1_concentration) <= (sum(t0_concentration) + self.threshold):
                 wrong_pet_values.append(self.subject)
                 raise Exception(f"{self.subject} PET images ({t0_concentration_path} and {t1_concentration_path}) don't have a concentration gap greater than {self.threshold}")
+            """
         except Exception as e:
             logging.error(e)
             return None   
