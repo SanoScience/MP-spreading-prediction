@@ -178,8 +178,9 @@ if __name__ == '__main__':
 
     while not dictQueue.empty():
         element = dictQueue.get()
+        datasets['ALL'].append([element[0], element[1]])
         for c in categories:
-            if c == 'ALL' or re.match(rf".*{c}.*", element[0]):
+            if re.match(rf".*{c}.*", element[0]):
                 datasets[c].append([element[0], element[1]])
                 
         #dataset[element[0]] = element[1]
