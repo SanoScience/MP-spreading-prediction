@@ -65,7 +65,7 @@ def extract_regions_means(pet, pet_data, atlas_data):
     max_val = max(means)
     for v in means:
         v /= max_val
-        if v>=0 and v<=1: logging.error(f"Image {pet} with invalid value {v}")
+        if v<0 or v>1: logging.error(f"Image {pet} with invalid value {v}")
         
     return means
 
