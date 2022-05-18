@@ -76,6 +76,7 @@ def run(pet, atlas_data, q):
     if emptiness_test(pet, pet_data): return
     region_means = extract_regions_means(pet_data, atlas_data)
     q.put_nowait((pet, region_means))
+    return
     
 
 start_time = datetime.today()
@@ -110,27 +111,17 @@ if __name__ == '__main__':
         p = multiprocessing.Process(target=run, args=(img, atlas_data, q))
         p.start()
         procs.append(p)
-        
-        while len(procs)%num_cores == 0 and len(procs) > 0:
-            for p in procs:
-                # wait for 10 seconds to wait process termination
-                p.join(timeout=10)
-                # when a process is done, remove it from processes queue
-                if not p.is_alive():
-                    procs.remove(p)
-        
-        # wait the last chunk            
-        for p in procs:
-            p.join() 
     
     # Z score normalization 
     concentrations = {}
     cn_sum = []
-    while not q.empty():
+    counter = 0
+    while counter < len(procs):
         pet, regions = q.get()      
         concentrations[pet] = np.array(regions)
         if 'sub-CN' in pet:
             cn_sum.append(regions)
+        counter += 1
     
     cn_mean = np.mean(cn_sum, axis=0)
     cn_std = np.std(cn_sum, axis=0)
