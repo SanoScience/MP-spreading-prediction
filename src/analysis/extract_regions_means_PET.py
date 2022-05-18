@@ -45,7 +45,7 @@ def visualize_PET(data):
     plt.colorbar()
     plt.show()
 
-def extract_regions_means(pet_data, atlas_data):
+def extract_regions_means(pet, pet_data, atlas_data):
     means = []
     # do not take atlas region with index=0, which indicates the background
     # however, in AAL3v1_1mm there is no label = 0 
@@ -54,14 +54,18 @@ def extract_regions_means(pet_data, atlas_data):
     assert len(atlas_labels) == 166
     
     for label in atlas_labels:
-        avg = pet_data[np.where(label == atlas_data)].mean()
+        try:
+            avg = pet_data[np.where(label == atlas_data)].mean()
+        except Exception as e:
+            logging.erro(f"Invalid index for image {pet}")
+            avg = 0
         means.append(avg)
     
     # normalize within the PET (divide by maximum value)
     max_val = max(means)
     for v in means:
         v /= max_val
-        assert v>=0 and v<=1
+        if v>=0 and v<=1: logging.error(f"Image {pet} with invalid value {v}")
         
     return means
 
@@ -74,7 +78,7 @@ def save_concentrations(concentrations, path):
 def run(pet, atlas_data, q):    
     pet_data = load_pet(pet)
     if emptiness_test(pet, pet_data): return
-    region_means = extract_regions_means(pet_data, atlas_data)
+    region_means = extract_regions_means(pet, pet_data, atlas_data)
     q.put_nowait((pet, region_means))
     return
     
@@ -131,8 +135,8 @@ if __name__ == '__main__':
         if 'sub-CN' in pet:
             cn_sum.append(regions)
         done += 1
-    
-    # Z score normalization    
+        
+    logging.info("Z-score normalization")
     cn_mean = np.mean(cn_sum, axis=0)
     cn_std = np.std(cn_sum, axis=0)
     
