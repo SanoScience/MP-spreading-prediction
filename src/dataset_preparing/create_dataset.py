@@ -59,6 +59,13 @@ class datasetThread(threading.Thread):
                     t1_concentration_path = pets_list[i]
                     t1_concentration = load_matrix(t1_concentration_path)
 
+            t0_sum = sum(t0_concentration)
+            t1_sum = sum(t1_concentration)
+            logging.info(f"Subject {self.subject} has t0={t0_sum} and t1={t1_sum}")
+            if t1_sum < t0_sum:
+                wrong_subjects.append(self.subject)
+                raise Exception(f"Subject {self.subject} has a gap baseline-followup of {t1_sum-t0_sum}")
+
             """
             WARNING
             Higher levels of Amyloid-Beta at followup are not sustained by scientific evidence, and the followup could present lower concentrations than baseline due to scanner/computational defects. We reject only pets with very negative changes in deposition levels
