@@ -62,7 +62,7 @@ class datasetThread(threading.Thread):
             t0_sum = sum(t0_concentration)
             t1_sum = sum(t1_concentration)
             logging.info(f"Subject {self.subject} has t0={t0_sum} and t1={t1_sum}")
-            if t1_sum < t0_sum:
+            if t1_sum <= t0_sum:
                 wrong_subjects.append(self.subject)
                 raise Exception(f"Subject {self.subject} has a gap baseline-followup of {t1_sum-t0_sum}")
 

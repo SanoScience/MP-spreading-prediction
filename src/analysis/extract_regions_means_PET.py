@@ -122,7 +122,7 @@ if __name__ == '__main__':
         p.start()
         procs.append(p)
         counter +=1
-        if counter%4 == 0 and counter > 0:
+        if counter%num_cores == 0 and counter > 0:
             pet, regions = q.get()      
             concentrations[pet] = np.array(regions)
             if 'sub-CN' in pet:
