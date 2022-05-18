@@ -62,7 +62,7 @@ def extract_regions_means(pet, pet_data, atlas_data):
         means.append(avg)
     
     # normalize within the PET (divide by maximum value)
-    max_val = max(means)
+    max_val = max(means) if max(means) > 0 else 1
     for v in means:
         v /= max_val
         if v<0 or v>1: logging.error(f"Image {pet} with invalid value {v}")
