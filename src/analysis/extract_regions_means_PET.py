@@ -107,7 +107,7 @@ if __name__ == '__main__':
     procs = []
     for img in tqdm(pets):
         logging.info(f'Beta-amyloid concentration extraction in image: {img}')
-        p = multiprocessing.Process(target=run, args=(img, atlas_data))
+        p = multiprocessing.Process(target=run, args=(img, atlas_data, q))
         p.start()
         procs.append(p)
         
