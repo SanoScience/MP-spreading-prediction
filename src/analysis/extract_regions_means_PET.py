@@ -106,23 +106,33 @@ if __name__ == '__main__':
     pets = glob(dataset_dir)
     q = multiprocessing.Queue()
     procs = []
-    for img in tqdm(pets):
-        logging.info(f'Beta-amyloid concentration extraction in image: {img}')
-        p = multiprocessing.Process(target=run, args=(img, atlas_data, q))
-        p.start()
-        procs.append(p)
-    
-    # Z score normalization 
+    counter = 0  
+    done = 0
     concentrations = {}
     cn_sum = []
     counter = 0
-    while counter < len(procs):
+    
+    for i in tqdm(range(len(pets))):
+        logging.info(f'Beta-amyloid concentration extraction in image: {pets[i]}')
+        p = multiprocessing.Process(target=run, args=(pets[i], atlas_data, q))
+        p.start()
+        procs.append(p)
+        counter +=1
+        if counter%4 == 0 and counter > 0:
+            pet, regions = q.get()      
+            concentrations[pet] = np.array(regions)
+            if 'sub-CN' in pet:
+                cn_sum.append(regions)
+            counter -= 1
+            done += 1
+    while done < len(procs):
         pet, regions = q.get()      
         concentrations[pet] = np.array(regions)
         if 'sub-CN' in pet:
             cn_sum.append(regions)
-        counter += 1
+        done += 1
     
+    # Z score normalization    
     cn_mean = np.mean(cn_sum, axis=0)
     cn_std = np.std(cn_sum, axis=0)
     
