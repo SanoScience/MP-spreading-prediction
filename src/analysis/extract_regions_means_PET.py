@@ -1,10 +1,12 @@
 ''' Script for extracting mean amyloid beta concentration 
 from brain regions based on atlas. '''
 
+from collections import defaultdict
 import os
 from glob import glob
 import logging
 import csv
+from statistics import mean
 from tqdm import tqdm
 
 import nibabel
@@ -54,21 +56,26 @@ def extract_regions_means(pet_data, atlas_data):
     for label in atlas_labels:
         avg = pet_data[np.where(label == atlas_data)].mean()
         means.append(avg)
+    
+    # normalize within the PET (divide by maximum value)
+    max_val = max(means)
+    for v in means:
+        v /= max_val
+        assert v>=0 and v<=1
+        
     return means
 
 def save_concentrations(concentrations, path):
     with open(path, 'w') as f:
         write = csv.writer(f)
         write.writerow(concentrations)
+    logging.info(f'Extracted concentrations saved in {path}')
 
-def run(pet, atlas_data):    
-    output_path = pet.replace('.nii.gz', '.csv')
-            
+def run(pet, atlas_data, q):    
     pet_data = load_pet(pet)
     if emptiness_test(pet, pet_data): return
     region_means = extract_regions_means(pet_data, atlas_data)
-    save_concentrations(region_means, output_path)
-    logging.info(f'Extracted concentrations saved in {output_path}')
+    q.put_nowait((pet, region_means))
     
 
 start_time = datetime.today()
@@ -96,6 +103,7 @@ if __name__ == '__main__':
     logging.info(f"{num_cores} cores available")
 
     pets = glob(dataset_dir)
+    q = multiprocessing.Queue()
     procs = []
     for img in tqdm(pets):
         logging.info(f'Beta-amyloid concentration extraction in image: {img}')
@@ -114,3 +122,25 @@ if __name__ == '__main__':
         # wait the last chunk            
         for p in procs:
             p.join() 
+    
+    # Z score normalization 
+    concentrations = {}
+    cn_sum = []
+    while not q.empty():
+        pet, regions = q.get()      
+        concentrations[pet] = np.array(regions)
+        if 'sub-CN' in pet:
+            cn_sum.append(regions)
+    
+    cn_mean = np.mean(cn_sum, axis=0)
+    cn_std = np.std(cn_sum, axis=0)
+    
+    for pet in concentrations.keys():
+        # z-score (region(i) - healthy_mean(i))/healthy_std(i)
+        concentrations[pet] = (concentrations[pet] - cn_mean)/cn_std
+        
+        # sigmoid normalization 1/(e^(-region(i)) + e^(region(i)))
+        concentrations[pet] = 1/(np.exp(-1*concentrations[pet]) + np.exp(concentrations[pet]))  
+        
+        output_path = pet.replace('.nii.gz', '.csv')          
+        save_concentrations(concentrations[pet], output_path)
