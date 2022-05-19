@@ -1,3 +1,8 @@
+"""
+    SYNOPSIS
+    python3 simulation_ESM.py <category> <cores> <beta_0> <delta_0> <mu_noise> <sigma_noise> <iterations>
+"""
+
 ''' Simulation of spreading the misfolded beta_amyloid with 
 Intra-brain Epidemic Spreading model. 
 
@@ -22,7 +27,7 @@ from tqdm import tqdm
 from scipy.stats import pearsonr as pearson_corr_coef
 
 from utils_vis import save_prediction_plot
-from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse
+from utils import drop_data_in_connect_matrix, load_matrix, calc_mse
 
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
 
@@ -92,11 +97,7 @@ def Simulation(concentration, connect_matrix, years, timestep, beta_0, delta_0, 
     return concentration
         
         
-def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noise, queue):
-    subject_output_dir = os.path.join(output_dir, subj)
-    if not os.path.exists(subject_output_dir):
-        os.makedirs(subject_output_dir)
-      
+def run_simulation(paths, subj, beta_0, delta_0, mu_noise, sigma_noise, iterations, queue):      
     try:
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['CM']))
         #connect_matrix = prepare_cm(connect_matrix)
@@ -113,7 +114,7 @@ def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noi
         t1_concentration_pred = Simulation(
             t0_concentration.copy(),           # initial concentration
             connect_matrix,             # CM
-            years,                      # t_total
+            iterations,                      # t_total
             timestep,                   # dt
             beta_0,                     # beta_0
             delta_0,                    # delta_0
@@ -131,7 +132,7 @@ def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noi
         return
     
     try:
-        rmse = calc_rmse(t1_concentration, t1_concentration_pred)
+        rmse = calc_mse(t1_concentration, t1_concentration_pred)
         corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
         if np.isnan(rmse) or np.isinf(rmse): raise Exception("Invalid value of RMSE")
         if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
@@ -139,7 +140,7 @@ def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noi
         logging.error(e)
         return
     
-    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, os.path.join(subject_output_dir, 'ESM_prediction.png'), rmse, corr_coef)
+    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, subj + 'ESM.png', rmse, corr_coef)
     
     if queue:
         queue.put([subj, rmse, corr_coef])
@@ -164,8 +165,7 @@ if __name__=="__main__":
         category = 'ALL' if category == '' else category
 
     dataset_path =  config['paths']['dataset_dir'] +  f'datasets/dataset_{category}.json'
-    output_subj = 'results/subjects'
-    output_res = 'results/benchmarks'
+    output_res = config['paths']['dataset_dir'] + 'simulations/'
     if not os.path.exists(output_res):
         os.makedirs(output_res)
 
@@ -214,6 +214,14 @@ if __name__=="__main__":
             sigma_noise = float(input('Insert the value for sigma_noise: '))
         except Exception as e:
             logging.error(e)
+            
+    iterations = int(sys.argv[6]) if len(sys.argv) > 6 else -1
+    while iterations < 0:
+        try:
+            iterations = int(input('Insert the number of iterations [default 20\'000]: '))
+        except Exception as e:
+            logging.error(e)
+            iterations = 20000
 
     procs = []
     queue = multiprocessing.Queue()
@@ -223,7 +231,6 @@ if __name__=="__main__":
     for subj, paths in tqdm(dataset.items()):
         p = multiprocessing.Process(target=run_simulation, args=(
             paths, 
-            output_subj, 
             subj,
             beta_0, 
             delta_0, 
