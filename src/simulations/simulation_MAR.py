@@ -47,7 +47,7 @@ class MARsimulation:
         self.generate_indicator_matrix()
         pred_concentrations = None
         try:
-            self.coef_matrix = self.run_gradient_descent() # get the model params
+            self.coef_matrix = self.run_gradient_descent(vis_error=True) # get the model params
             pred_concentrations = self.coef_matrix @ self.init_concentrations # make predictions 
         except Exception as e:
             logging.error(e)
@@ -98,16 +98,12 @@ class MARsimulation:
                                           
         if vis_error: visualize_error(error_buffer)
 
-        #logging.info(f"Final reconstruction error: {error_reconstruct}")
-        #logging.info(f"Iterations: {iter_count}")
+        logging.info(f"Final reconstruction error: {error_reconstruct}")
+        logging.info(f"Iterations: {iter_count}")
         return A
                   
 def run_simulation(subject, paths, output_subj, connect_matrix, lam, iter_max, results_stem, queue):    
     ''' Run simulation for single patient. '''
-      
-    subject_output_subj = os.path.join(output_subj, subject)
-    if not os.path.exists(subject_output_subj):
-        os.makedirs(subject_output_subj)
     
     try:
         # load connectome ('is' works also with objects, '==' doesn't)
@@ -135,8 +131,8 @@ def run_simulation(subject, paths, output_subj, connect_matrix, lam, iter_max, r
     except Exception as e:
         logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}") 
         
-    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subject, os.path.join(subject_output_subj, results_stem+'_prediction.png'), rmse, corr_coef)
-    save_coeff_matrix(os.path.join(subject_output_subj,'A_'+results_stem+'.csv'), simulation.coef_matrix)
+    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subject, subject + results_stem+'_CMAR.png', rmse, corr_coef)
+    save_coeff_matrix(subject + results_stem+'_CMAR.csv', simulation.coef_matrix)
 
     queue.put([subject, rmse, corr_coef])
 
@@ -239,7 +235,7 @@ if __name__ == '__main__':
         category = 'ALL' if category == '' else category
 
     dataset_path =  config['paths']['dataset_dir'] +  f'datasets/dataset_{category}.json'
-    output_subj = 'results/subjects'
+    output_subj = config['paths']['dataset_dir']
     output_res = 'results/benchmarks'
     if not os.path.exists(output_res):
         os.makedirs(output_res)
