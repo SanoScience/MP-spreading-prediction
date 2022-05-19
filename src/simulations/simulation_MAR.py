@@ -96,9 +96,6 @@ class MARsimulation:
                     if norm < self.gradient_th:
                         logging.info(f"Gradient norm: {norm}.\nTermination criterion met for subject {self.subject}, quitting...")
                         break    
-
-                    if iter_count % 100000 == 0:
-                        logging.info(f'Gradient norm at {iter_count}th iteration for subject {self.subject}: {norm:.2f} (current eta {self.eta}). Reconstruction error: {error_reconstruct}')
                     
                     self.eta += self.eta_step
                     iter_count += 1
