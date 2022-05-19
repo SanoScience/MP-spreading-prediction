@@ -48,15 +48,13 @@ def compute_gini(concentration):
     return 0.5 * rmad
 
 
-def Simulation(concentration, connect_matrix, years, timestep, beta_0, delta_0, mu_noise, sigma_noise, velocity=1, n_regions = 166):
+def Simulation(concentration, connect_matrix, beta_0, delta_0, mu_noise, sigma_noise, iterations, timestep, velocity=1, n_regions = 166):
     
     #TODO: should I use something different from 0 for null concentrations? (i.e. 0.1) Possibly depending on strenght of connections
     # between healthy and infected regions (and also internal concentrations)
     
     # Define gaussian noise (NOTE authors don't differentiate it by region nor by time)
     noise = np.random.normal(mu_noise, sigma_noise)
-    
-    iterations = int(years/timestep)
     
     #P = define_initial_P(concentration, connect_matrix, distances, max_concentration)
     # NOTE Initial P has to be explored for different values (i.e. 0.5 instead of 1)
@@ -97,7 +95,7 @@ def Simulation(concentration, connect_matrix, years, timestep, beta_0, delta_0, 
     return concentration
         
         
-def run_simulation(paths, subj, beta_0, delta_0, mu_noise, sigma_noise, iterations, queue):      
+def run_simulation(paths, subj, beta_0, delta_0, mu_noise, sigma_noise, iterations, timestep, queue):      
     try:
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['CM']))
         #connect_matrix = prepare_cm(connect_matrix)
@@ -106,20 +104,19 @@ def run_simulation(paths, subj, beta_0, delta_0, mu_noise, sigma_noise, iteratio
         t1_concentration = load_matrix(paths['followup'])
     except Exception as e:
         logging.error(e)
+        queue.put([subj, -1, -1])
         return
-    
-    years = 2
-    timestep = 0.0001
+
     try:
         t1_concentration_pred = Simulation(
             t0_concentration.copy(),           # initial concentration
-            connect_matrix,             # CM
-            iterations,                      # t_total
-            timestep,                   # dt
+            connect_matrix,             # CM                   
             beta_0,                     # beta_0
             delta_0,                    # delta_0
             mu_noise,                   # mu_noise
             sigma_noise,                # sigma_noise
+            iterations,
+            timestep,
             1,                          # v
             166,                        # N_regions
             )
@@ -129,23 +126,29 @@ def run_simulation(paths, subj, beta_0, delta_0, mu_noise, sigma_noise, iteratio
     except Exception as e:
         logging.error("Error in simulation")
         logging.error(e)
+        queue.put([subj, -1, -1])
         return
     
     try:
-        rmse = calc_mse(t1_concentration, t1_concentration_pred)
+        mse = calc_mse(t1_concentration, t1_concentration_pred)
         corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        if np.isnan(rmse) or np.isinf(rmse): raise Exception("Invalid value of RMSE")
+        if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
         if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
     except Exception as e:
         logging.error(e)
+        queue.put([subj, -1, -1])
         return
     
-    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, subj + 'ESM.png', rmse, corr_coef)
-    
+    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, subj + 'ESM.png', mse, corr_coef)
+    logging.info(f"Saving prediction in {subj + 'ESM.png'}")
     if queue:
-        queue.put([subj, rmse, corr_coef])
+        queue.put([subj, mse, corr_coef])
         
     return
+
+
+start_time = datetime.today()
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
 
 if __name__=="__main__":
     total_time = time()
@@ -170,10 +173,10 @@ if __name__=="__main__":
         os.makedirs(output_res)
 
     pt_avg = PrettyTable()
-    pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+    pt_avg.field_names = ["Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
     
     pt_subs = PrettyTable()
-    pt_subs.field_names = ["ID", "RMSE", "Pearson"]
+    pt_subs.field_names = ["ID", "MSE", "Pearson"]
     pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
     with open(dataset_path, 'r') as f:
@@ -215,17 +218,25 @@ if __name__=="__main__":
         except Exception as e:
             logging.error(e)
             
-    iterations = int(sys.argv[6]) if len(sys.argv) > 6 else -1
+    iterations = int(sys.argv[7]) if len(sys.argv) > 7 else -1
     while iterations < 0:
         try:
             iterations = int(input('Insert the number of iterations [default 20\'000]: '))
         except Exception as e:
             logging.error(e)
             iterations = 20000
+            
+    timestep = float(sys.argv[8]) if len(sys.argv) > 8 else -1
+    while timestep < 0 or timestep > 1:
+        try:
+            timestep = float(input('Insert timestep [default 0.001]: '))
+        except Exception as e:
+            logging.error(e)
+            timestep = 0.001
 
     procs = []
     queue = multiprocessing.Queue()
-    total_rmse = []
+    total_mse = []
     total_pcc = []
     
     for subj, paths in tqdm(dataset.items()):
@@ -236,6 +247,8 @@ if __name__=="__main__":
             delta_0, 
             mu_noise, 
             sigma_noise, 
+            iterations,
+            timestep,
             queue))
         p.start()
         procs.append(p)
@@ -249,12 +262,12 @@ if __name__=="__main__":
         p.join()
     
     while not queue.empty():
-        subj, rmse, pcc = queue.get()
-        total_rmse.append(rmse)
+        subj, mse, pcc = queue.get()
+        total_mse.append(mse)
         total_pcc.append(pcc)
-        pt_subs.add_row([subj, round(rmse,2), round(pcc,2)])
+        pt_subs.add_row([subj, round(mse,2), round(pcc,2)])
    
-    pt_avg.add_row([format(np.mean(total_rmse, axis=0), '.2f'), format(np.std(total_rmse, axis=0), '.2f'), format(np.mean(total_pcc, axis=0), '.2f'), format(np.std(total_pcc, axis=0), '.2f')])
+    pt_avg.add_row([format(np.mean(total_mse, axis=0), '.2f'), format(np.std(total_mse, axis=0), '.2f'), format(np.mean(total_pcc, axis=0), '.2f'), format(np.std(total_pcc, axis=0), '.2f')])
 
     total_time = time() - total_time
     filename = f"{output_res}/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_ESM_{category}_{beta_0}_{delta_0}_{mu_noise}_{sigma_noise}.txt"

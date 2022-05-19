@@ -46,16 +46,15 @@ def visualize_diffusion_timeplot(matrix, timestep, total_time, save_dir=None):
     
 def save_prediction_plot(baseline, prediction, followup, subject, filepath, error=None, corr_coeff=None):
     plt.figure(figsize=(15, 5))
-    plt.plot(baseline, '--', marker='o', c='b', label='initial concentration t0')
+    plt.plot(baseline, '-', marker='o', c='b', label='initial concentration t0')
     plt.plot(prediction, '--', marker='o', c='r', label='predicted concentration t1')
-    plt.plot(followup, '--', marker='o', c='g', label='true concentration t1')
+    plt.plot(followup, '-', marker='o', c='g', label='true concentration t1')
     plt.xlabel('ROI (index of brain region based on AAL atlas)')
     plt.ylabel('concentration of misfolded proteins')
     plt.legend(loc='upper right')
     if error is not None: plt.title(f'Subject: {subject} \nError between true and predicted t1: {error:.2f}\nPearson correlation coeff: {corr_coeff:.2f}')
     plt.tight_layout()
     plt.savefig(filepath)
-    
     # After saving the figure, explicitly close it to avoid memory wasting
     plt.close()
     return 
