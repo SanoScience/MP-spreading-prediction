@@ -39,11 +39,11 @@ def save_terminal_concentration(save_dir, concentration_pred, file_stem):
 def drop_negative_predictions(predictions):
     return np.maximum(predictions, 0)
 
-def calc_rmse(output, target):
+def calc_mse(output, target):
     ''' Compare output from simulation with 
     the target data extracted from PET using MSE metric. '''
-    RMSE = np.sqrt(np.sum((output - target)**2) / len(output))
-    return RMSE 
+    MSE = np.sum((output - target)**2) / len(output)
+    return MSE 
 
 def calc_msle(output, target):
     ''' Compare output from simulation with 

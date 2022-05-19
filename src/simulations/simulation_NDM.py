@@ -135,7 +135,7 @@ def run_simulation(subject, paths, output_dir, queue=None):
         os.makedirs(subject_output_dir)
       
     try:
-        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
+        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['CM']))
         #connect_matrix = prepare_cm(connect_matrix)
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])

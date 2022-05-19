@@ -1,3 +1,8 @@
+"""
+    SYNOPSIS
+    python3 simulation_MAR.py <category> <cores> <train_size> <lamda> <iter_max> <N_fold>
+"""
+
 ''' Spreading model based on Multivariate Autoregressive Model. 
 
 Based on publication: 
@@ -27,17 +32,22 @@ logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [
 np.seterr(all = 'raise')
 
 class MARsimulation:
-    def __init__(self, connect_matrix, t0_concentrations, t1_concentrations, lam, iter_max=int(2e6)):
-        self.N_regions = 166                                                    # no. of brain areas from the atlas
-        self.iter_max = iter_max
-        self.error_th = 0.01                                                    # acceptable error threshold for the reconstruction error
-        self.gradient_th = 0.1                                                  # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-10                                                         # learning rate of the gradient descent       
-        self.cm = connect_matrix                                                # connectivity matrix 
-        self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)
-        self.lam = lam
+    def __init__(self, subject, connect_matrix, t0_concentrations, t1_concentrations, lam, iter_max=int(2e6)):
+        self.subject = subject
+        self.cm = connect_matrix
         self.init_concentrations = t0_concentrations
         self.final_concentrations = t1_concentrations
+        self.lam = lam
+        self.iter_max = iter_max
+
+        self.N_regions = 166                                                    # no. of brain areas from the atlas
+        self.error_th = 0.01                                                  # acceptable error threshold for the reconstruction error
+        self.gradient_th = 0.01                                               # gradient difference threshold in stopping criteria in GD
+        self.eta = 1e-3                                                        # learning rate of the gradient descent       
+        self.backup_eta = 1e-5                         
+        self.eta_step = 1e-4
+        self.max_retry = 10
+        self.min_tract_num = 2                                                  # min no. of fibers to be kept (only when inverse_log==True)        
 
     def run(self):
         ''' 
@@ -47,10 +57,11 @@ class MARsimulation:
         self.generate_indicator_matrix()
         pred_concentrations = None
         try:
-            self.coef_matrix = self.run_gradient_descent(vis_error=True) # get the model params
+            self.coef_matrix = self.run_gradient_descent() # get the model params
             pred_concentrations = self.coef_matrix @ self.init_concentrations # make predictions 
         except Exception as e:
             logging.error(e)
+            logging.error(f"Exception during gradient descent for subject {self.subject}")
 
         return pred_concentrations
         
@@ -61,159 +72,174 @@ class MARsimulation:
         B has zero elements where no structural connectivity appears. '''
         self.B = np.where(self.cm>0, 1, 0).astype('float32')
         
-    def run_gradient_descent(self, vis_error=False):
-        iter_count = 0                                                          # counter of the current iteration 
-        error_reconstruct = 1e10                                                # initial error of reconstruction gradients)
+    def run_gradient_descent(self, vis_error=False):                           
+        error_reconstruct = 1 + self.error_th                                 
         if vis_error: error_buffer = []                                         # reconstruction error along iterations
-        A = self.cm                                                             # the resulting effective matrix; initialized with connectivity matrix; [N_regions x N_regions]
-        gradient_th = 1
         gradient = np.ones((self.N_regions, self.N_regions)) 
-
-        while (error_reconstruct > self.error_th) and iter_count < self.iter_max:
-            try:
-                # calculate reconstruction error 
-                error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
-                if vis_error: error_buffer.append(error_reconstruct)
-                
-                # gradient computation
-                gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) + self.lam * np.sum(np.abs(A)) 
-                new_A = (A - (self.eta * gradient)) * self.B
-                if np.isnan(new_A): raise Exception("Numerical overflow")
-                A = new_A    
-                
-                norm = np.linalg.norm(gradient)
-                if norm < gradient_th:
-                    logging.info(f"Gradient norm: {norm}.\nTermination criterion met, quitting...")
-                    break    
-
-                if iter_count % 100000 == 0:
-                    logging.info(f'Gradient norm at {iter_count}th iteration: {norm:.2f} (current eta {self.eta})')
+        trial = 0
+        while trial<self.max_retry:
+            iter_count = 0                               
+            A = np.copy(self.cm)
+            while (error_reconstruct > self.error_th) and iter_count < self.iter_max:
+                try:
+                    # calculate reconstruction error 
+                    error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
+                    if vis_error: error_buffer.append(error_reconstruct)
                     
-                iter_count += 1
-                self.eta+= 1/np.norm(gradient)
-            except FloatingPointError:   
-                self.eta /= 1e3
-                logging.warning(f'Overflow encountered at iteration {iter_count}. Resetting learning rate to: {self.eta}')
-                continue
+                    # gradient computation
+                    gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) #+ self.lam * np.sum(np.abs(A)) 
+                    A = (A - (self.eta * gradient)) * self.B  
+                    
+                    # ord=1 corresponds to max(sum(abs(x), axis=0))
+                    # ord=None corresponds to Frobenius norm
+                    norm = np.linalg.norm(gradient, ord=None)
+                    if norm < self.gradient_th:
+                        logging.info(f"Gradient norm: {norm}.\nTermination criterion met for subject {self.subject}, quitting...")
+                        break    
+
+                    if iter_count % 100000 == 0:
+                        logging.info(f'Gradient norm at {iter_count}th iteration for subject {self.subject}: {norm:.2f} (current eta {self.eta}). Reconstruction error: {error_reconstruct}')
+                    
+                    self.eta += self.eta_step
+                    iter_count += 1
+                except FloatingPointError:   
+                    #self.eta -= 1/(norm)
+                    logging.warning(f'Overflow encountered at iteration {iter_count} for subject {self.subject}. Restarting with smaller steps')
+                    self.eta = self.backup_eta
+                    self.eta_step /= 10
+                    break
+            if (error_reconstruct <= self.error_th) or iter_count == self.iter_max or norm < self.gradient_th: break
+            trial += 1
+        
+        if trial == self.max_retry: logging.error(f"Subject {self.subject} couldn't complete gradient descent")
                                           
         if vis_error: visualize_error(error_buffer)
 
-        logging.info(f"Final reconstruction error: {error_reconstruct}")
-        logging.info(f"Iterations: {iter_count}")
+        logging.info(f"Final reconstruction error for subject {self.subject}: {error_reconstruct} ({iter_count} iterations)")
         return A
                   
-def run_simulation(subject, paths, output_subj, connect_matrix, lam, iter_max, results_stem, queue):    
+def run_simulation(subject, paths, connect_matrix, lam, iter_max, queue):    
     ''' Run simulation for single patient. '''
     
     try:
-        # load connectome ('is' works also with objects, '==' doesn't)
-        if connect_matrix is None:
-            connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
-            #connect_matrix = prepare_cm(connect_matrix)
-        
-        # load proteins concentration in brain regions
+        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['CM']))
+        #connect_matrix = prepare_cm(connect_matrix)
+
         t0_concentration = load_matrix(paths['baseline']) 
         t1_concentration = load_matrix(paths['followup'])
-        #logging.info(f'{subject} sum of t0 concentration: {np.sum(t0_concentration):.2f}')
-        #logging.info(f'{subject} sum of t1 concentration: {np.sum(t1_concentration):.2f}')
     except Exception as e:
         logging.error(e)
-        logging.error(f"Exception causing abortion of simulation for subject {subject}")
+        logging.error(f"Exception during loading of CM/ for subject {subject}")
+        queue.put([subject, -1, -1])
+        return
 
-    rmse = corr_coef = None
+    mse = corr_coef = None
     try:
-        simulation = MARsimulation(connect_matrix, t0_concentration, t1_concentration, lam, iter_max)
+        simulation = MARsimulation(subject, connect_matrix, t0_concentration, t1_concentration, lam, iter_max)
+    except Exception as e:
+        logging.error(f"Exception happened during initialization of 'MARsimulation' object for subject {subject}. Traceback:\n{e}") 
+        queue.put([subject, -1, -1])
+        return
+
+    try:
         t1_concentration_pred = drop_negative_predictions(simulation.run())
-        rmse = calc_rmse(t1_concentration, t1_concentration_pred)
+    except Exception as e:
+        logging.error(f"Exception happened for during execution of simulation for subject {subject}. Traceback:\n{e}") 
+        queue.put([subject, -1, -1])
+        return 
+
+    try:
+        mse = calc_mse(t1_concentration, t1_concentration_pred)
         corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        if np.isnan(rmse) or np.isinf(rmse): raise Exception("Invalid value of RMSE")
+        if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
         if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
     except Exception as e:
-        logging.error(f"Exception happened for \'simulation\' method of subject {subject}. Traceback:\n{e}") 
-        
-    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subject, subject + results_stem+'_CMAR.png', rmse, corr_coef)
-    save_coeff_matrix(subject + results_stem+'_CMAR.csv', simulation.coef_matrix)
+        logging.error(f"Exception happened for Pearson correlation coefficient and MSE computation for subject {subject}. Traceback:\n{e}") 
+        queue.put([subject, -1, -1])
+        return
+    
+    try:
+        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subject, subject +'CMAR.png', mse, corr_coef)
+        save_coeff_matrix(subject +'CMAR.csv', simulation.coef_matrix)
+    except Exception as e:
+        logging.error(f"Exception happened during saving of simulation results for subject {subject}. Traceback:\n{e}") 
+        queue.put([subject, -1, -1])
+        return
 
-    queue.put([subject, rmse, corr_coef])
+    queue.put([subject, mse, corr_coef])
 
-    return simulation.coef_matrix
+    return
            
 ### MULTIPROCESSING ###        
 
-def parallel_training(dataset, output_subj, num_cores, lam, iter_max, dicts_subj):
+def parallel_training(dataset, num_cores, lam, iter_max, dicts_subj):
     ''' 1st approach: train A matrix for each subject separately.
     The final matrix is an average matrix. '''
-    file_stem = 'par_MAR'
     procs = []
     queue = multiprocessing.Queue()
+    counter = 0
+    done = 0
     for subj, paths in tqdm(dataset.items()):
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_subj, None, lam, iter_max, file_stem, queue))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, None, lam, iter_max, queue))
         p.start()
         procs.append(p)        
-        while len(procs)%num_cores == 0 and len(procs) > 0:
-            for p in procs:
-                p.join(timeout=10)
-                if not p.is_alive():
-                    procs.remove(p)         
-        for p in procs:
-            p.join()
-    
-    while not queue.empty():
-        subj, rmse, pcc = queue.get()
-        dicts_subj[subj].append([rmse, pcc])
+        counter += 1
+        if counter%num_cores == 0 and counter > 0:
+            subj, mse, pcc = queue.get()
+            # mse and pcc are -1 if an exception happened during simulation, and are therefore not considered
+            if mse != -1 and pcc != -1:
+                dicts_subj[subj].append([mse, pcc])
+            counter -= 1
+            done += 1
+
+    while done < len(procs):
+        subj, mse, pcc = queue.get()
+        # mse and pcc are -1 if an exception happened during simulation, and are therefore not considered
+        if mse != -1 and pcc != -1:
+            dicts_subj[subj].append([mse, pcc])
+        done += 1
     
     conn_matrices = []
     # read results saved by "run simulation method"
     for subj, _ in dataset.items():
-        conn_matrices.append(load_matrix(os.path.join(output_subj, subj, f'A_{file_stem}.csv')))
-    
+        try:
+            conn_matrices.append(load_matrix(subj + 'CMAR.csv'))
+        except Exception as e:
+            logging.error(f"Matrix for subject {subj} could not be found")
+
     avg_conn_matrix = np.mean(conn_matrices, axis=0)
     return avg_conn_matrix
 
-
-def sequential_training(dataset, output_subj, lam, iter_max, dicts_subj):
-    ''' DEPRECATED 
-    2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)'''
-    file_stem = 'seq_MAR'
-    connect_matrix = None
-    queue = multiprocessing.Queue()
-    for subj, paths in tqdm(dataset.items()):
-        tmp = None
-        tmp = run_simulation(subj, paths, output_subj, connect_matrix, lam, iter_max, file_stem, queue)
-        connect_matrix = tmp if tmp is not None else connect_matrix
-    
-    while not queue.empty():
-        subj, rmse, pcc = queue.get()
-        dicts_subj[subj].append([rmse, pcc])
-    
-    return connect_matrix
+''' DEPRECATED (INEFFICIENT)
+    2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)
+'''
 
 def test(conn_matrix, test_set, dicts_subj):
-    rmse_list = []
+    mse_list = []
     pcc_list = []
     for subj, paths in tqdm(test_set.items()):
         try:
             t0_concentration = load_matrix(paths['baseline'])
             t1_concentration = load_matrix(paths['followup'])
             pred = conn_matrix @ t0_concentration
-            rmse = calc_rmse(t1_concentration, pred)
+            mse = calc_mse(t1_concentration, pred)
             pcc = pearson_corr_coef(t1_concentration, pred)[0]
-            if np.isnan(rmse) or np.isinf(rmse): raise Exception("Invalid value of RMSE")
+            if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
             if np.isnan(pcc): raise Exception("Invalid value of PCC")
         except Exception as e:
             logging.error(e)
             continue
         else:
-            rmse_list.append(rmse)
+            mse_list.append(mse)
             pcc_list.append(pcc)
-            dicts_subj[subj].append([rmse, pcc])
+            dicts_subj[subj].append([mse, pcc])
     
-    avg_rmse = np.mean(rmse_list, axis=0)
+    avg_mse = np.mean(mse_list, axis=0)
     avg_pcc = np.mean(pcc_list, axis=0)
-    #logging.info(f"Average error on test samples for this fold: {avg_rmse}")
+    #logging.info(f"Average error on test samples for this fold: {avg_mse}")
     #logging.info(f"Average Pearson correlation on test samples for this fold: {avg_pcc}")
 
-    return avg_rmse, avg_pcc
+    return avg_mse, avg_pcc
 
 start_time = datetime.today()
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
@@ -235,18 +261,17 @@ if __name__ == '__main__':
         category = 'ALL' if category == '' else category
 
     dataset_path =  config['paths']['dataset_dir'] +  f'datasets/dataset_{category}.json'
-    output_subj = config['paths']['dataset_dir']
-    output_res = 'results/benchmarks'
+    output_res = config['paths']['dataset_dir'] + 'simulations/'
     if not os.path.exists(output_res):
         os.makedirs(output_res)
 
     pt_avg = PrettyTable()
-    pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+    pt_avg.field_names = ["Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
     
-    # Dictionary storing, for each patient (key), a list of couples (RMSE, PCC)
+    # Dictionary storing, for each patient (key), a list of couples (MSE, PCC)
     dicts_subj = defaultdict(list)
     pt_subs = PrettyTable()
-    pt_subs.field_names = ["ID", "Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+    pt_subs.field_names = ["ID", "Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
     pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
     with open(dataset_path, 'r') as f:
@@ -277,9 +302,9 @@ if __name__ == '__main__':
     iter_max = int(sys.argv[5]) if len(sys.argv) > 5 else -1
     while iter_max <= 0:
         try:
-            iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 10\'000]: '))
+            iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 1\'000\'000]: '))
         except Exception as e:
-            iter_max = 10000
+            iter_max = 1e6
 
     N_fold = int(sys.argv[6]) if len(sys.argv) > 6 else -1
     while N_fold < 1:
@@ -289,7 +314,7 @@ if __name__ == '__main__':
             logging.error(e)
             continue
 
-    total_rmse_par = []
+    total_mse_par = []
     total_pcc_par = []
 
     par_time = 0
@@ -307,25 +332,25 @@ if __name__ == '__main__':
                 test_set[subj] = paths
 
         start_time = time()
-        par_conn_matrix = parallel_training(train_set, output_subj, num_cores, lam, iter_max, dicts_subj)
+        par_conn_matrix = parallel_training(train_set, num_cores, lam, iter_max, dicts_subj)
         par_time += time() - start_time
 
-        rmse_par, pcc_par = test(par_conn_matrix, test_set, dicts_subj)
-        total_rmse_par.append(rmse_par)
+        mse_par, pcc_par = test(par_conn_matrix, test_set, dicts_subj)
+        total_mse_par.append(mse_par)
         total_pcc_par.append(pcc_par)
 
     # Note, these are the matrices from the last training phase (not the 'best of best')
     np.savetxt("results/A_matrix", par_conn_matrix, delimiter=',')
 
-    pt_avg.add_row([round(np.mean(total_rmse_par), 2), round(np.std(total_rmse_par), 2), round(np.mean(total_pcc_par), 2), round(np.std(total_pcc_par), 2)])
+    pt_avg.add_row([round(np.mean(total_mse_par), 2), round(np.std(total_mse_par), 2), round(np.mean(total_pcc_par), 2), round(np.std(total_pcc_par), 2)])
 
     for subj in dicts_subj.keys():
-        rmse_list = [el[0] for el in dicts_subj[subj]]
+        mse_list = [el[0] for el in dicts_subj[subj]]
         pcc_list = [el[1] for el in dicts_subj[subj]]
-        pt_subs.add_row([subj, round(np.mean(rmse_list),2), round(np.std(rmse_list),2), round(np.mean(pcc_list),2), round(np.std(pcc_list),2)])
+        pt_subs.add_row([subj, round(np.mean(mse_list),2), round(np.std(mse_list),2), round(np.mean(pcc_list),2), round(np.std(pcc_list),2)])
 
     total_time = time() - total_time
-    filename = f"{output_res}/{date}_MAR_{category}_{train_size}_{lam}_{iter_max}_{N_fold}.txt"
+    filename = f"{output_res}{date}_MAR_{category}_{train_size}_{lam}_{iter_max}_{N_fold}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")

@@ -32,13 +32,14 @@ logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5
 wrong_subjects = []
 
 class datasetThread(threading.Thread):
-   def __init__(self, threadID, dataset_dir, subject, queue, tracers= ['av45','fbb','pib']):
-      threading.Thread.__init__(self)
-      self.threadID = threadID
-      self.dataset_dir = dataset_dir
-      self.subject = subject
-      self.queue = queue 
-      self.tracers = tracers
+   def __init__(self, threadID, dataset_dir, subject, threshold, queue, tracers= ['av45','fbb','pib']):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.dataset_dir = dataset_dir
+        self.subject = subject
+        self.queue = queue 
+        self.tracers = tracers
+        self.threshold = threshold
 
    def run(self):    
         pets_list = []
@@ -62,7 +63,7 @@ class datasetThread(threading.Thread):
             t0_sum = sum(t0_concentration)
             t1_sum = sum(t1_concentration)
             logging.info(f"Subject {self.subject} has t0={t0_sum} and t1={t1_sum}")
-            if t1_sum < (t0_sum*0.90):
+            if t1_sum < (t0_sum*self.threshold):
                 wrong_subjects.append(self.subject)
                 raise Exception(f"Subject {self.subject} has a gap baseline-followup of {t1_sum-t0_sum}")
 
@@ -79,7 +80,7 @@ class datasetThread(threading.Thread):
             return None   
 
         results_dict = {
-        "connectome": connectivity_matrix_path, 
+        "CM": connectivity_matrix_path, 
         "baseline": t0_concentration_path, 
         "followup": t1_concentration_path
         }
@@ -130,8 +131,10 @@ def load_matrix(path):
     return data
 
 def save_dataset(dataset, filename):
+    # Convert list to dictionary, using the first element (subject folder) as key
+    ds = {subj[0]: subj[1] for subj in dataset}
     with open(filename, 'w+') as f:
-        json.dump(dataset, f, indent=4)
+        json.dump(ds, f, indent=4)
 
 if __name__ == '__main__':
     with open('../../config.yaml', 'r') as f:
@@ -158,14 +161,14 @@ if __name__ == '__main__':
         num_cores = multiprocessing.cpu_count()
     logging.info(f"{num_cores} cores available")
 
+    threshold = ''
+    try:
+        threshold = float(input('Threshold from 0 to 1 [default 1]: '))
+        if threshold < 0 or threshold > 1: raise Exception("Invalid number")
+    except Exception as e:
+        threshold = 1
     
     print(f'Initial no. of subjects: {len(subjects)}')
-    """
-    for c in categories:
-        dataset = {}
-        queueLock = threading.Lock()
-        dictQueue = queue.Queue(len(subjects))
-    """
     datasets = {}
     for c in categories:
         datasets[c]= []
@@ -174,7 +177,7 @@ if __name__ == '__main__':
     dictQueue = queue.Queue(len(subjects))
     for subj in subjects:
         try:
-            t = datasetThread(threading.active_count(), dataset_dir, subj, dictQueue)
+            t = datasetThread(threading.active_count(), dataset_dir, subj, threshold, dictQueue)
             t.start()
             while threading.active_count() == num_cores+1:
                 pass # simply wait

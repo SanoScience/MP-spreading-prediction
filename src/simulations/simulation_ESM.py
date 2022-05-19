@@ -98,7 +98,7 @@ def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noi
         os.makedirs(subject_output_dir)
       
     try:
-        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['connectome']))
+        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['CM']))
         #connect_matrix = prepare_cm(connect_matrix)
         connect_matrix += 1e-2
         t0_concentration = load_matrix(paths['baseline'])
@@ -112,7 +112,7 @@ def run_simulation(paths, output_dir, subj, beta_0, delta_0, mu_noise, sigma_noi
     try:
         t1_concentration_pred = Simulation(
             t0_concentration.copy(),           # initial concentration
-            connect_matrix,             # connectome
+            connect_matrix,             # CM
             years,                      # t_total
             timestep,                   # dt
             beta_0,                     # beta_0
