@@ -60,6 +60,9 @@ def extract_regions_means(pet, pet_data, atlas_data):
             logging.erro(f"Invalid index for image {pet}")
             avg = 0
         means.append(avg)
+
+    # subtract cerebellum mean from all voxels
+     
     
     # normalize within the PET (divide by maximum value)
     max_val = max(means) if max(means) > 0 else 1

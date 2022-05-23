@@ -4,7 +4,6 @@ import os
 from glob import glob
 
 import numpy as np
-from sklearn.metrics import mean_squared_log_error
 
 def load_matrix(path):
     data = np.genfromtxt(path, delimiter=",")
@@ -38,12 +37,6 @@ def save_terminal_concentration(save_dir, concentration_pred, file_stem):
     
 def drop_negative_predictions(predictions):
     return np.maximum(predictions, 0)
-
-def calc_mse(output, target):
-    ''' Compare output from simulation with 
-    the target data extracted from PET using MSE metric. '''
-    MSE = np.sum((output - target)**2) / len(output)
-    return MSE 
 
 def calc_msle(output, target):
     ''' Compare output from simulation with 

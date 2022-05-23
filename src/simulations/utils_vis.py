@@ -4,10 +4,9 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-import warnings
+import seaborn as sns
 
-# suppress ONLY matplotlib warnings
-#warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
+sns.set_theme(style="darkgrid")
 
 def visualize_NIfTI_data(data, depths, time_idx=None):
     ''' Visualize provided depths from NIfTI data at the specific time. 
@@ -45,6 +44,7 @@ def visualize_diffusion_timeplot(matrix, timestep, total_time, save_dir=None):
     plt.show() 
     
 def save_prediction_plot(baseline, prediction, followup, subject, filepath, error=None, corr_coeff=None):
+    '''
     plt.figure(figsize=(15, 5))
     plt.plot(baseline, '-', marker='o', c='b', label='initial concentration t0')
     plt.plot(prediction, '--', marker='o', c='r', label='predicted concentration t1')
@@ -57,6 +57,20 @@ def save_prediction_plot(baseline, prediction, followup, subject, filepath, erro
     plt.savefig(filepath)
     # After saving the figure, explicitly close it to avoid memory wasting
     plt.close()
+    '''
+    plt.figure(figsize=(20, 15))
+    sns.lineplot(data=baseline, label='baseline concentration', dashes=False, markers=True)
+    sns.lineplot(data=prediction, label='predicted concentration at followup', dashes=True, markers=True)
+    sns.lineplot(data=followup, label='followup concentration', dashes=False, markers=True)
+    plt.legend(loc='upper right')
+    plt.xlabel('ROI (index of brain region based on AAL3 atlas)')
+    plt.ylabel('concentration of misfolded proteins')
+
+    if error is not None: plt.title(f'Subject: {subject} \nError between true and predicted t1: {error:.2f}\nPearson correlation coeff: {corr_coeff:.2f}')
+    #plt.tight_layout()
+    plt.savefig(filepath)
+    plt.close()
+
     return 
     
 def visualize_error(error):
