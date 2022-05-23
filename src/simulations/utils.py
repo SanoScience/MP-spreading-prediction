@@ -37,8 +37,3 @@ def save_terminal_concentration(save_dir, concentration_pred, file_stem):
     
 def drop_negative_predictions(predictions):
     return np.maximum(predictions, 0)
-
-def calc_msle(output, target):
-    ''' Compare output from simulation with 
-    the target data extracted from PET using Mean squared logarithmic error metric. '''
-    return mean_squared_log_error(target, output)

@@ -42,13 +42,11 @@ class MARsimulation:
         self.use_binary = user_binary
         self.iter_max = iter_max
 
-        self.N_regions = 166            # no. of brain areas from the atlas
-        self.error_th = 0            # acceptable error threshold for the reconstruction error
-        self.gradient_th = 0         # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-3                 # learning rate of the gradient descent       
-        self.backup_eta = 1e-7                         
-        self.eta_step = 1e-4
-        self.max_retry = 10  
+        self.error_th = 1e-6                                                  # acceptable error threshold for the reconstruction error
+        self.gradient_th = 1e-6                                               # gradient difference threshold in stopping criteria in GD
+        self.eta = 1e-5                                                        # learning rate of the gradient descent                             
+        self.eta_step = 1e-6
+        self.max_retry = 10 
 
     def run(self):
         ''' 
@@ -57,6 +55,7 @@ class MARsimulation:
         
         self.generate_indicator_matrix()
         pred_concentrations = None
+        logging.info(f"Starting gradient descent for subject {self.subject}")
         try:
             self.coef_matrix = self.run_gradient_descent() # get the model params
             pred_concentrations = self.coef_matrix @ self.init_concentrations # make predictions 
@@ -71,7 +70,6 @@ class MARsimulation:
         ''' Construct a matrix with only zeros and ones to be used to 
         reinforce the zero connection (this is **B** in our paper).
         B has zero elements where no structural connectivity appears. '''
-        # NOTE: B is a matrix of ones (EXPERIMENTAL)
         if self.use_binary:
             self.B = np.where(self.cm>0, 1, 0)
         else:
@@ -83,8 +81,8 @@ class MARsimulation:
         trial = 0
         while trial<self.max_retry:
             iter_count = 0                               
-            #A = np.copy(self.cm)
-            A = np.ones_like(self.cm)
+            A = np.copy(self.cm)
+            #A = np.ones_like(self.cm)
             while (error_reconstruct > self.error_th) and iter_count < self.iter_max:
                 try:
                     # NOTE: numpy.linalg.norm has a parameter 'ord' which specifies the kind of norm to compute
@@ -92,7 +90,8 @@ class MARsimulation:
                     # ord=None corresponds to Frobenius norm (square root of the sum of the squared elements)
 
                     # calculate reconstruction error 
-                    error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations)**2
+                    #error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations)**2
+                    error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
                     if vis_error: error_buffer.append(error_reconstruct)
                 except FloatingPointError as e:
                     logging.warning(e)
@@ -101,7 +100,7 @@ class MARsimulation:
 
                 try:
                     # gradient computation
-                    gradient = -(self.final_concentrations - A @ self.init_concentrations) @ self.init_concentrations.T + self.lam * np.linalg.norm(A)  
+                    gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) + self.lam * np.sum(np.abs(A))
                     
                     
                     norm = np.linalg.norm(gradient)
@@ -125,7 +124,7 @@ class MARsimulation:
                 iter_count += 1
                 
             if (error_reconstruct <= self.error_th) or iter_count == self.iter_max or norm <= self.gradient_th: break
-            self.eta = self.backup_eta
+            self.eta /= 10
             self.eta_step /= 10
             trial += 1
         
