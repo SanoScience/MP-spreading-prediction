@@ -59,14 +59,14 @@ def save_prediction_plot(baseline, prediction, followup, subject, filepath, erro
     plt.close()
     '''
     plt.figure(figsize=(20, 15))
-    sns.lineplot(data=baseline, label='baseline concentration', dashes=False, markers=True)
-    sns.lineplot(data=prediction, label='predicted concentration at followup', dashes=True, markers=True)
-    sns.lineplot(data=followup, label='followup concentration', dashes=False, markers=True)
+    sns.lineplot(data=baseline, label='baseline concentration', marker='o', dashes=False, markers=True)
+    sns.lineplot(data=prediction, label='predicted followup concentration', marker='o', dashes=True, markers=True)
+    sns.lineplot(data=followup, label='followup concentration', marker='o', dashes=False, markers=True)
     plt.legend(loc='upper right')
     plt.xlabel('ROI (index of brain region based on AAL3 atlas)')
     plt.ylabel('concentration of misfolded proteins')
-
-    if error is not None: plt.title(f'Subject: {subject} \nError between true and predicted t1: {error:.2f}\nPearson correlation coeff: {corr_coeff:.2f}')
+    
+    if error is not None: plt.title(f'Subject: {subject.split(os.sep)[-2]} \nError between true and predicted t1: {error:.2f}\nPearson correlation coeff: {corr_coeff:.2f}')
     #plt.tight_layout()
     plt.savefig(filepath)
     plt.close()
