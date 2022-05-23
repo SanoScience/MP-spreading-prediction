@@ -219,7 +219,9 @@ def dispatcher(f, atlas_file, img_type):
                 logging.error(name_nii + ' at Flatten')
                 print(e)
                 print(name_nii + ' at Flatten')
-                
+            
+        """
+        DEPRECATED: PET brain extraction is skipped, use MNI reference volume WITH skull for registration
         logging.info(f"{name_nii} starting Brain Extraction (PET)")
         try:
             be = BET_FSL(name_nii, intermediate_dir + name + '_be', img_type)
@@ -247,11 +249,12 @@ def dispatcher(f, atlas_file, img_type):
             logging.error(name_nii + ' at Brain Extraction (PET)')
             print(e)
             print(name_nii + ' at Brain Extraction (PET)')
-            
+        """
+        
         img = crop_img(name_nii)
         data, affine, header = img.get_fdata(), img.affine, img.header
         del img        
-
+        
         try: 
             """
             #create binary mask (at this point the PET is 3D!)
