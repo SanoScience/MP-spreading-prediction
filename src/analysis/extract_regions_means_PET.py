@@ -55,7 +55,7 @@ def extract_regions_means(pet, pet_data, atlas_data):
     
     for label in atlas_labels:
         try:
-            avg = pet_data[np.where(label == atlas_data)].mean()
+            avg = round(pet_data[np.where(label == atlas_data)].mean(), 5)
         except Exception as e:
             logging.erro(f"Invalid index for image {pet}")
             avg = 0

@@ -41,9 +41,10 @@ class MARsimulation:
         self.use_binary = user_binary
         self.iter_max = iter_max
 
-        self.error_stop = 1e-9                                                  # acceptable error threshold for the reconstruction error
-        self.eta = 1e-2                                                         # learning rate of the gradient descent                             
-        self.eta_step = 1e-2
+        self.error_stop = 1e-2                                                  # acceptable error threshold for the reconstruction error
+        self.gradient_thr = 1e-20
+        self.eta = 1e-3                                                         # learning rate of the gradient descent                             
+        self.eta_step = 0
         self.max_retry = 10 
 
     def run(self):
@@ -82,7 +83,7 @@ class MARsimulation:
             iter_count = 0                               
             A = np.copy(self.cm)
             #A = np.ones_like(self.cm)
-            while (error_reconstruct >= self.error_stop) and iter_count < self.iter_max:
+            while (error_reconstruct > self.error_stop) and iter_count < self.iter_max:
                 try:
                     # NOTE: numpy.linalg.norm has a parameter 'ord' which specifies the kind of norm to compute
                     # ord=1 corresponds to max(sum(abs(x), axis=0))
@@ -99,8 +100,11 @@ class MARsimulation:
 
                 try:
                     # gradient computation
-                    gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) + self.lam * np.sum(np.abs(A))
-                    # norm = np.linalg.norm(gradient)
+                    gradient = -(self.final_concentrations - (A) @ self.init_concentrations) @ (self.init_concentrations.T) + self.lam * np.sum(np.abs(A))
+                    norm = np.linalg.norm(gradient)
+                    if norm <= self.gradient_thr:
+                        logging.info(f"Gradient for subject {self.subject} met termination criterion")
+                        break
                     
                 except FloatingPointError as e:   
                     logging.warning(e)
@@ -117,7 +121,7 @@ class MARsimulation:
                 d_eta += self.eta_step
                 iter_count += 1
                 
-            if (error_reconstruct <= self.error_stop) or iter_count == self.iter_max: break
+            if (error_reconstruct <= self.error_stop) or iter_count == self.iter_max or norm <= self.gradient_thr: break
             trial += 1
             d_eta = self.eta/(10*trial) 
             self.eta_step /= 10
@@ -269,7 +273,7 @@ if __name__ == '__main__':
         try:
             category = input('Insert the category [ALL, AD, LMCI, MCI, EMCI, CN; default ALL]: ')
         except Exception as e:
-            logging.error(e)
+            print("Using default")
             category = 'ALL'
         category = 'ALL' if category == '' else category
 
@@ -295,28 +299,32 @@ if __name__ == '__main__':
         try:
             num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
         except Exception as e:
+            print("Using default")
             num_cores = multiprocessing.cpu_count()
             logging.info(f"{num_cores} cores available")
 
     train_size = int(sys.argv[3]) if len(sys.argv) > 3 else -1
     while train_size <= 0 or train_size > len(dataset.keys())-1:
         try:
-            train_size = int(input(f'Number of training samples [max {len(dataset.keys())-1}]: '))
+            train_size = int(input(f'Number of training samples [max {len(dataset.keys())-1}, default 50%]: '))
         except Exception as e:
-            logging.error(e)
+            print("Using default")
+            train_size = 0.5 * (len(dataset.keys()) -1)
             
     lam = float(sys.argv[4]) if len(sys.argv) > 4 else -1
     while lam < 0 or lam > 1:
         try:
             lam = float(input('Insert the lambda coefficient for L1 penalty [0..1, default 0]: '))
         except Exception as e:
+            print("Using default")
             lam = 0
 
     use_binary = bool(sys.argv[5]) if len(sys.argv) > 5 else -1
     while use_binary < 0:
         try:
-            use_binary = False if input('Choose if using binary matrix [1] or not [0] [default 0]: ') == '0' else True
+            use_binary = True if input('Choose if using binary matrix [1] or not [0, default]: ') == '1' else False
         except Exception as e:
+            print("Using default")
             use_binary = False
 
     iter_max = int(sys.argv[6]) if len(sys.argv) > 6 else -1
@@ -324,15 +332,16 @@ if __name__ == '__main__':
         try:
             iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 3\'000\'000]: '))
         except Exception as e:
+            print("Using default")
             iter_max = 3e6
 
     N_fold = int(sys.argv[7]) if len(sys.argv) > 7 else -1
     while N_fold < 1:
         try:
-            N_fold = int(input('Folds for cross validation: '))
+            N_fold = int(input('Folds for cross validation [default 1]: '))
         except Exception as e:
-            logging.error(e)
-            continue
+            print("Using default")
+            N_fold = 1
 
     total_mse = []
     total_pcc = []
@@ -388,3 +397,4 @@ if __name__ == '__main__':
     out_file.write(pt_subs.get_string())
     out_file.close()
     logging.info(f"Results saved in {filename}")
+    logging.info(f"*** {format(total_time, '.2f')} seconds ***")
