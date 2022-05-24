@@ -18,7 +18,6 @@ from time import time
 import json
 from tqdm import tqdm 
 import numpy as np
-import pandas as pd
 from scipy.stats import pearsonr as pearson_corr_coef
 from utils_vis import *
 from utils import *
@@ -42,10 +41,9 @@ class MARsimulation:
         self.use_binary = user_binary
         self.iter_max = iter_max
 
-        self.error_th = 1e-6                                                  # acceptable error threshold for the reconstruction error
-        self.gradient_th = 1e-6                                               # gradient difference threshold in stopping criteria in GD
-        self.eta = 1e-5                                                        # learning rate of the gradient descent                             
-        self.eta_step = 1e-6
+        self.error_stop = 1e-9                                                  # acceptable error threshold for the reconstruction error
+        self.eta = 1e-2                                                         # learning rate of the gradient descent                             
+        self.eta_step = 1e-2
         self.max_retry = 10 
 
     def run(self):
@@ -55,7 +53,6 @@ class MARsimulation:
         
         self.generate_indicator_matrix()
         pred_concentrations = None
-        logging.info(f"Starting gradient descent for subject {self.subject}")
         try:
             self.coef_matrix = self.run_gradient_descent() # get the model params
             pred_concentrations = self.coef_matrix @ self.init_concentrations # make predictions 
@@ -76,14 +73,16 @@ class MARsimulation:
             self.B = np.ones_like(self.cm)
 
     def run_gradient_descent(self, vis_error=False):                           
-        error_reconstruct = 1 + self.error_th                                 
+        error_reconstruct = 1 + self.error_stop                                 
         if vis_error: error_buffer = []                                         # reconstruction error along iterations
         trial = 0
+        d_eta = self.eta
+        
         while trial<self.max_retry:
             iter_count = 0                               
             A = np.copy(self.cm)
             #A = np.ones_like(self.cm)
-            while (error_reconstruct > self.error_th) and iter_count < self.iter_max:
+            while (error_reconstruct >= self.error_stop) and iter_count < self.iter_max:
                 try:
                     # NOTE: numpy.linalg.norm has a parameter 'ord' which specifies the kind of norm to compute
                     # ord=1 corresponds to max(sum(abs(x), axis=0))
@@ -101,12 +100,7 @@ class MARsimulation:
                 try:
                     # gradient computation
                     gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ (self.init_concentrations.T * self.B) + self.lam * np.sum(np.abs(A))
-                    
-                    
-                    norm = np.linalg.norm(gradient)
-                    if norm <= self.gradient_th:
-                        logging.info(f"Gradient norm: {norm}.\nTermination criterion met for subject {self.subject}, quitting...")
-                        break    
+                    # norm = np.linalg.norm(gradient)
                     
                 except FloatingPointError as e:   
                     logging.warning(e)
@@ -114,19 +108,19 @@ class MARsimulation:
                     break
 
                 try:
-                    A = (A - (self.eta * gradient)) * self.B
+                    A = (A - (d_eta * gradient)) * self.B
                 except FloatingPointError as e:   
                     logging.warning(e)
                     logging.warning(f'Overflow encountered during updating of coefficient matrix (iteration {iter_count}) for subject {self.subject}. Restarting with smaller steps ({trial}/{self.max_retry})')
                     break
                 
-                self.eta += self.eta_step
+                d_eta += self.eta_step
                 iter_count += 1
                 
-            if (error_reconstruct <= self.error_th) or iter_count == self.iter_max or norm <= self.gradient_th: break
-            self.eta /= 10
-            self.eta_step /= 10
+            if (error_reconstruct <= self.error_stop) or iter_count == self.iter_max: break
             trial += 1
+            d_eta = self.eta/(10*trial) 
+            self.eta_step /= 10
         
         if trial == self.max_retry: logging.error(f"Subject {self.subject} couldn't complete gradient descent")
                                           
@@ -159,6 +153,7 @@ def run_simulation(subject, paths, connect_matrix, lam, use_binary, iter_max, qu
         return
 
     try:
+        logging.info(f"Starting gradient descent for subject {subject}")
         t1_concentration_pred = drop_negative_predictions(simulation.run())
     except Exception as e:
         logging.error(f"Exception happened for during execution of simulation for subject {subject}. Traceback:\n{e}") 
@@ -166,6 +161,7 @@ def run_simulation(subject, paths, connect_matrix, lam, use_binary, iter_max, qu
         return 
 
     try:
+        logging.info(f"Computiong PCC and MSE for subject {subject}")
         mse = mean_squared_error(t1_concentration, t1_concentration_pred)
         pcc = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
         if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
@@ -176,6 +172,7 @@ def run_simulation(subject, paths, connect_matrix, lam, use_binary, iter_max, qu
         return
     
     try:
+        logging.info(f"Saving prediction plot for subject {subject}")
         save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subject, subject +'CMAR.png', mse, pcc)
         save_coeff_matrix(subject +'CMAR.csv', simulation.coef_matrix)
     except Exception as e:
@@ -185,9 +182,7 @@ def run_simulation(subject, paths, connect_matrix, lam, use_binary, iter_max, qu
 
     queue.put([subject, mse, pcc])
 
-    return
-           
-### MULTIPROCESSING ###        
+    return      
 
 def training(dataset, num_cores, lam, use_binary, iter_max, dicts_subj):
     ''' 1st approach: train A matrix for each subject separately.
@@ -216,24 +211,24 @@ def training(dataset, num_cores, lam, use_binary, iter_max, dicts_subj):
             dicts_subj[subj].append([mse, pcc])
         done += 1
     
-    conn_matrices = []
-    # read results saved by "run simulation method"
+    coeff_matrices = []
+    # read results saved by "run_simulation method"
     for subj, _ in dataset.items():
         try:
-            conn_matrices.append(load_matrix(subj + 'CMAR.csv'))
+            coeff_matrices.append(load_matrix(subj + 'CMAR.csv'))
         except Exception as e:
             logging.error(f"Matrix for subject {subj} could not be found")
 
-    avg_conn_matrix = np.mean(conn_matrices, axis=0)
-    return avg_conn_matrix
+    avg_coeff_matrix = np.mean(coeff_matrices, axis=0)
+    return avg_coeff_matrix
 
 ''' DEPRECATED (INEFFICIENT)
     2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)
 '''
 
 def test(conn_matrix, test_set, dicts_subj):
-    mse_list = []
-    pcc_list = []
+    mse_subj = []
+    pcc_subj = []
     for subj, paths in tqdm(test_set.items()):
         try:
             t0_concentration = load_matrix(paths['baseline'])
@@ -248,12 +243,12 @@ def test(conn_matrix, test_set, dicts_subj):
             logging.error(e)
             continue
         else:
-            mse_list.append(mse)
-            pcc_list.append(pcc)
+            mse_subj.append(mse)
+            pcc_subj.append(pcc)
             dicts_subj[subj].append([mse, pcc])
     
-    avg_mse = np.mean(mse_list, axis=0)
-    avg_pcc = np.mean(pcc_list, axis=0)
+    avg_mse = np.mean(mse_subj, axis=0)
+    avg_pcc = np.mean(pcc_subj, axis=0)
     #logging.info(f"Average error on test samples for this fold: {avg_mse}")
     #logging.info(f"Average Pearson correlation on test samples for this fold: {avg_pcc}")
 
@@ -284,7 +279,7 @@ if __name__ == '__main__':
         os.makedirs(output_res)
 
     pt_avg = PrettyTable()
-    pt_avg.field_names = ["Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
+    pt_avg.field_names = ["Avg test MSE", "SD test MSE", "Avg test Pearson", "SD test Pearson"]
     
     # Dictionary storing, for each patient (key), a list of couples (MSE, PCC)
     dicts_subj = defaultdict(list)
@@ -313,23 +308,23 @@ if __name__ == '__main__':
     lam = float(sys.argv[4]) if len(sys.argv) > 4 else -1
     while lam < 0 or lam > 1:
         try:
-            lam = float(input('Insert the lambda coefficient for L1 penalty [0..1]: '))
+            lam = float(input('Insert the lambda coefficient for L1 penalty [0..1, default 0]: '))
         except Exception as e:
-            logging.error(e)
+            lam = 0
 
     use_binary = bool(sys.argv[5]) if len(sys.argv) > 5 else -1
     while use_binary < 0:
         try:
-            use_binary = False if input('Choose if using binary matrix [1] or not [0] [default 1]: ') == '0' else True
+            use_binary = False if input('Choose if using binary matrix [1] or not [0] [default 0]: ') == '0' else True
         except Exception as e:
-            use_binary = True
+            use_binary = False
 
     iter_max = int(sys.argv[6]) if len(sys.argv) > 6 else -1
     while iter_max <= 0:
         try:
-            iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 1\'000\'000]: '))
+            iter_max = int(input('Insert the maximum number of iterations [hit \'Enter\' for 3\'000\'000]: '))
         except Exception as e:
-            iter_max = 1e6
+            iter_max = 3e6
 
     N_fold = int(sys.argv[7]) if len(sys.argv) > 7 else -1
     while N_fold < 1:
@@ -353,7 +348,7 @@ if __name__ == '__main__':
 
         test_set = {}
         for subj, paths in dataset.items():
-            if subj not in train_set:
+            if subj not in train_set.keys():
                 test_set[subj] = paths
 
         start_time = time()
@@ -370,10 +365,10 @@ if __name__ == '__main__':
     pt_avg.add_row([round(np.mean(total_mse), 5), round(np.std(total_mse), 2), round(np.mean(total_pcc), 5), round(np.std(total_pcc), 2)])
 
     for subj in dicts_subj.keys():
-        mse_list = [el[0] for el in dicts_subj[subj]]
-        pcc_list = [el[1] for el in dicts_subj[subj]]
+        mse_subj = [el[0] for el in dicts_subj[subj]]
+        pcc_subj = [el[1] for el in dicts_subj[subj]]
         sub_set = 'Training' if subj in train_set.keys() else 'Testing'
-        pt_subs.add_row([subj, round(np.mean(mse_list), 5), round(np.std(mse_list), 2), round(np.mean(pcc_list), 5), round(np.std(pcc_list), 2), sub_set])
+        pt_subs.add_row([subj, round(np.mean(mse_subj), 5), round(np.std(mse_subj), 2), round(np.mean(pcc_subj), 5), round(np.std(pcc_subj), 2), sub_set])
 
     total_time = time() - total_time
     filename = f"{output_res}{date}_MAR_{category}_{train_size}_{lam}_{iter_max}_{N_fold}.txt"
