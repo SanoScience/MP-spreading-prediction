@@ -167,6 +167,8 @@ if __name__ == '__main__':
         if threshold < 0 or threshold > 1: raise Exception("Invalid number")
     except Exception as e:
         threshold = 1
+
+    logging.info(f"Using threshold Followup >= {threshold} * Baseline")
     
     print(f'Initial no. of subjects: {len(subjects)}')
     datasets = {}
