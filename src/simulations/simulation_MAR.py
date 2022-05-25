@@ -41,10 +41,9 @@ class MARsimulation:
         self.use_binary = user_binary
         self.iter_max = iter_max
 
-        self.error_stop = 1e-2                                                  # acceptable error threshold for the reconstruction error
+        self.error_stop = 1e-5                                                  # acceptable error threshold for the reconstruction error
         self.gradient_thr = 1e-20
-        self.eta = 1e-3                                                         # learning rate of the gradient descent                             
-        self.eta_step = 0
+        self.eta = 1e-8                                                         # learning rate of the gradient descent (as in Crimi's paper)   
         self.max_retry = 10 
 
     def run(self):
@@ -74,7 +73,8 @@ class MARsimulation:
             self.B = np.ones_like(self.cm)
 
     def run_gradient_descent(self, vis_error=False):                           
-        error_reconstruct = 1 + self.error_stop                                 
+        error_reconstruct = 1 + self.error_stop         
+        previous_error = -1                        
         if vis_error: error_buffer = []                                         # reconstruction error along iterations
         trial = 0
         d_eta = self.eta
@@ -83,6 +83,7 @@ class MARsimulation:
             iter_count = 0                               
             A = np.copy(self.cm)
             #A = np.ones_like(self.cm)
+            #A = np.diag(self.init_concentrations)
             while (error_reconstruct > self.error_stop) and iter_count < self.iter_max:
                 try:
                     # NOTE: numpy.linalg.norm has a parameter 'ord' which specifies the kind of norm to compute
@@ -90,8 +91,15 @@ class MARsimulation:
                     # ord=None corresponds to Frobenius norm (square root of the sum of the squared elements)
 
                     # calculate reconstruction error 
-                    #error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations)**2
+                    #error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations)**2        
+                    # NOTE: The spectral norm of a matrix A is its largest singular value (i.e., the square root of the largest eigenvalue of the matrix)                
                     error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
+                    #error_reconstruct = mean_squared_error(self.final_concentrations, A @ self.init_concentrations)
+                    if previous_error != -1 and previous_error < error_reconstruct:
+                        logging.info("Error is raising, halting optimization")
+                        break
+                    previous_error = error_reconstruct
+                    
                     if vis_error: error_buffer.append(error_reconstruct)
                 except FloatingPointError as e:
                     logging.warning(e)
@@ -100,7 +108,8 @@ class MARsimulation:
 
                 try:
                     # gradient computation
-                    gradient = -(self.final_concentrations - (A) @ self.init_concentrations) @ (self.init_concentrations.T) + self.lam * np.sum(np.abs(A))
+                    # gradient = -(self.final_concentrations - (A) @ self.init_concentrations) @ (self.init_concentrations.T) + self.lam * np.sum(np.abs(A))
+                    gradient = -(self.final_concentrations - (A * self.B) @ self.init_concentrations) @self.init_concentrations.T + self.lam * np.sum(np.abs(A))
                     norm = np.linalg.norm(gradient)
                     if norm <= self.gradient_thr:
                         logging.info(f"Gradient for subject {self.subject} met termination criterion")
@@ -118,13 +127,11 @@ class MARsimulation:
                     logging.warning(f'Overflow encountered during updating of coefficient matrix (iteration {iter_count}) for subject {self.subject}. Restarting with smaller steps ({trial}/{self.max_retry})')
                     break
                 
-                d_eta += self.eta_step
                 iter_count += 1
                 
-            if (error_reconstruct <= self.error_stop) or iter_count == self.iter_max or norm <= self.gradient_thr: break
+            if error_reconstruct <= self.error_stop or previous_error < error_reconstruct or iter_count == self.iter_max or norm <= self.gradient_thr: break
             trial += 1
             d_eta = self.eta/(10*trial) 
-            self.eta_step /= 10
         
         if trial == self.max_retry: logging.error(f"Subject {self.subject} couldn't complete gradient descent")
                                           
