@@ -55,7 +55,7 @@ def extract_regions_means(pet, pet_data, atlas_data):
     
     for label in atlas_labels:
         try:
-            avg = round(pet_data[np.where(label == atlas_data)].mean(), 5)
+            avg = pet_data[np.where(label == atlas_data)].mean()
         except Exception as e:
             logging.erro(f"Invalid index for image {pet}")
             avg = 0
@@ -65,10 +65,10 @@ def extract_regions_means(pet, pet_data, atlas_data):
      
     
     # normalize within the PET (divide by maximum value)
-    max_val = max(means) if max(means) > 0 else 1
-    for v in means:
-        v /= max_val
-        if v<0 or v>1: logging.error(f"Image {pet} with invalid value {v}")
+    #max_val = max(means) if max(means) > 0 else 1
+    #for v in means:
+        #v /= max_val
+        #if v<0 or v>1: logging.error(f"Image {pet} with invalid value {v}")
         
     return means
 
@@ -76,7 +76,6 @@ def save_concentrations(concentrations, path):
     with open(path, 'w') as f:
         write = csv.writer(f)
         write.writerow(concentrations)
-    logging.info(f'Extracted concentrations saved in {path}')
 
 def run(pet, atlas_data, q):    
     pet_data = load_pet(pet)
@@ -120,7 +119,6 @@ if __name__ == '__main__':
     counter = 0
     
     for i in tqdm(range(len(pets))):
-        logging.info(f'Beta-amyloid concentration extraction in image: {pets[i]}')
         p = multiprocessing.Process(target=run, args=(pets[i], atlas_data, q))
         p.start()
         procs.append(p)
@@ -139,10 +137,14 @@ if __name__ == '__main__':
             cn_sum.append(regions)
         done += 1
         
-    logging.info("Z-score normalization")
     cn_mean = np.mean(cn_sum, axis=0)
     cn_std = np.std(cn_sum, axis=0)
+    logging.info(f'Average values across regions in CN subjects: {cn_mean}')
+    logging.info(f'Std across regions in CN subjects: {cn_std}')
+    np.savetxt('cn_mean.csv', cn_mean, delimiter=', ')
+    np.savetxt('cn_std.csv', cn_std, delimiter=', ')
     
+    logging.info("Z-score normalization")
     for pet in concentrations.keys():
         # z-score (region(i) - healthy_mean(i))/healthy_std(i)
         concentrations[pet] = (concentrations[pet] - cn_mean)/cn_std
@@ -152,3 +154,5 @@ if __name__ == '__main__':
         
         output_path = pet.replace('.nii.gz', '.csv')          
         save_concentrations(concentrations[pet], output_path)
+    
+    logging.info('*** Done ***')

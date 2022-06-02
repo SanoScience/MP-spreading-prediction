@@ -203,5 +203,8 @@ if __name__ == '__main__':
     for d in datasets.keys():
         save_dataset(datasets[d], dataset_output + dataset_name.format(d))
         logging.info(f'Size of the dataset \'{dataset_output + dataset_name.format(d)}\': {len(datasets[d])}')
+        print(f'Size of the dataset \'{dataset_output + dataset_name.format(d)}\': {len(datasets[d])}')
+    
+    print(f"{len(wrong_subjects)} \'wrong\' subjects")
     logging.info(f"{len(wrong_subjects)} \'wrong\' subjects")
     logging.info(wrong_subjects)

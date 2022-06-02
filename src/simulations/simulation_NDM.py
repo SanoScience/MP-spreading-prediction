@@ -1,3 +1,7 @@
+""" 
+    SYNOPSIS
+    python3 simulation_NDM.py <category> <cores> <beta> 
+"""
 ''' Spreading model based on Heat-kernel diffusion. 
 
 Based on publication: 
@@ -16,17 +20,21 @@ from time import time
 from tqdm import tqdm 
 import numpy as np
 from scipy.stats import pearsonr as pearson_corr_coef
+from sklearn.metrics import mean_squared_error
 
 from utils_vis import save_prediction_plot
-from utils import drop_data_in_connect_matrix, load_matrix, calc_rmse, calc_rmse
+from utils import drop_data_in_connect_matrix, load_matrix
 from datetime import datetime
 from prettytable import PrettyTable
 import yaml
 import networkx as nx
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO)
+
+np.seterr(all = 'raise')
+date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_NDM_{date}.log")
 
 class DiffusionSimulation:
-    def __init__(self, connect_matrix, concentrations=None):
+    def __init__(self, connect_matrix, concentrations, beta):
         ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
         Otherwise: manually choose initial seeds and concentrations.
         t_total: gap between baseline and followup PET (in years)
@@ -39,18 +47,23 @@ class DiffusionSimulation:
         self.t_total = 2 # total length of the simulation in years
         self.timestep = self.t_total / 10
         self.cm = connect_matrix
+        self.beta = beta
         if concentrations is not None: 
             #logging.info(f'Loading concentration from PET files.')
             self.diffusion_init = concentrations
         else:
             #logging.info(f'Loading concentration manually.')
             self.diffusion_init = self.define_seeds()
-
-    def define_seeds(self, init_concentration=1):
-        ''' Define Alzheimer seed regions manually. 
         
-        Args:
-            init_concentration (int): initial concentration of misfolded proteins in the seeds. '''
+        self.calc_laplacian()  
+
+    '''
+    DEPRECATED
+    def define_seeds(self, init_concentration=1):
+        # Define Alzheimer seed regions manually. 
+        
+        #Args:
+        #    init_concentration (int): initial concentration of misfolded proteins in the seeds.
             
         # Store initial misfolded proteins
         diffusion_init = np.zeros(self.rois)
@@ -58,6 +71,7 @@ class DiffusionSimulation:
         # assign initial concentration of proteins in this region (please note index starts from 0, not from 1, then region 31 is at 30th index in the diffusion array)
         diffusion_init[[30, 31, 34, 35]] = init_concentration
         return diffusion_init
+    '''
 
     def calc_laplacian(self, eps=1e-10): 
         self.cm = np.asmatrix(self.cm)
@@ -66,25 +80,16 @@ class DiffusionSimulation:
         self.eigvals, self.eigvecs = np.linalg.eig(self.L)
         self.eigvecs = self.eigvecs.real
         self.eigvals = np.array(self.eigvals).real # Taking only the real part
-        self.inv_eigvecs = np.linalg.inv(self.eigvecs + 1e-12)
+        self.inv_eigvecs = np.linalg.inv(self.eigvecs + eps)
                     
     def run(self, downsample=False):
         ''' Run simulation. '''
+   
+        self.diffusion_final = self.iterate_spreading()
 
-        # if values in the connectivity matrix were obtained through logarithm, revert it with an exponential 
-        try:
-
-            self.calc_laplacian()     
-            # NOTE: this beta value has already been estimated and was the optimal for the considered dataset
-            self.beta = 0.1
-            self.diffusion_final = self.iterate_spreading()
-
-            if downsample: 
-                self.diffusion_final = self.downsample_matrix(self.diffusion_final)
-            return self.diffusion_final[-1]
-
-        except Exception as e:
-            logging.error(e)
+        if downsample: 
+            self.diffusion_final = self.downsample_matrix(self.diffusion_final)
+        return self.diffusion_final[-1]
 
     
     def integration_step(self, x_prev):
@@ -117,22 +122,9 @@ class DiffusionSimulation:
             factor = int(current_len/target_len)
             matrix = matrix[::factor, :] # downsampling
         return matrix
-    
-    def save_diffusion_matrix(self, save_dir):
-        np.savetxt(os.path.join(save_dir, 'diffusion_matrix_over_time.csv'), 
-                                self.diffusion_final, delimiter=",")
-    
-    def save_terminal_concentration(self, save_dir):
-        ''' Save last (terminal) concentration. '''
-        np.savetxt(os.path.join(save_dir, 'terminal_concentration.csv'),
-                   self.diffusion_final[-1, :], delimiter=',')
 
-def run_simulation(subject, paths, output_dir, queue=None):    
+def run_simulation(subject, paths, beta, queue=None):    
     ''' Run simulation for single patient. '''
-
-    subject_output_dir = os.path.join(output_dir, subject)
-    if not os.path.exists(subject_output_dir):
-        os.makedirs(subject_output_dir)
       
     try:
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['CM']))
@@ -140,24 +132,45 @@ def run_simulation(subject, paths, output_dir, queue=None):
         t0_concentration = load_matrix(paths['baseline'])
         t1_concentration = load_matrix(paths['followup'])
     except Exception as e:
+        logging.error(f"Error during data load for subject {subject}. Traceback: ")
         logging.error(e)
         return
 
     try:
-        simulation = DiffusionSimulation(connect_matrix, t0_concentration)
-        t1_concentration_pred = simulation.run()
-        rmse = calc_rmse(t1_concentration_pred, t1_concentration)
-        corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        if np.isnan(rmse) or np.isinf(rmse): raise Exception("Invalid value of RMSE")
-        if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
+        simulation = DiffusionSimulation(connect_matrix, t0_concentration, beta)
     except Exception as e:
+        logging.error(f"Error during simulation initialization for subject {subject}. Traceback: ")
+        logging.error(e)
+        return
+
+    try:
+        t1_concentration_pred = simulation.run()
+    except Exception as e:
+        logging.error(f"Error during simulation for subject {subject}. Traceback: ")
         logging.error(e)
         return
     
-    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, os.path.join(subject_output_dir, 'NDM_prediction.png'), rmse, corr_coef)
+    try:
+        mse = mean_squared_error(t1_concentration_pred, t1_concentration)
+        corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+        if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
+        if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
+    except Exception as e:
+        logging.error(f"Error during computation of statistics for subject {subject}. Traceback: ")
+        logging.error(e)
+        return
+    
+    logging.info(f"Saving prediction for subject {subj}")
+    try:
+        np.savetxt(os.path.join(subject, 'NDM_diffusion_' + date + '.csv'), simulation.diffusion_final, delimiter=',')
+        np.savetxt(os.path.join(subject, 'NDM_terminal_concentrations_' + date + '.csv'), simulation.diffusion_final[-1, :], delimiter=',')
+        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, os.path.join(subject, 'NDM_' + date + '.png'), mse, corr_coef)
+    except Exception as e:
+        logging.error(f"Error during save of prediction for subject {subject}. Traceback: ")
+        logging.error(e)
+        return
 
-    if queue:
-        queue.put([subj, rmse, corr_coef])
+    queue.put([subj, mse, corr_coef])
     
 ### MULTIPROCESSING ###
 
@@ -176,23 +189,22 @@ if __name__ == '__main__':
             logging.error(e)
             category = 'ALL'
         category = 'ALL' if category == '' else category
-
+        
     dataset_path =  config['paths']['dataset_dir'] +  f'datasets/dataset_{category}.json'
-    output_subj = 'results/subjects'
-    output_res = 'results/benchmarks'
+    output_res = config['paths']['dataset_dir'] + 'simulations/'
     if not os.path.exists(output_res):
         os.makedirs(output_res)
 
     pt_avg = PrettyTable()
-    pt_avg.field_names = ["Avg RMSE", "SD RMSE", "Avg Pearson", "SD Pearson"]
+    pt_avg.field_names = ["Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
     
     pt_subs = PrettyTable()
-    pt_subs.field_names = ["ID", "RMSE", "Pearson"]
+    pt_subs.field_names = ["ID", "MSE", "Pearson"]
     pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
-    
+
     num_cores = int(sys.argv[2]) if len(sys.argv) > 2 else -1
     while num_cores < 1:
         try:
@@ -200,16 +212,22 @@ if __name__ == '__main__':
         except Exception as e:
             num_cores = multiprocessing.cpu_count()
             logging.info(f"{num_cores} cores available")
+            
+    beta = float(sys.argv[3]) if len(sys.argv) > 3 else -1
+    while beta < 0: 
+        try:
+            beta = float(input('Insert the beta value [0.1 by default]: '))
+        except Exception as e:
+            logging.error(e)
+            beta = 0.1
 
-    
-    rmse_list = []
+    mse_list = []
     pcc_list = []
     
-    # Testing (use the learned 'avg_beta')
     procs = []
     queue = multiprocessing.Queue()
     for subj, paths in tqdm(dataset.items()):
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, output_subj, queue))
+        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, beta, queue))
         p.start()
         procs.append(p)
 
@@ -224,14 +242,14 @@ if __name__ == '__main__':
 
     while not queue.empty():
         subj, err, pcc = queue.get()
-        rmse_list.append(err)
+        mse_list.append(err)
         pcc_list.append(pcc)
-        pt_subs.add_row([subj, round(err,2), round(pcc,2)])
+        pt_subs.add_row([subj, round(err,5), round(pcc,5)])
 
-    pt_avg.add_row([format(np.mean(rmse_list, axis=0), '.2f'), format(np.std(rmse_list, axis=0), '.2f'), format(np.mean(pcc_list, axis=0), '.2f'), format(np.std(pcc_list, axis=0), '.2f')])
+    pt_avg.add_row([round(np.mean(mse_list, axis=0), 5), round(np.std(mse_list, axis=0), 2), round(np.mean(pcc_list, axis=0), 5), round(np.std(pcc_list, axis=0), 2)])
 
     total_time = time() - total_time
-    filename = f"{output_res}/{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}_NDM_{category}.txt"
+    filename = f"{output_res}/NDM_{category}_{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}.txt"
     out_file= open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")
