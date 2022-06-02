@@ -44,9 +44,9 @@ class MARsimulation:
 
         self.error_stop = 1e-5                                                  # acceptable error threshold for the reconstruction error
         self.gradient_thr = 1e-20
-        self.eta = 1e-7                                             
+        self.eta = 1e-5                                             
         self.max_retry = 10 
-        self.max_bad_iter = 3
+        self.max_bad_iter = 1
 
     def run(self):
         ''' 
@@ -329,6 +329,7 @@ if __name__ == '__main__':
         except Exception as e:
             print("Using default")
             train_size = len(dataset.keys())-1
+    test_size = len(dataset.keys()) - train_size
             
     lam = float(sys.argv[4]) if len(sys.argv) > 4 else -1
     while lam < 0 or lam > 1:
@@ -384,10 +385,10 @@ if __name__ == '__main__':
         
         counter = 0
         for k in dataset.keys():
-            if counter >= i and counter < train_size+i:
-                train_set[k] = dataset[k]
-            else:
+            if counter >= i and counter < test_size+i:
                 test_set[k] = dataset[k]
+            else:
+                train_set[k] = dataset[k]
             counter += 1    
                 
         '''
