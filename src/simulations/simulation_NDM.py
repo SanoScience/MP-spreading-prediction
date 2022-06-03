@@ -1,6 +1,6 @@
 """ 
     SYNOPSIS
-    python3 simulation_NDM.py <category> <cores> <beta> 
+    python3 simulation_NDM.py <category> <cores> <beta>
 """
 ''' Spreading model based on Heat-kernel diffusion. 
 
@@ -28,6 +28,7 @@ from datetime import datetime
 from prettytable import PrettyTable
 import yaml
 import networkx as nx
+import warnings
 
 np.seterr(all = 'raise')
 date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
@@ -35,8 +36,7 @@ logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5
 
 class DiffusionSimulation:
     def __init__(self, connect_matrix, concentrations, beta):
-        ''' If concentration is not None: use PET data as the initial concentration of the proteins. 
-        Otherwise: manually choose initial seeds and concentrations.
+        ''' 
         t_total: gap between baseline and followup PET (in years)
             timestep = t_total / (iterations * 10)
             iterations = t_total / (timestep * 10)
@@ -45,15 +45,11 @@ class DiffusionSimulation:
         '''
         self.rois = 166 
         self.t_total = 2 # total length of the simulation in years
-        self.timestep = self.t_total / 10
+        self.timestep = 1e-5
+        self.iterations = 2318 # number of iterations obtained through empirical test (2318)
         self.cm = connect_matrix
         self.beta = beta
-        if concentrations is not None: 
-            #logging.info(f'Loading concentration from PET files.')
-            self.diffusion_init = concentrations
-        else:
-            #logging.info(f'Loading concentration manually.')
-            self.diffusion_init = self.define_seeds()
+        self.diffusion_init = concentrations
         
         self.calc_laplacian()  
 
@@ -74,7 +70,9 @@ class DiffusionSimulation:
     '''
 
     def calc_laplacian(self, eps=1e-10): 
-        self.cm = np.asmatrix(self.cm)
+        # Used to suppress a FutureWarning about return of normalized_laplacian_matrix() in future versions
+        warnings.filterwarnings("ignore")
+        self.cm = np.asmatrix(self.cm) + np.identity(self.cm.shape[0])
         G = nx.from_numpy_matrix(self.cm)
         self.L = nx.normalized_laplacian_matrix(G).toarray()
         self.eigvals, self.eigvecs = np.linalg.eig(self.L)
@@ -82,16 +80,12 @@ class DiffusionSimulation:
         self.eigvals = np.array(self.eigvals).real # Taking only the real part
         self.inv_eigvecs = np.linalg.inv(self.eigvecs + eps)
                     
-    def run(self, downsample=False):
-        ''' Run simulation. '''
-   
+    def run(self, downsample=False):   
         self.diffusion_final = self.iterate_spreading()
-
         if downsample: 
             self.diffusion_final = self.downsample_matrix(self.diffusion_final)
         return self.diffusion_final[-1]
 
-    
     def integration_step(self, x_prev):
         # methods proposed by Julien Lefevre during Marseille Brainhack 
         step = 0
@@ -105,15 +99,15 @@ class DiffusionSimulation:
     
     def iterate_spreading(self):
         diffusion = [self.diffusion_init]  
-        
-        try:
-            next_step = self.integration_step(diffusion[-1])
-        except Exception as e:
-            logging.error(e)
-            #break
-        diffusion.append(next_step)  
+        for _ in range(self.iterations):
+            try:
+                next_step = self.integration_step(diffusion[-1])
+            except Exception as e:
+                logging.error(e)
+                break
+            diffusion.append(next_step)  
             
-        return np.asarray(diffusion, dtype=object) 
+        return np.asarray(diffusion, dtype=object)
  
     def downsample_matrix(self, matrix, target_len=int(1e3)):
         ''' Take every n-th sample when the matrix is longer than target length. '''
@@ -124,8 +118,10 @@ class DiffusionSimulation:
         return matrix
 
 def run_simulation(subject, paths, beta, queue=None):    
-    ''' Run simulation for single patient. '''
-      
+    
+    if not os.path.exists(subject+'test/'):
+        os.makedirs(subject+'test/')    
+
     try:
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['CM']))
         #connect_matrix = prepare_cm(connect_matrix)
@@ -162,9 +158,9 @@ def run_simulation(subject, paths, beta, queue=None):
     
     logging.info(f"Saving prediction for subject {subj}")
     try:
-        np.savetxt(os.path.join(subject, 'NDM_diffusion_' + date + '.csv'), simulation.diffusion_final, delimiter=',')
-        np.savetxt(os.path.join(subject, 'NDM_terminal_concentrations_' + date + '.csv'), simulation.diffusion_final[-1, :], delimiter=',')
-        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, os.path.join(subject, 'NDM_' + date + '.png'), mse, corr_coef)
+        np.savetxt(os.path.join(subject, 'test/NDM_diffusion_' + date + '.csv'), simulation.diffusion_final, delimiter=',')
+        np.savetxt(os.path.join(subject, 'test/NDM_terminal_concentrations_' + date + '.csv'), simulation.diffusion_final[-1, :], delimiter=',')
+        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, os.path.join(subject, 'test/NDM_' + date + '.png'), mse, corr_coef)
     except Exception as e:
         logging.error(f"Error during save of prediction for subject {subject}. Traceback: ")
         logging.error(e)
@@ -172,11 +168,10 @@ def run_simulation(subject, paths, beta, queue=None):
 
     queue.put([subj, mse, corr_coef])
     
-### MULTIPROCESSING ###
-
 if __name__ == '__main__':
-    total_time = time()
     
+    ### INPUT ###
+
     with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
         
@@ -186,21 +181,14 @@ if __name__ == '__main__':
         try:
             category = input('Insert the category [ALL, AD, LMCI, MCI, EMCI, CN; default ALL]: ')
         except Exception as e:
-            logging.error(e)
+            print('Using default')
             category = 'ALL'
         category = 'ALL' if category == '' else category
         
     dataset_path =  config['paths']['dataset_dir'] +  f'datasets/dataset_{category}.json'
-    output_res = config['paths']['dataset_dir'] + 'simulations/'
+    output_res = config['paths']['dataset_dir'] + f'simulations/{category}/results/'
     if not os.path.exists(output_res):
         os.makedirs(output_res)
-
-    pt_avg = PrettyTable()
-    pt_avg.field_names = ["Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
-    
-    pt_subs = PrettyTable()
-    pt_subs.field_names = ["ID", "MSE", "Pearson"]
-    pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
@@ -210,6 +198,7 @@ if __name__ == '__main__':
         try:
             num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
         except Exception as e:
+            print('Using default')
             num_cores = multiprocessing.cpu_count()
             logging.info(f"{num_cores} cores available")
             
@@ -218,22 +207,36 @@ if __name__ == '__main__':
         try:
             beta = float(input('Insert the beta value [0.1 by default]: '))
         except Exception as e:
-            logging.error(e)
+            print('Using default')
             beta = 0.1
+
+    ### SIMULATIONS ###
+
+    pt_avg = PrettyTable()
+    pt_avg.field_names = ["Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
+    
+    pt_subs = PrettyTable()
+    pt_subs.field_names = ["ID", "MSE", "Pearson"]
+    pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
     mse_list = []
     pcc_list = []
     
     procs = []
     queue = multiprocessing.Queue()
+    total_time = time()
     for subj, paths in tqdm(dataset.items()):
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, beta, queue))
+        p = multiprocessing.Process(target=run_simulation, args=(
+                                                                subj, 
+                                                                paths, 
+                                                                beta,  
+                                                                queue
+                                                                ))
         p.start()
         procs.append(p)
 
         while len(procs)%num_cores == 0 and len(procs) > 0:
             for p in procs:
-                p.join(timeout=10)
                 if not p.is_alive():
                     procs.remove(p)
         
@@ -246,6 +249,8 @@ if __name__ == '__main__':
         pcc_list.append(pcc)
         pt_subs.add_row([subj, round(err,5), round(pcc,5)])
 
+    ### OUTPUTS ###
+
     pt_avg.add_row([round(np.mean(mse_list, axis=0), 5), round(np.std(mse_list, axis=0), 2), round(np.mean(pcc_list, axis=0), 5), round(np.std(pcc_list, axis=0), 2)])
 
     total_time = time() - total_time
@@ -253,9 +258,18 @@ if __name__ == '__main__':
     out_file= open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")
+    out_file.write(f"Beta: {beta}\n")
     out_file.write(f"Subjects: {len(dataset.keys())}\n")
     out_file.write(f"Elapsed time (s): {format(total_time, '.2f')}\n")
     out_file.write(pt_avg.get_string()+'\n')
     out_file.write(pt_subs.get_string())
     out_file.close()
+    logging.info('***********************')
+    logging.info(f"Category: {category}")
+    logging.info(f"Cores: {num_cores}")
+    logging.info(f"Beta: {beta}")
+    logging.info(f"Subjects: {len(dataset.keys())}")
+    logging.info(f"Elapsed time (s): {format(total_time, '.2f')}")
+    logging.info('***********************')
     logging.info(f"Results saved in {filename}")
+    print(f"Results saved in {filename}")

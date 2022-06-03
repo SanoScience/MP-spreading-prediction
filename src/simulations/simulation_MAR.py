@@ -9,10 +9,9 @@ Based on publication:
 A.Crimi et al. "Effective Brain Connectivity Through a Constrained Autoregressive Model" MICCAI 2016
 '''
 
-from collections import defaultdict
+from email.policy import default
 import os
 import logging
-import random
 import sys
 from time import time
 import json
@@ -48,11 +47,7 @@ class MARsimulation:
         self.max_retry = 10 
         self.max_bad_iter = 1
 
-    def run(self):
-        ''' 
-        Run simulation. 
-        '''
-        
+    def run(self):        
         self.generate_indicator_matrix()
         pred_concentrations = None
         try:
@@ -64,30 +59,30 @@ class MARsimulation:
 
         return pred_concentrations
         
-            
     def generate_indicator_matrix(self):
         ''' Construct a matrix with only zeros and ones to be used to 
-        reinforce the zero connection (this is **B** in our paper).
-        B has zero elements where no structural connectivity appears. '''
+        constraint the use of existing anatomical connections (this is **B** in our paper).
+        B has zero elements where no structural connectivity appears (the CM has a diagonal set manually to 0, so we restore it to one).  '''
         if self.use_binary:
             self.B = np.where(self.cm>0, 1, 0) + np.identity(self.cm.shape[0])
         else:
             self.B = np.ones_like(self.cm)
     
     def generate_A(self):
-        ''' Generate the matrix A (this is **A** in our paper). 
-        A is a matrix with ones in the diagonal and zeros elsewhere. '''
-        if self.matrix == 0: # CM (assuming it's diagonal is made up of zeroes)
+        ''' Generate the matrix A from which starting the optimization (this is **A** in our paper). '''
+        if self.matrix == 0: # CM (assuming it's diagonal has been set to zero by normalization)
             return np.copy(self.cm) + np.identity(self.cm.shape[0])
         elif self.matrix == 1: # Random
             return np.random.rand(self.cm.shape[0], self.cm.shape[1])
         else: # diagonal
-            return np.identity(self.cm.shape[0]) # np.diag(self.init_concentrations)
+            return np.diag(self.init_concentrations)
 
     def run_gradient_descent(self, vis_error=False):                           
         error_reconstruct = 1 + self.error_stop         
-        previous_error = -1                        
-        if vis_error: error_buffer = []                                         # reconstruction error along iterations
+        previous_error = -1             
+
+        # reconstruction error along iterations (for debugging purposes)           
+        if vis_error: error_buffer = [] 
         trial = 0
         
         while trial<self.max_retry:
@@ -100,13 +95,10 @@ class MARsimulation:
                     # ord=1 corresponds to max(sum(abs(x), axis=0))
                     # ord=None corresponds to Frobenius norm (square root of the sum of the squared elements)
 
-                    # calculate reconstruction error 
-                    #error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations)**2        
-                    # NOTE: The spectral norm of a matrix A is its largest singular value (i.e., the square root of the largest eigenvalue of the matrix)                
+                    # calculate reconstruction error                    
                     error_reconstruct = 0.5 * np.linalg.norm(self.final_concentrations - (A * self.B) @ self.init_concentrations, ord=2)**2
                     if vis_error: error_buffer.append(error_reconstruct)
             
-                    #error_reconstruct = mean_squared_error(self.final_concentrations, A @ self.init_concentrations)
                     if previous_error != -1 and previous_error <= error_reconstruct:
                         bad_iter_count += 1 
                         if bad_iter_count == self.max_bad_iter:
@@ -122,10 +114,6 @@ class MARsimulation:
                     break
 
                 try:
-                    # gradient computation
-                    # gradient = -(self.final_concentrations - (A) @ self.init_concentrations) @ (self.init_concentrations.T) + self.lam * np.sum(np.abs(A))
-                    # ord=1 corresponds to max(sum(abs(x), axis=0))
-                    # ord=None corresponds to Frobenius norm
                     gradient = (-(self.final_concentrations - (A * self.B) @ self.init_concentrations) @ self.init_concentrations.T) * self.B
                     norm = np.linalg.norm(gradient)
                     if norm <= self.gradient_thr:
@@ -148,12 +136,10 @@ class MARsimulation:
                 
             if error_reconstruct <= self.error_stop or bad_iter_count == self.max_bad_iter or iter_count == self.iter_max or norm <= self.gradient_thr: break
             trial += 1
-            d_eta = self.eta/(10*trial) 
+            self.eta /= 10 
         
-        if trial == self.max_retry: logging.error(f"Subject {self.subject} couldn't complete gradient descent")
-                                          
+        if trial == self.max_retry: logging.error(f"Subject {self.subject} couldn't complete gradient descent")           
         if vis_error: visualize_error(error_buffer)
-
         logging.info(f"Final reconstruction error for subject {self.subject}: {error_reconstruct} ({iter_count} iterations)")
         return A
                   
@@ -162,8 +148,6 @@ def run_simulation(subject, paths, connect_matrix, lam, matrix, use_binary, iter
     
     try:
         connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['CM']))
-        #connect_matrix = prepare_cm(connect_matrix)
-
         t0_concentration = load_matrix(paths['baseline']) 
         t1_concentration = load_matrix(paths['followup'])
     except Exception as e:
@@ -197,8 +181,8 @@ def run_simulation(subject, paths, connect_matrix, lam, matrix, use_binary, iter
     
     try:
         logging.info(f"Saving prediction plot for subject {subject}")
-        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subject, subject + 'MAR_' + date + '.png', mse, pcc)
-        save_coeff_matrix(subject + 'MAR_' + date + '.csv', simulation.coef_matrix)
+        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subject, subject + 'train/MAR_train_' + date + '.png', mse, pcc)
+        save_coeff_matrix(subject + 'train/MAR_train_' + date + '.csv', simulation.coef_matrix)
         
     except Exception as e:
         logging.error(f"Exception happened during saving of simulation results for subject {subject}. Traceback:\n{e}") 
@@ -208,53 +192,52 @@ def run_simulation(subject, paths, connect_matrix, lam, matrix, use_binary, iter
 
     return      
 
-def training(train_set, num_cores, lam, matrix, use_binary, iter_max, dicts_subj):
-    ''' 1st approach: train A matrix for each subject separately.
-    The final matrix is an average matrix. '''
+def training(train_set, num_cores, lam, matrix, use_binary, iter_max, training_scores):
     procs = []
     queue = multiprocessing.Queue()
-    counter = 0
-    done = 0
-    for subj, paths in tqdm(train_set.items()):
-        p = multiprocessing.Process(target=run_simulation, args=(subj, paths, None, lam, matrix, use_binary, iter_max, queue))
+    
+    for subj, paths in train_set.items():
+        p = multiprocessing.Process(target=run_simulation, args=(
+                                                                    subj, 
+                                                                    paths, 
+                                                                    None, 
+                                                                    lam, 
+                                                                    matrix, 
+                                                                    use_binary, 
+                                                                    iter_max, 
+                                                                    queue
+                                                                ))
         p.start()
-        procs.append(p)        
-        counter += 1
-        if counter%num_cores == 0 and counter > 0:
-            subj, mse, pcc = queue.get()
-            # mse and pcc are -1 if an exception happened during simulation, and are therefore not considered
-            if mse != -1 and pcc != -1:
-                dicts_subj[subj].append([mse, pcc])
-            counter -= 1
-            done += 1
+        procs.append(p)  
+        while len(procs)%num_cores == 0 and len(procs) > 0:
+            for p in procs:
+                if not p.is_alive():
+                    procs.remove(p)
+                    break
+    for p in procs:
+        p.join()
 
-    while done < len(procs):
+    while not queue.empty():
         subj, mse, pcc = queue.get()
         # mse and pcc are -1 if an exception happened during simulation, and are therefore not considered
-        if mse != -1 and pcc != -1:
-            dicts_subj[subj].append([mse, pcc])
-        done += 1
+        training_scores[subj] = [mse, pcc]
     
     coeff_matrices = []
     # read results saved by "run_simulation method"
     for subj, _ in train_set.items():
         try:
-            coeff_matrices.append(load_matrix(subj + 'MAR_' + date + '.csv'))
+            coeff_matrices.append(load_matrix(subj + 'train/MAR_train_' + date + '.csv'))
         except Exception as e:
             logging.error(f"Matrix for subject {subj} with a suitable date could not be found")
 
     avg_coeff_matrix = np.mean(coeff_matrices, axis=0)
     return avg_coeff_matrix
 
-''' DEPRECATED (INEFFICIENT)
-    2nd approach: train A matrix for each subject sequentially (use the optimized matrix for the next subject)
-'''
-
-def test(conn_matrix, test_set, dicts_subj):
+def test(conn_matrix, test_set, test_scores):
     mse_subj = []
     pcc_subj = []
-    for subj, paths in tqdm(test_set.items()):
-        logging.info(f"Testing on subject {subj}")
+    for subj, paths in test_set.items():
+        logging.info(f"Test on subject {subj}")
         try:
             t0_concentration = load_matrix(paths['baseline'])
             t1_concentration = load_matrix(paths['followup'])
@@ -263,25 +246,24 @@ def test(conn_matrix, test_set, dicts_subj):
             pcc = pearson_corr_coef(t1_concentration, pred)[0]
             if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
             if np.isnan(pcc): raise Exception("Invalid value of PCC")
-            save_prediction_plot(t0_concentration, pred, t1_concentration, subj, subj +'MAR_prediction_' + date + '.png', mse, pcc)
+            save_prediction_plot(t0_concentration, pred, t1_concentration, subj, subj +'test/MAR_test_' + date + '.png', mse, pcc)
         except Exception as e:
             logging.error(e)
             continue
         else:
             mse_subj.append(mse)
             pcc_subj.append(pcc)
-            dicts_subj[subj].append([mse, pcc])
+            test_scores[subj] = [mse, pcc]
     
     avg_mse = np.mean(mse_subj, axis=0)
     avg_pcc = np.mean(pcc_subj, axis=0)
-    #logging.info(f"Average error on test samples for this fold: {avg_mse}")
-    #logging.info(f"Average Pearson correlation on test samples for this fold: {avg_pcc}")
 
     return avg_mse, avg_pcc
 
 
 if __name__ == '__main__':
-    total_time = time()
+
+    ### INPUT ###
 
     with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
@@ -297,19 +279,13 @@ if __name__ == '__main__':
         category = 'ALL' if category == '' else category
 
     dataset_path =  config['paths']['dataset_dir'] +  f'datasets/dataset_{category}.json'
-    output_res = config['paths']['dataset_dir'] + 'simulations/'
+    output_mat = config['paths']['dataset_dir'] + f'simulations/{category}/matrices/'
+    output_res = config['paths']['dataset_dir'] + f'simulations/{category}/results/'
+    if not os.path.exists(output_mat):
+        os.makedirs(output_mat)
     if not os.path.exists(output_res):
         os.makedirs(output_res)
-
-    pt_avg = PrettyTable()
-    pt_avg.field_names = ["Avg test MSE", "SD test MSE", "Avg test Pearson", "SD test Pearson"]
     
-    # Dictionary storing, for each patient (key), a list of scores (MSE, PCC)
-    dicts_subj = defaultdict(list)
-    pt_subs = PrettyTable()
-    pt_subs.field_names = ["ID", "Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson", "Set"]
-    pt_subs.sortby = "ID" # Set the table always sorted by patient ID
-
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)
 
@@ -347,7 +323,7 @@ if __name__ == '__main__':
             print("Using default")
             matrix = 0
 
-    use_binary = bool(sys.argv[6]) if len(sys.argv) > 6 else -1
+    use_binary = (True if sys.argv[6]=='1' else False) if len(sys.argv) > 6 else -1
     while use_binary < 0:
         try:
             use_binary = True if input('Choose if using binary matrix [1] or not [0, default]: ') == '1' else False
@@ -374,58 +350,71 @@ if __name__ == '__main__':
             print("Using default")
             N_fold = len(dataset.keys())
 
+    ### SIMULTATIONS ###
+
+    training_scores = {}
+    test_scores = {}
     total_mse = []
     total_pcc = []
 
+    total_time = time()
     train_time = 0
-    
+
     for i in tqdm(range(N_fold)):   
         train_set = {}
         test_set = {}
         
         counter = 0
         for k in dataset.keys():
+            # NOTE: dataset keys are subjects paths
+            if not os.path.exists(k+'train/'):
+                os.makedirs(k+'train/')
+            if not os.path.exists(k+'test/'):
+                os.makedirs(k+'test/')
             if counter >= i and counter < test_size+i:
                 test_set[k] = dataset[k]
             else:
                 train_set[k] = dataset[k]
             counter += 1    
-                
-        '''
-        DEPRECATED
-        old random subjects selection 
-        while len(train_set.keys()) < train_size:
-            t = random.randint(0, len(dataset.keys())-1)
-            if list(dataset.keys())[t] not in train_set.keys():
-                train_set[list(dataset.keys())[t]] = dataset[list(dataset.keys())[t]]
-
-        for subj, paths in dataset.items():
-            if subj not in train_set.keys():
-                test_set[subj] = paths
-        '''
         
         start_time = time()
-        coeff_matrix = training(train_set, num_cores, lam, matrix, use_binary, iter_max, dicts_subj)
+        coeff_matrix = training(train_set, num_cores, lam, matrix, use_binary, iter_max, training_scores)
         train_time += time() - start_time
 
-        mse, pcc = test(coeff_matrix, test_set, dicts_subj)
+        mse, pcc = test(coeff_matrix, test_set, test_scores)
         total_mse.append(mse)
         total_pcc.append(pcc)
         logging.info(f"*** Fold {i} completed ***")
 
+    ### OUTPUT STATS ###
+
     # NOTE: these are the statistics from the last training phase, not the overall ones
-    np.savetxt(output_res+ 'MAR_' + date + '.csv', coeff_matrix, delimiter=',')
+    np.savetxt(f"{output_mat}MAR_{category}_{date}.csv", coeff_matrix, delimiter=',')
 
+    pt_avg = PrettyTable()
+    pt_avg.field_names = ["Avg MSE test", "SD MSE test", "Avg Pearson test", "SD Pearson test"]
     pt_avg.add_row([round(np.mean(total_mse), 5), round(np.std(total_mse), 2), round(np.mean(total_pcc), 5), round(np.std(total_pcc), 2)])
+        
+    pt_train = PrettyTable()
+    pt_train.field_names = ["ID", "Avg MSE train", "SD MSE train", "Avg Pearson train", "SD Pearson train"]
+    pt_train.sortby = "ID"
 
-    for subj in dicts_subj.keys():
-        mse_subj = [el[0] for el in dicts_subj[subj]]
-        pcc_subj = [el[1] for el in dicts_subj[subj]]
-        sub_set = 'Training' if subj in train_set.keys() else 'Testing'
-        pt_subs.add_row([subj, round(np.mean(mse_subj), 5), round(np.std(mse_subj), 2), round(np.mean(pcc_subj), 5), round(np.std(pcc_subj), 2), sub_set])
+    for s in training_scores.keys():
+        mse_subj = [training_scores[s][0]]
+        pcc_subj = [training_scores[s][1]]
+        pt_train.add_row([s, round(np.mean(mse_subj), 5), round(np.std(mse_subj), 2), round(np.mean(pcc_subj), 5), round(np.std(pcc_subj), 2)])
+
+    pt_test = PrettyTable()
+    pt_test.field_names = ["ID", "Avg MSE test", "SD MSE test", "Avg Pearson test", "SD Pearson test"]
+    pt_test.sortby = "ID"
+
+    for s in test_scores.keys():
+        mse_subj = [test_scores[s][0]]
+        pcc_subj = [test_scores[s][1]]
+        pt_test.add_row([s, round(np.mean(mse_subj), 5), round(np.std(mse_subj), 2), round(np.mean(pcc_subj), 5), round(np.std(pcc_subj), 2)])
 
     total_time = time() - total_time
-    filename = f"{output_res}MAR_{category}_{train_size}_{lam}_{iter_max}_{N_fold}_{date}.txt"
+    filename = f"{output_res}MAR_{category}_{date}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")
@@ -440,7 +429,8 @@ if __name__ == '__main__':
     out_file.write(f"Elapsed time for training (s): {format(train_time, '.2f')}\n")
     out_file.write(f"Total time (s): {format(total_time, '.2f')}\n")
     out_file.write(pt_avg.get_string() + '\n')
-    out_file.write(pt_subs.get_string())
+    out_file.write(pt_train.get_string() + '\n')
+    out_file.write(pt_test.get_string() + '\n')
     out_file.close()
     logging.info('***********************')
     logging.info(f"Category: {category}")
@@ -457,3 +447,6 @@ if __name__ == '__main__':
     logging.info(f"Total time (s): {format(total_time, '.2f')}")
     logging.info('***********************')
     logging.info(f"Results saved in {filename}")
+    print(f"Results saved in {filename}")
+
+    quit()

@@ -7,6 +7,7 @@ import numpy as np
 import seaborn as sns
 
 sns.set_theme(style="darkgrid")
+sns.set_palette(['#390099', '#FF0054', '#00A6FB'])
 
 def visualize_NIfTI_data(data, depths, time_idx=None):
     ''' Visualize provided depths from NIfTI data at the specific time. 
