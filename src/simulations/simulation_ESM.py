@@ -60,10 +60,8 @@ def Simulation(concentration, connect_matrix, beta_0, delta_0, mu_noise, sigma_n
         #P = define_initial_P(concentration, connect_matrix, distances, max_concentration)
         # NOTE Initial P has to be explored for different values (i.e. 0.5 instead of 1)
         P = np.array(np.where(concentration>0, 1, 0), dtype=np.float64)
-        Beta = np.zeros(n_regions)
-        Delta = np.zeros(n_regions)
         iterations = 5 # found through empirical trials
-        timestep = 1e-5
+        timestep = 1e-2
     except Exception as e:
         logging.error(f"Error while initializing variables: {e}")
         return concentration
@@ -73,6 +71,7 @@ def Simulation(concentration, connect_matrix, beta_0, delta_0, mu_noise, sigma_n
         with warnings.catch_warnings():
             warnings.filterwarnings ('error')
             try:
+                # Compute Beta and Delta vectors
                 Beta = 1 - np.exp(- beta_0 * P) # Diffusion
                 Delta = np.exp(- delta_0 * P) # Recovery
                 gini = compute_gini(concentration)

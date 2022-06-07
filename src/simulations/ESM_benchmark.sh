@@ -7,7 +7,7 @@ python3 simulation_ESM.py ALL 1 1 1 0 0 5
 python3 simulation_ESM.py ALL 1 0 0 1 1 5
 python3 simulation_ESM.py ALL 1 0.5 0.5 1 1 5
 python3 simulation_ESM.py ALL 1 1 1 1 1 5
-echo "### AD ###"
+#echo "### AD ###"
 python3 simulation_ESM.py AD 1 0 0 0 0 5
 python3 simulation_ESM.py AD 1 0.5 0.5 0 0 5
 python3 simulation_ESM.py AD 1 1 1 0 0 5
@@ -15,7 +15,7 @@ python3 simulation_ESM.py AD 1 1 1 0 0 5
 python3 simulation_ESM.py AD 1 0 0 1 1 5
 python3 simulation_ESM.py AD 1 0.5 0.5 1 1 5
 python3 simulation_ESM.py AD 1 1 1 1 1 5
-echo "### LMCI ###"
+#echo "### LMCI ###"
 python3 simulation_ESM.py LMCI 1 0 0 0 0 5
 python3 simulation_ESM.py LMCI 1 0.5 0.5 0 0 5
 python3 simulation_ESM.py LMCI 1 1 1 0 0 5
@@ -23,7 +23,15 @@ python3 simulation_ESM.py LMCI 1 1 1 0 0 5
 python3 simulation_ESM.py LMCI 1 0 0 1 1 5
 python3 simulation_ESM.py LMCI 1 0.5 0.5 1 1 5
 python3 simulation_ESM.py LMCI 1 1 1 1 1 5
-echo "### EMCI ###"
+#echo "### MCI ###"
+python3 simulation_ESM.py MCI 1 0 0 0 0 5
+python3 simulation_ESM.py MCI 1 0.5 0.5 0 0 5
+python3 simulation_ESM.py MCI 1 1 1 0 0 5
+
+python3 simulation_ESM.py MCI 1 0 0 1 1 5
+python3 simulation_ESM.py MCI 1 0.5 0.5 1 1 5
+python3 simulation_ESM.py MCI 1 1 1 1 1 5
+#echo "### EMCI ###"
 python3 simulation_ESM.py EMCI 1 0 0 0 0 5
 python3 simulation_ESM.py EMCI 1 0.5 0.5 0 0 5
 python3 simulation_ESM.py EMCI 1 1 1 0 0 5

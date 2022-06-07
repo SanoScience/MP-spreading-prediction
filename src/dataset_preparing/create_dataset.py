@@ -1,4 +1,8 @@
-''' Prepare JSON file with paths to valid data:
+''' 
+SYNOPSIS:
+    python3 create_dataset.py <cores> <threshold>
+    
+Prepare JSON file with paths to valid data:
 Structure:
 {
     'subj': {
@@ -25,6 +29,7 @@ import numpy as np
 import re
 import yaml
 from datetime import datetime
+import sys
 
 start_time = datetime.today()
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
@@ -67,14 +72,11 @@ class datasetThread(threading.Thread):
                 wrong_subjects.append(self.subject)
                 raise Exception(f"Subject {self.subject} has a gap baseline-followup of {t1_sum-t0_sum}")
 
-            """
-            WARNING
-            Higher levels of Amyloid-Beta at followup are not sustained by scientific evidence, and the followup could present lower concentrations than baseline due to scanner/computational defects. We reject only pets with very negative changes in deposition levels
-            Read "PET amyloid-beta imaging in preclinical Alzheimer's disease" by Vlassenko, Andrei G. and Benzinger, Tammie L.S. and Morris, John C.
-            if sum(t1_concentration) <= (sum(t0_concentration) + self.threshold):
-                wrong_subjects.append(self.subject)
-                raise Exception(f"{self.subject} PET images ({t0_concentration_path} and {t1_concentration_path}) don't have a concentration gap greater than {self.threshold}")
-            """
+            if t1_sum - t0_sum < 0:
+                kind = 'Decreasing'
+            else:
+                kind = 'Increasing'
+                
         except Exception as e:
             logging.error(e)
             return None   
@@ -86,43 +88,9 @@ class datasetThread(threading.Thread):
         }
         # Assuring consistency while accessing dictionary
         queueLock.acquire()
-        self.queue.put([self.subject, results_dict]) 
+        self.queue.put([self.subject, results_dict, kind]) 
         queueLock.release()  
         logging.info(f"Subject {self.subject} loaded")
-
-        """
-        DEPRECATED
-        time_interval = 2
-            # note: if 'tracer' is a list containing several tracers, the pairs can be made of heterogeneous tracers
-            # note: I need to compare pets in both orders, because I can't assume the retrieved list is in chronological order
-            for i in range(len(pets_list)):
-                for j in range(len(pets_list)):
-                    if i == j:
-                        continue
-
-                    year = int(pets_list[i].split('date-')[1][:4])
-                    year_next = int(pets_list[j].split('date-')[1][:4])
-                    if year == year_next - time_interval:
-                        t0_concentration_path = pets_list[i]
-                        t1_concentration_path = pets_list[j]
-                        t0_concentration = load_matrix(t0_concentration_path) 
-                        t1_concentration = load_matrix(t1_concentration_path)
-                        if sum(t1_concentration) >= (sum(t0_concentration) + self.threshold):
-                            break # this exits only the inner loop
-                        elif year < year_next and sum(t1_concentration) < sum(t0_concentration):
-                            wrong_subjects.append(t1_concentration_path)
-                else:
-                    # this means that inner loop has been completed without break statements, so the outer loop must continue
-                    continue
-                # if the previous continue statement has not been hit, it means the inner loop has been interrupted because a pair of valid PET has been found, then we can exit
-                break
-            else:
-                # this 'else' means: 'if the for ended without finding a valid couple'
-                raise Exception(f"{self.subject} doesn't have PET images with a {time_interval} years gap and/or a concentration gap greater than {self.threshold}")
-        except Exception as e:
-            logging.error(e)
-            return None   
-        """   
 
         return    
 
@@ -151,22 +119,24 @@ if __name__ == '__main__':
     if not os.path.isdir(dataset_output):
         os.mkdir(dataset_output)
     dataset_name = 'dataset_{}.json'          
-    categories = ['ALL', 'AD', 'LMCI', 'MCI', 'EMCI', 'CN']
+    categories = ['ALL', 'AD', 'LMCI', 'MCI', 'EMCI', 'CN', 'Increasing', 'Decreasing']
     
-    num_cores = ''
-    try:
-        num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
-        if num_cores < 1: raise Exception("Invalid number of cores")
-    except Exception as e:
-        num_cores = multiprocessing.cpu_count()
-    logging.info(f"{num_cores} cores available")
+    num_cores = int(sys.argv[1]) if len(sys.argv) > 1 else -1
+    while num_cores < 0:
+        try:
+            num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
+            if num_cores < 1: raise Exception("Invalid number of cores")
+        except Exception as e:
+            num_cores = multiprocessing.cpu_count()
+        logging.info(f"{num_cores} cores available")
 
-    threshold = ''
-    try:
-        threshold = float(input('Threshold from 0 to 1 [default 1]: '))
-        if threshold < 0 or threshold > 1: raise Exception("Invalid number")
-    except Exception as e:
-        threshold = 1
+    threshold = float(sys.argv[2]) if len(sys.argv) > 2 else -1
+    while threshold < 0:
+        try:
+            threshold = float(input('Threshold from 0 to 1 [default 1]: '))
+            if threshold < 0 or threshold > 1: raise Exception("Invalid number")
+        except Exception as e:
+            threshold = 1
 
     logging.info(f"Using threshold Followup >= {threshold} * Baseline")
     
@@ -195,6 +165,10 @@ if __name__ == '__main__':
     while not dictQueue.empty():
         element = dictQueue.get()
         datasets['ALL'].append([element[0], element[1]])
+        if element[2] == 'Increasing':
+            datasets['Increasing'].append([element[0], element[1]])
+        else:
+            datasets['Decreasing'].append([element[0], element[1]])
         for c in categories:
             if re.match(rf".*sub-{c}.*", element[0]):
                 datasets[c].append([element[0], element[1]])

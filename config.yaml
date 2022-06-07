@@ -1,6 +1,7 @@
 paths:
   dataset_dir: "ADNI_Dataset/ADNI/derivatives/"
   atlas_path: "AAL3v1.nii.gz"
+  atlas_pets: "AAL3v1_1mm.nii.gz"               # NOTE: for DTI/ANAT the low resolution atlas has been used, while for the pets the high resolution
   subject: 'all'                                # if 'all' (aka None): scripts are run on the whole dataset 
 
 tractogram_config:
