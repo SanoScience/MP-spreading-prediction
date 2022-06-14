@@ -257,7 +257,7 @@ if __name__=="__main__":
             for p in procs:
                 if not p.is_alive():
                     procs.remove(p)
-                    break
+                    
     for p in procs:
         p.join()
         
