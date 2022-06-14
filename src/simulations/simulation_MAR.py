@@ -128,7 +128,7 @@ class MARsimulation:
                     break
 
                 try:
-                    A = (A - (self.eta * gradient)) * self.B
+                    A = A - (self.eta * gradient)
                 except FloatingPointError as e:   
                     logging.warning(e)
                     logging.warning(f'Overflow encountered during updating of coefficient matrix (iteration {iter_count}) for subject {self.subject}. Restarting with smaller steps ({trial}/{self.max_retry})')
