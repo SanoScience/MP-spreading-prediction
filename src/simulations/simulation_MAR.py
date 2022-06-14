@@ -74,8 +74,10 @@ class MARsimulation:
             return np.copy(self.cm) + np.identity(self.cm.shape[0])
         elif self.matrix == 1: # Random
             return np.random.rand(self.cm.shape[0], self.cm.shape[1])
-        else: # diagonal
+        elif self.matrix == 2: # diagonal
             return np.diag(self.init_concentrations)
+        else: # identity
+            return np.identity(self.cm.shape[0])
 
     def run_gradient_descent(self, vis_error=False):                           
         error_reconstruct = 1 + self.error_stop         
@@ -236,6 +238,7 @@ def training(train_set, num_cores, lam, matrix, use_binary, iter_max, training_s
 def test(conn_matrix, test_set, test_scores):
     mse_subj = []
     pcc_subj = []
+    reg_err = []
     for subj, paths in test_set.items():
         logging.info(f"Test on subject {subj}")
         try:
@@ -247,24 +250,27 @@ def test(conn_matrix, test_set, test_scores):
             if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
             if np.isnan(pcc): raise Exception("Invalid value of PCC")
             save_prediction_plot(t0_concentration, pred, t1_concentration, subj, subj +'test/MAR_test_' + date + '.png', mse, pcc)
+            regional_error = np.abs(pred - t1_concentration)
+            save_coeff_matrix(subj + 'test/MAR_test_regions_' + date + '.csv', regional_error)
         except Exception as e:
             logging.error(e)
             continue
         else:
             mse_subj.append(mse)
             pcc_subj.append(pcc)
+            reg_err.append(regional_error)
             test_scores[subj] = [mse, pcc]
     
     avg_mse = np.mean(mse_subj, axis=0)
     avg_pcc = np.mean(pcc_subj, axis=0)
+    avg_reg_err = np.mean(reg_err, axis=0)
 
-    return avg_mse, avg_pcc
+    return avg_mse, avg_pcc, avg_reg_err
 
 
 if __name__ == '__main__':
 
     ### INPUT ###
-
     with open('../../config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -316,9 +322,9 @@ if __name__ == '__main__':
             lam = 0
     
     matrix = int(sys.argv[5]) if len(sys.argv) > 5 else -1
-    while matrix < 0 or matrix > 2:
+    while matrix < 0 or matrix > 3:
         try:
-            matrix = int(input('Choose the initial A matrix [0=CM, 1=Rnd, 2=Diag, default 0]: '))
+            matrix = int(input('Choose the initial A matrix [0=CM, 1=Rnd, 2=Diag, 3=Identity default 0]: '))
         except Exception as e:
             print("Using default")
             matrix = 0
@@ -356,6 +362,7 @@ if __name__ == '__main__':
     test_scores = {}
     total_mse = []
     total_pcc = []
+    total_reg_err = []
 
     total_time = time()
     train_time = 0
@@ -381,15 +388,17 @@ if __name__ == '__main__':
         coeff_matrix = training(train_set, num_cores, lam, matrix, use_binary, iter_max, training_scores)
         train_time += time() - start_time
 
-        mse, pcc = test(coeff_matrix, test_set, test_scores)
+        mse, pcc, reg_err = test(coeff_matrix, test_set, test_scores)
         total_mse.append(mse)
         total_pcc.append(pcc)
+        total_reg_err.append(reg_err)
         logging.info(f"*** Fold {i} completed ***")
 
     ### OUTPUT STATS ###
 
-    # NOTE: these are the statistics from the last training phase, not the overall ones
+    # NOTE: the coefficient matrix is saved from the last fold
     np.savetxt(f"{output_mat}MAR_{category}_{date}.csv", coeff_matrix, delimiter=',')
+    np.savetxt(f"{output_mat}MAR_{category}_regions_{date}.csv", np.mean(np.array(total_reg_err), axis=0), delimiter=',')
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Avg MSE test", "SD MSE test", "Avg Pearson test", "SD Pearson test"]

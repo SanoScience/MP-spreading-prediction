@@ -1,6 +1,11 @@
 """ 
     SYNOPSYS
     python3 main.py <img_type> <dataset_path> <cores> <atlas_file> 
+    
+    NOTES:
+    register anat to atlas = AAL3v1.nii.gz
+    register dwi to preprocessed anatomical: atlas_file = 'anat'
+    register pet to skull atlas = MNI152_T1_1mm.nii.gz
 """
 
 from subprocess import Popen, PIPE, STDOUT
@@ -11,7 +16,6 @@ import os
 import re
 import sys
 from utils.brain_extraction import BrainExtraction, BET_FSL
-from utils.brain_extraction import BrainExtraction
 from utils.cerebellum_normalization import CerebellumNormalization
 from utils.denoising import Denoising_LPCA
 from utils.eddy_correction import EddyMotionCorrection
@@ -219,58 +223,12 @@ def dispatcher(f, atlas_file, img_type):
                 logging.error(name_nii + ' at Flatten')
                 print(e)
                 print(name_nii + ' at Flatten')
-            
-        """
-        DEPRECATED: PET brain extraction is skipped, use MNI reference volume WITH skull for registration
-        logging.info(f"{name_nii} starting Brain Extraction (PET)")
-        try:
-            be = BET_FSL(name_nii, intermediate_dir + name + '_be', img_type)
-            data, affine, header = be.run(frac=0.1)
-            bm_data = be.get_mask()
-            del be
-            
-            name_nii = intermediate_dir + name + '_be.nii.gz'
-            name_bm = name + '_mask.nii.gz'
-            
-            ### Crop images to save space...
-            img = crop_img(Nifti1Image(data, affine, header))
-            data, affine, header = img.get_fdata(), img.affine, img.header 
-            save(img, name_nii)    
-            del img
-            
-            save(Nifti1Image(bm_data, affine, header), name_bm)
-            bm_img = crop_img(name_bm) 
-            save(bm_img, name_bm)
-            bm_data = bm_img.get_fdata()
-            del bm_img
-                 
-        except Exception as e:
-            logging.error(e)
-            logging.error(name_nii + ' at Brain Extraction (PET)')
-            print(e)
-            print(name_nii + ' at Brain Extraction (PET)')
-        """
         
         img = crop_img(name_nii)
         data, affine, header = img.get_fdata(), img.affine, img.header
         del img        
         
-        try: 
-            """
-            #create binary mask (at this point the PET is 3D!)
-            bm = np.where(data[:,:,:]>0, 1, 0)
-            name_bm = name + '_mask.nii.gz'
-            # binary mask is always saved
-            save(Nifti1Image(bm, affine, header), name_bm)
-
-            logging.info(f"{name_nii} starting Registration of binary mask (PET)")
-            bm_reg = Registration(name_bm, atlas_file, intermediate_dir, name, 'mask')
-            bm_data, bm_affine, bm_header = bm_reg.run()
-            del bm_reg
-            # Binary mask is always saved (it is not an intermediate output)
-            save(Nifti1Image(bm_data, bm_affine, bm_header), name_bm)
-            """
-            
+        try:             
             logging.info(f"{name_nii} starting Registration (PET)")
             pet_reg = Registration(name_nii, atlas_file, intermediate_dir, name, img_type)
             data, affine, header = pet_reg.run()
@@ -285,7 +243,7 @@ def dispatcher(f, atlas_file, img_type):
             print(name_nii + ' at Registration (PET)')
         
             #create binary mask (at this point the PET is 3D!)
-            bm = np.where(data[:,:,:]>0, 1, 0)
+            _, bm = median_otsu(data)
             name_bm = name + '_mask.nii.gz'
             # binary mask is always saved
             save(Nifti1Image(bm, affine, header), name_bm)
@@ -352,7 +310,7 @@ def dispatcher(f, atlas_file, img_type):
     if img_type == 'dwi':
         logging.info(f"{name_nii} starting Final Masking (DWI)")
         try:
-            bm = np.where(data[:,:,:,0]>0, 1, 0)
+            _, bm = median_otsu(data[:,:,:,0])
             name_bm = name + '_mask.nii.gz'
             # binary mask is always saved
             save(Nifti1Image(bm, affine, header), name_bm)

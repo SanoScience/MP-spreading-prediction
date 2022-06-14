@@ -69,7 +69,7 @@ def save_prediction_plot(baseline, prediction, followup, subject, filepath, erro
     plt.ylabel('concentration of misfolded proteins')
     
     if error is not None: plt.title(f'Subject: {subject.split(os.sep)[-2]} \nError between true and predicted t1: {error:.5f}\nPearson correlation coeff: {corr_coeff:.5f}')
-    #plt.tight_layout()
+    plt.tight_layout()
     plt.savefig(filepath)
     plt.close()
 

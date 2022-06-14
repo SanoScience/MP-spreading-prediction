@@ -149,6 +149,7 @@ def run_simulation(subject, paths, beta, queue=None):
     try:
         mse = mean_squared_error(t1_concentration_pred, t1_concentration)
         corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+        regional_errors = np.abs(t1_concentration_pred - t1_concentration)
         if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
         if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
     except Exception as e:
@@ -166,7 +167,7 @@ def run_simulation(subject, paths, beta, queue=None):
         logging.error(e)
         return
 
-    queue.put([subj, mse, corr_coef])
+    queue.put([subj, mse, corr_coef, regional_errors])
     
 if __name__ == '__main__':
     
@@ -187,6 +188,7 @@ if __name__ == '__main__':
         
     dataset_path =  config['paths']['dataset_dir'] +  f'datasets/dataset_{category}.json'
     output_res = config['paths']['dataset_dir'] + f'simulations/{category}/results/'
+    output_mat = config['paths']['dataset_dir'] + f'simulations/{category}/matrices/'
     if not os.path.exists(output_res):
         os.makedirs(output_res)
 
@@ -221,6 +223,7 @@ if __name__ == '__main__':
 
     mse_list = []
     pcc_list = []
+    reg_err_list = []
     
     procs = []
     queue = multiprocessing.Queue()
@@ -244,13 +247,15 @@ if __name__ == '__main__':
         p.join()
 
     while not queue.empty():
-        subj, err, pcc = queue.get()
+        subj, err, pcc, reg_err = queue.get()
         mse_list.append(err)
         pcc_list.append(pcc)
+        reg_err_list.append(reg_err)
         pt_subs.add_row([subj, round(err,5), round(pcc,5)])
 
     ### OUTPUTS ###
 
+    np.savetxt(f"{output_mat}NDM_{category}_regions_{date}.csv", np.mean(np.array(reg_err_list), axis=0), delimiter=',')
     pt_avg.add_row([round(np.mean(mse_list, axis=0), 5), round(np.std(mse_list, axis=0), 2), round(np.mean(pcc_list, axis=0), 5), round(np.std(pcc_list, axis=0), 2)])
 
     total_time = time() - total_time
