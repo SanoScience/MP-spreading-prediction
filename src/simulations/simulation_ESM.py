@@ -241,7 +241,9 @@ if __name__=="__main__":
     total_reg_err = []
     
     total_time = time()
-    for subj, paths in tqdm(dataset.items()):
+    counter = 0
+    done = 0
+    for subj, paths in dataset.items():
         p = multiprocessing.Process(target=run_simulation, args=(
             paths, 
             subj,
@@ -250,25 +252,24 @@ if __name__=="__main__":
             mu_noise, 
             sigma_noise, 
             queue))
-        p.start()
         procs.append(p)
         
-        while len(procs)%num_cores == 0 and len(procs) > 0:
-            for p in procs:
-                if not p.is_alive():
-                    procs.remove(p)
+    for p in tqdm(procs):
+        p.start()       
+        counter += 1 
+        while (counter%num_cores == 0 and counter>0) or (len(procs)-counter<done and done<len(procs)):
+            subj, mse, pcc, reg_err = queue.get()
+            total_mse.append(mse)
+            total_pcc.append(pcc)
+            total_reg_err.append(reg_err)
+            pt_subs.add_row([subj, round(mse,2), round(pcc,2)])
+            counter -= 1
+            done += 1
                     
     for p in procs:
-        p.join()
+        p.join()   
         
     ### OUTPUT ###
-       
-    while not queue.empty():
-        subj, mse, pcc, reg_err = queue.get()
-        total_mse.append(mse)
-        total_pcc.append(pcc)
-        total_reg_err.append(reg_err)
-        pt_subs.add_row([subj, round(mse,2), round(pcc,2)])
    
     np.savetxt(f"{output_mat}ESM_{category}_regions_{date}.csv", np.mean(np.array(total_reg_err), axis=0), delimiter=',')
     pt_avg.add_row([format(np.mean(total_mse, axis=0), '.2f'), format(np.std(total_mse, axis=0), '.2f'), format(np.mean(total_pcc, axis=0), '.2f'), format(np.std(total_pcc, axis=0), '.2f')])

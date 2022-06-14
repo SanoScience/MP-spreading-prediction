@@ -30,6 +30,8 @@ np.seterr(all = 'raise')
 date = str(datetime.now().strftime('%y-%m-%d_%H:%M:%S'))
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_MAR_{date}.log")
 
+queue = multiprocessing.Queue()
+
 class MARsimulation:
     def __init__(self, subject, connect_matrix, t0_concentrations, t1_concentrations, lam, matrix, use_binary, iter_max=int(3e6)):
         self.subject = subject
@@ -145,7 +147,7 @@ class MARsimulation:
         logging.info(f"Final reconstruction error for subject {self.subject}: {error_reconstruct} ({iter_count} iterations)")
         return A
                   
-def run_simulation(subject, paths, connect_matrix, lam, matrix, use_binary, iter_max, queue):    
+def run_simulation(subject, paths, connect_matrix, lam, matrix, use_binary, iter_max):    
     ''' Run simulation for single patient. '''
     
     try:
@@ -191,12 +193,12 @@ def run_simulation(subject, paths, connect_matrix, lam, matrix, use_binary, iter
         return
 
     queue.put([subject, mse, pcc])
+    queue.close()
 
     return      
 
 def training(train_set, num_cores, lam, matrix, use_binary, iter_max, training_scores):
     procs = []
-    queue = multiprocessing.Queue()
     
     for subj, paths in train_set.items():
         p = multiprocessing.Process(target=run_simulation, args=(
@@ -207,7 +209,6 @@ def training(train_set, num_cores, lam, matrix, use_binary, iter_max, training_s
                                                                     matrix, 
                                                                     use_binary, 
                                                                     iter_max, 
-                                                                    queue
                                                                 ))
         p.start()
         procs.append(p)  

@@ -14,6 +14,7 @@ import multiprocessing
 import os
 import logging
 from re import L
+from socket import timeout
 import sys
 from time import time
 
@@ -32,7 +33,9 @@ import warnings
 
 np.seterr(all = 'raise')
 date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
-logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_NDM_{date}.log")
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.ERROR, force=True, filename = f"trace_NDM_{date}.log")
+
+queue = multiprocessing.Queue()
 
 class DiffusionSimulation:
     def __init__(self, connect_matrix, concentrations, beta):
@@ -93,7 +96,10 @@ class DiffusionSimulation:
             exp = np.exp(self.beta * self.eigvals * -1)
             step = self.eigvecs * exp * self.eigvecs @  self.diffusion_init
         except Exception as e:
+            logging.error("Error during integration step")
             logging.error(e)
+            print("Error during integration step")
+            print(e)
         xt = x_prev + step * self.timestep
         return xt
     
@@ -103,7 +109,10 @@ class DiffusionSimulation:
             try:
                 next_step = self.integration_step(diffusion[-1])
             except Exception as e:
+                logging.error(f"Error during iterate spreading")
                 logging.error(e)
+                print(f"Error during integration step")
+                print(e)
                 break
             diffusion.append(next_step)  
             
@@ -117,7 +126,7 @@ class DiffusionSimulation:
             matrix = matrix[::factor, :] # downsampling
         return matrix
 
-def run_simulation(subject, paths, beta, queue=None):    
+def run_simulation(subject, paths, beta):    
     
     if not os.path.exists(subject+'test/'):
         os.makedirs(subject+'test/')    
@@ -130,6 +139,8 @@ def run_simulation(subject, paths, beta, queue=None):
     except Exception as e:
         logging.error(f"Error during data load for subject {subject}. Traceback: ")
         logging.error(e)
+        print(f"Error during data load for subject {subject}. Traceback: ")
+        print(e)
         return
 
     try:
@@ -137,6 +148,8 @@ def run_simulation(subject, paths, beta, queue=None):
     except Exception as e:
         logging.error(f"Error during simulation initialization for subject {subject}. Traceback: ")
         logging.error(e)
+        print(f"Error during simulation initialization for subject {subject}. Traceback: ")
+        print(e)
         return
 
     try:
@@ -144,6 +157,8 @@ def run_simulation(subject, paths, beta, queue=None):
     except Exception as e:
         logging.error(f"Error during simulation for subject {subject}. Traceback: ")
         logging.error(e)
+        print(f"Error during simulation for subject {subject}. Traceback: ")
+        print(e)
         return
     
     try:
@@ -155,6 +170,8 @@ def run_simulation(subject, paths, beta, queue=None):
     except Exception as e:
         logging.error(f"Error during computation of statistics for subject {subject}. Traceback: ")
         logging.error(e)
+        print(f"Error during computation of statistics for subject {subject}. Traceback: ")
+        print(e)
         return
     
     logging.info(f"Saving prediction for subject {subj}")
@@ -165,9 +182,13 @@ def run_simulation(subject, paths, beta, queue=None):
     except Exception as e:
         logging.error(f"Error during save of prediction for subject {subject}. Traceback: ")
         logging.error(e)
+        print(f"Error during save of prediction for subject {subject}. Traceback: ")
+        print(e)
         return
-
+    
     queue.put([subj, mse, corr_coef, regional_errors])
+    queue.close()
+    return
     
 if __name__ == '__main__':
     
@@ -226,32 +247,32 @@ if __name__ == '__main__':
     reg_err_list = []
     
     procs = []
-    queue = multiprocessing.Queue()
     total_time = time()
-    for subj, paths in tqdm(dataset.items()):
+    
+    counter = 0
+    done = 0
+    for subj, paths in dataset.items():
         p = multiprocessing.Process(target=run_simulation, args=(
                                                                 subj, 
                                                                 paths, 
-                                                                beta,  
-                                                                queue
+                                                                beta,
                                                                 ))
-        p.start()
         procs.append(p)
-
-        while len(procs)%num_cores == 0 and len(procs) > 0:
-            for p in procs:
-                if not p.is_alive():
-                    procs.remove(p)
-        
+    
+    for p in tqdm(procs):
+        p.start()       
+        counter += 1 
+        while (counter%num_cores == 0 and counter>0) or (len(procs)-counter<done and done<len(procs)):
+            subj, err, pcc, reg_err = queue.get()
+            mse_list.append(err)
+            pcc_list.append(pcc)
+            reg_err_list.append(reg_err)
+            pt_subs.add_row([subj, round(err,5), round(pcc,5)])
+            counter -= 1
+            done += 1
+    
     for p in procs:
         p.join()
-
-    while not queue.empty():
-        subj, err, pcc, reg_err = queue.get()
-        mse_list.append(err)
-        pcc_list.append(pcc)
-        reg_err_list.append(reg_err)
-        pt_subs.add_row([subj, round(err,5), round(pcc,5)])
 
     ### OUTPUTS ###
 
