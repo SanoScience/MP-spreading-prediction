@@ -406,22 +406,22 @@ if __name__ == '__main__':
     pt_avg.add_row([round(np.mean(total_mse), 5), round(np.std(total_mse), 2), round(np.mean(total_pcc), 5), round(np.std(total_pcc), 2)])
         
     pt_train = PrettyTable()
-    pt_train.field_names = ["ID", "Avg MSE train", "SD MSE train", "Avg Pearson train", "SD Pearson train"]
+    pt_train.field_names = ["ID", "Avg MSE train", "Avg Pearson train"]
     pt_train.sortby = "ID"
 
     for s in training_scores.keys():
         mse_subj = [training_scores[s][0]]
         pcc_subj = [training_scores[s][1]]
-        pt_train.add_row([s, round(np.mean(mse_subj), 5), round(np.std(mse_subj), 2), round(np.mean(pcc_subj), 5), round(np.std(pcc_subj), 2)])
+        pt_train.add_row([s, round(np.mean(mse_subj), 5), round(np.mean(pcc_subj), 5)])
 
     pt_test = PrettyTable()
-    pt_test.field_names = ["ID", "Avg MSE test", "SD MSE test", "Avg Pearson test", "SD Pearson test"]
+    pt_test.field_names = ["ID", "Avg MSE test", "Avg Pearson test"]
     pt_test.sortby = "ID"
 
     for s in test_scores.keys():
         mse_subj = [test_scores[s][0]]
         pcc_subj = [test_scores[s][1]]
-        pt_test.add_row([s, round(np.mean(mse_subj), 5), round(np.std(mse_subj), 2), round(np.mean(pcc_subj), 5), round(np.std(pcc_subj), 2)])
+        pt_test.add_row([s, round(np.mean(mse_subj), 5), round(np.mean(pcc_subj), 5)])
 
     total_time = time() - total_time
     filename = f"{output_res}MAR_{category}_{date}.txt"
@@ -432,7 +432,7 @@ if __name__ == '__main__':
     out_file.write(f"Training set size: {train_size}\n")
     out_file.write(f"Testing set size: {len(dataset.keys())-train_size}\n")
     out_file.write(f"Lambda coefficient: {lam}\n")
-    out_file.write(f"Matrix: {'CM' if matrix==0 else 'Rnd' if matrix==1 else 'Diag'}\n")
+    out_file.write(f"Matrix: {'CM' if matrix==0 else 'Rnd' if matrix==1 else 'Diag' if matrix==2 else 'Iden' if matrix ==3 else ''}\n")
     out_file.write(f"Binary matrix: {'yes' if use_binary else 'no'}\n")
     out_file.write(f"Iterations per patient: {iter_max}\n")
     out_file.write(f"Folds: {N_fold}\n")
@@ -449,7 +449,7 @@ if __name__ == '__main__':
     logging.info(f"Training set size: {train_size}")
     logging.info(f"Testing set size: {len(dataset.keys())-train_size}")
     logging.info(f"Lambda coefficient: {lam}")
-    logging.info(f"Matrix: {'CM' if matrix==0 else 'Rnd' if matrix==1 else 'Diag'}")
+    logging.info(f"Matrix: {'CM' if matrix==0 else 'Rnd' if matrix==1 else 'Diag' if matrix==2 else 'Iden' if matrix ==3 else ''}")
     logging.info(f"Binary matrix: {'yes' if use_binary else 'no'}")
     logging.info(f"Iterations per patient: {iter_max}")
     logging.info(f"Folds: {N_fold}")
@@ -458,5 +458,3 @@ if __name__ == '__main__':
     logging.info('***********************')
     logging.info(f"Results saved in {filename}")
     print(f"Results saved in {filename}")
-
-    quit()
