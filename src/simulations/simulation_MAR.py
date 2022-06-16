@@ -363,25 +363,26 @@ if __name__ == '__main__':
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Avg MSE test", "SD MSE test", "Avg Pearson test", "SD Pearson test"]
-    pt_avg.add_row([round(np.mean(total_mse), 4), round(np.std(total_mse), 2), round(np.mean(total_pcc), 4), round(np.std(total_pcc), 2)])
+    pt_avg.add_row([round(np.mean(total_mse), 5), round(np.std(total_mse), 2), round(np.mean(total_pcc), 5), round(np.std(total_pcc), 2)])
         
     pt_train = PrettyTable()
-    pt_train.field_names = ["ID", "Avg MSE train", "SD MSE train", "Avg Pearson train", "SD Pearson train"]
+    pt_train.field_names = ["ID", "Avg MSE train", "Avg Pearson train"]
     pt_train.sortby = "ID"
 
     for s in training_scores.keys():
         mse_subj = [training_scores[s][0]]
         pcc_subj = [training_scores[s][1]]
-        pt_train.add_row([s, round(np.mean(mse_subj), 4), round(np.std(mse_subj), 2), round(np.mean(pcc_subj), 4), round(np.std(pcc_subj), 2)])
+        pt_train.add_row([s, round(np.mean(mse_subj), 5), round(np.std(mse_subj), 2), round(np.mean(pcc_subj), 5), round(np.std(pcc_subj), 2)])
+        pt_train.add_row([s, round(np.mean(mse_subj), 5), round(np.mean(pcc_subj), 5)])
 
     pt_test = PrettyTable()
-    pt_test.field_names = ["ID", "Avg MSE test", "SD MSE test", "Avg Pearson test", "SD Pearson test"]
+    pt_test.field_names = ["ID", "Avg MSE test", "Avg Pearson test"]
     pt_test.sortby = "ID"
 
     for s in test_scores.keys():
         mse_subj = [test_scores[s][0]]
         pcc_subj = [test_scores[s][1]]
-        pt_test.add_row([s, round(np.mean(mse_subj), 4), round(np.std(mse_subj), 2), round(np.mean(pcc_subj), 4), round(np.std(pcc_subj), 2)])
+        pt_test.add_row([s, round(np.mean(mse_subj), 5), round(np.mean(pcc_subj), 5)])
 
     total_time = time() - total_time
     filename = f"{output_res}MAR_{category}_{date}.txt"
@@ -418,5 +419,3 @@ if __name__ == '__main__':
     logging.info('***********************')
     logging.info(f"Results saved in {filename}")
     print(f"Results saved in {filename}")
-
-    quit()
