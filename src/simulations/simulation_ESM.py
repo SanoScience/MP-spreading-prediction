@@ -14,7 +14,8 @@ Authors: Yasser Iturria-Medina ,Roberto C. Sotero,Paule J. Toussaint,Alan C. Eva
 
 from datetime import datetime
 import json
-import multiprocessing 
+from threading import Thread, active_count, Lock
+from multiprocessing import cpu_count
 import os
 import logging
 import sys
@@ -35,128 +36,134 @@ np.seterr(all = 'raise')
 date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_ESM_{date}.log")
 
-def drop_negative_predictions(predictions):
-    return np.maximum(predictions, 0)
+class ESM(Thread):       
+    
+    def __init__(self, paths, subj, n_regions = 166):
+        Thread.__init__(self)
+        self.paths = paths 
+        self.subj = subj
+        self.n_regions = n_regions
 
-def compute_gini(concentration):
-    '''
-    https://en.wikipedia.org/wiki/Gini_coefficient#Definition
-    Compute Gini coefficient as half of the relative mean absolute difference, which is mathematically equivalent to the definition based on the Lorenz curve.
-    The mean absolute difference is the average absolute difference of all pairs of items of the population, and the relative mean absolute difference is the mean absolute difference divided by the average to normalize for scale.
-    '''
-    # Mean absolute difference
-    mad = np.abs(np.subtract.outer(concentration, concentration)).mean()
-    # Relative mean absolute difference
-    rmad = mad/np.mean(concentration)
-    # Gini coefficient
-    return 0.5 * rmad
+    def drop_negative_predictions(self, predictions):
+        return np.maximum(predictions, 0)
 
-def Simulation(concentration, connect_matrix, beta_0, delta_0, mu_noise, sigma_noise, iterations, timestep, velocity=1, n_regions = 166):
-    
-    #TODO: should I use something different from 0 for null concentrations? (i.e. 0.1) Possibly depending on strenght of connections
-    # between healthy and infected regions (and also internal concentrations)
-    
-    try:        
-        #P = define_initial_P(concentration, connect_matrix, distances, max_concentration)
-        # NOTE Initial P has to be explored for different values (i.e. 0.5 instead of 1)
-        P = np.array(np.where(concentration>0, 1, 0), dtype=np.float64)
-        iterations = 5 # found through empirical trials
-        timestep = 1e-2
-    except Exception as e:
-        logging.error(f"Error while initializing variables: {e}")
-        return concentration
-    
-    for k in range(iterations):
+    def compute_gini(self):
+        '''
+        https://en.wikipedia.org/wiki/Gini_coefficient#Definition
+        Compute Gini coefficient as half of the relative mean absolute difference, which is mathematically equivalent to the definition based on the Lorenz curve.
+        The mean absolute difference is the average absolute difference of all pairs of items of the population, and the relative mean absolute difference is the mean absolute difference divided by the average to normalize for scale.
+        '''
+        # Mean absolute difference
+        mad = np.abs(np.subtract.outer(self.t0, self.t0)).mean()
+        # Relative mean absolute difference
+        rmad = mad/np.mean(self.t0)
+        # Gini coefficient
+        return 0.5 * rmad
+
+    def simulation(self):
         
-        with warnings.catch_warnings():
-            warnings.filterwarnings ('error')
-            try:
-                # Compute Beta and Delta vectors
-                Beta = 1 - np.exp(- beta_0 * P) # Diffusion
-                Delta = np.exp(- delta_0 * P) # Recovery
-                gini = compute_gini(concentration)
+        #TODO: should I use something different from 0 for null concentrations? (i.e. 0.1) Possibly depending on strenght of connections
+        # between healthy and infected regions (and also internal concentrations)
+        
+        try:        
+            #P = define_initial_P(concentration, self.cm, distances, max_concentration)
+            # NOTE Initial P has to be explored for different values (i.e. 0.5 instead of 1)
+            P = np.array(np.where(self.t0>0, 1, 0), dtype=np.float64)
+            iterations = 5 # found through empirical trials
+            timestep = 1e-2
+        except Exception as e:
+            logging.error(f"Error while initializing variables: {e}")
+            return self.t0
+        
+        for k in range(iterations):
+        
+            with warnings.catch_warnings():
+                warnings.filterwarnings ('error')
+                try:
+                    # Compute Beta and Delta vectors
+                    Beta = 1 - np.exp(- beta_0 * P) # Diffusion
+                    Delta = np.exp(- delta_0 * P) # Recovery
+                    gini = self.compute_gini(self.t0)
+                    
+                    Beta_ext = gini * Beta 
+                    Beta_int = (1 - gini) * Beta
+                    
+                    # Epsilon has to be computed at each time step
+                    Epsilon = np.zeros(self.n_regions)
+                    # Define gaussian noise (NOTE authors don't differentiate it by region nor by time)
+                    noise = np.random.normal(mu_noise, sigma_noise)
+                except Exception as e: 
+                    logging.error(f"Error in computing Beta, Delta, Epsilon, gini or noise. Traceback: {e}")
+                    return self.t0
+                try:
+                    for i in range(self.n_regions):
+                        for j in range(self.n_regions):
+                            if i != j:
+                                # NOTE: I am assuming the delay to go from j to i is null (else Beta_ext(t- Tau(ij)))
+                                # Computing the extrinsic infection probability (i!=j)...
+                                Epsilon[i] += self.cm[j,i] * Beta_ext[j] * P[i] 
+                        # and summing the intrinstic infection rate
+                        Epsilon[i] += self.cm[i,i] * Beta_int[i] * P[i]
                 
-                Beta_ext = gini * Beta 
-                Beta_int = (1 - gini) * Beta
-                
-                # Epsilon has to be computed at each time step
-                Epsilon = np.zeros(n_regions)
-                # Define gaussian noise (NOTE authors don't differentiate it by region nor by time)
-                noise = np.random.normal(mu_noise, sigma_noise)
-            except Exception as e: 
-                logging.error(f"Error in computing Beta, Delta, Epsilon, gini or noise. Traceback: {e}")
-                return concentration
-            try:
-                for i in range(n_regions):
-                    for j in range(n_regions):
-                        if i != j:
-                            # NOTE: I am assuming the delay to go from j to i is null (else Beta_ext(t- Tau(ij)))
-                            # Computing the extrinsic infection probability (i!=j)...
-                            Epsilon[i] += connect_matrix[j,i] * Beta_ext[j] * P[i] 
-                    # and summing the intrinstic infection rate
-                    Epsilon[i] += connect_matrix[i,i] * Beta_int[i] * P[i]
+                    # Updating probabilities
+                    #P = (1 - P) * Epsilon - Delta * P + noise
+                    P += (1 - P) * Epsilon - Delta * P + noise
+                    assert P.all()<=1 and P.all()>=0, "Probabilities are not between 0 and 1"
+                except Exception as e:
+                    logging.error(f"Error in updating P. Traceback: {e}")
+                    return self.t0
             
-                # Updating probabilities
-                #P = (1 - P) * Epsilon - Delta * P + noise
-                P += (1 - P) * Epsilon - Delta * P + noise
-                assert P.all()<=1 and P.all()>=0, "Probabilities are not between 0 and 1"
+            try:
+                self.t0 += (P * (self.t0 @ self.cm)) * timestep
             except Exception as e:
-                logging.error(f"Error in updating P. Traceback: {e}")
-                return concentration
+                logging.error(f"Error in updating concentration. Traceback: {e}")
+                return self.t0        
+            
+        return self.t0
+        
+    def run(self): 
+
+        try:
+            self.cm = drop_data_in_connect_matrix(load_matrix(paths['CM']))
+            # ESM uses self connections for inner propagation (CM has a diagonal set to 0 due to normalization during CM generation)
+            self.cm += np.identity(self.cm.shape[0])
+            t0_concentration = load_matrix(paths['baseline'])
+            self.t0 = t0_concentration.copy()
+            t1_concentration = load_matrix(paths['followup'])
+        except Exception as e:
+            logging.error(f'Error appening while loading data of subject {subj}. Traceback: {e}')
+            return
+
+        try:
+            t1_concentration_pred = self.simulation()
+
+            t1_concentration_pred = self.drop_negative_predictions(t1_concentration_pred)
+            if np.isnan(t1_concentration_pred).any() or np.isinf(t1_concentration_pred).any(): raise Exception("Discarding prediction")
+        except Exception as e:
+            logging.error(f'Error during simulation for subject {subj}. Traceback: {e}')
+            return
         
         try:
-            concentration += (P * (concentration @ connect_matrix)) * timestep
+            mse = mean_squared_error(t1_concentration, t1_concentration_pred)
+            pcc = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+            if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
+            if np.isnan(pcc): raise Exception("Invalid value of PCC")
         except Exception as e:
-            logging.error(f"Error in updating concentration. Traceback: {e}")
-            return concentration        
+            logging.error(f'Error appening during computation of MSE and PCC for subject {subj}. Traceback: {e}')
+            return
         
-    return concentration
+        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, subj + 'test/ESM_' + date + '.png', mse, pcc)
+        logging.info(f"Saving prediction in {subj + 'test/ESM_' + date + '.png'}")
+        reg_err = np.abs(t1_concentration_pred - t1_concentration)
         
-def run_simulation(paths, subj, beta_0, delta_0, mu_noise, sigma_noise, queue):      
-    try:
-        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['CM']))
-        # ESM uses self connections for inner propagation (CM has a diagonal set to 0 due to normalization during CM generation)
-        connect_matrix += np.identity(connect_matrix.shape[0])
-        t0_concentration = load_matrix(paths['baseline'])
-        t1_concentration = load_matrix(paths['followup'])
-    except Exception as e:
-        logging.error(f'Error appening while loading data of subject {subj}. Traceback: {e}')
+        lock.acquire()
+        total_mse.append(mse)
+        total_pcc.append(pcc)
+        total_reg_err.append(reg_err)
+        pt_subs.add_row([subj, round(mse,4), round(pcc,4)])
+        lock.release()
+            
         return
-
-    try:
-        t1_concentration_pred = Simulation(
-                                            t0_concentration.copy(),    # initial concentration
-                                            connect_matrix,             # CM                   
-                                            beta_0,                     # beta_0
-                                            delta_0,                    # delta_0
-                                            mu_noise,                   # mu_noise
-                                            sigma_noise,                # sigma_noise
-                                            1,                          # v
-                                            166,                        # N_regions
-                                            )
-
-        t1_concentration_pred = drop_negative_predictions(t1_concentration_pred)
-        if np.isnan(t1_concentration_pred).any() or np.isinf(t1_concentration_pred).any(): raise Exception("Discarding prediction")
-    except Exception as e:
-        logging.error(f'Error during simulation for subject {subj}. Traceback: {e}')
-        return
-    
-    try:
-        mse = mean_squared_error(t1_concentration, t1_concentration_pred)
-        corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
-        if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
-    except Exception as e:
-        logging.error(f'Error appening during computation of MSE and PCC for subject {subj}. Traceback: {e}')
-        return
-    
-    save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, subj + 'test/ESM_' + date + '.png', mse, corr_coef)
-    logging.info(f"Saving prediction in {subj + 'test/ESM_' + date + '.png'}")
-    regional_error = np.abs(t1_concentration_pred - t1_concentration)
-    if queue:
-        queue.put([subj, mse, corr_coef, regional_error])
-        
-    return
 
 if __name__=="__main__":
 
@@ -190,7 +197,7 @@ if __name__=="__main__":
         try:
             num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
         except Exception as e:
-            num_cores = multiprocessing.cpu_count()
+            num_cores = cpu_count()
             logging.info(f"{num_cores} cores available")
             
     beta_0 = float(sys.argv[3]) if len(sys.argv) > 3 else -1
@@ -234,45 +241,25 @@ if __name__=="__main__":
     pt_subs.field_names = ["ID", "MSE", "Pearson"]
     pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
-    procs = []
-    queue = multiprocessing.Queue()
     total_mse = []
     total_pcc = []
     total_reg_err = []
     
     total_time = time()
-    counter = 0
-    done = 0
-    for subj, paths in dataset.items():
-        p = multiprocessing.Process(target=run_simulation, args=(
-            paths, 
-            subj,
-            beta_0, 
-            delta_0, 
-            mu_noise, 
-            sigma_noise, 
-            queue))
-        procs.append(p)
-        
-    for p in tqdm(procs):
-        p.start()       
-        counter += 1 
-        while (counter%num_cores == 0 and counter>0) or (len(procs)-counter<done and done<len(procs)):
-            subj, mse, pcc, reg_err = queue.get()
-            total_mse.append(mse)
-            total_pcc.append(pcc)
-            total_reg_err.append(reg_err)
-            pt_subs.add_row([subj, round(mse,2), round(pcc,2)])
-            counter -= 1
-            done += 1
-                    
-    for p in procs:
-        p.join()   
+
+    lock = Lock()
+    for subj, paths in tqdm(dataset.items()):
+        ESM(paths, subj).start()
+        while active_count() > num_cores + 1:
+            pass
+            
+    while active_count() > 2:
+        pass  
         
     ### OUTPUT ###
    
     np.savetxt(f"{output_mat}ESM_{category}_regions_{date}.csv", np.mean(np.array(total_reg_err), axis=0), delimiter=',')
-    pt_avg.add_row([format(np.mean(total_mse, axis=0), '.2f'), format(np.std(total_mse, axis=0), '.2f'), format(np.mean(total_pcc, axis=0), '.2f'), format(np.std(total_pcc, axis=0), '.2f')])
+    pt_avg.add_row([round(np.mean(total_mse, axis=0), 4), round(np.std(total_mse, axis=0), 2), round(np.mean(total_pcc, axis=0), 4), round(np.std(total_pcc, axis=0), 2)])
 
     total_time = time() - total_time
     filename = f"{output_res}ESM_{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}.txt"

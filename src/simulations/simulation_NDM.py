@@ -10,11 +10,10 @@ Ashish Raj, Amy Kuceyeski, Michael Weiner,
 '''
 
 import json
-import multiprocessing
+from multiprocessing import cpu_count
+from threading import Thread, active_count, Lock
 import os
 import logging
-from re import L
-from socket import timeout
 import sys
 from time import time
 
@@ -35,10 +34,10 @@ np.seterr(all = 'raise')
 date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.ERROR, force=True, filename = f"trace_NDM_{date}.log")
 
-queue = multiprocessing.Queue()
 
-class DiffusionSimulation:
-    def __init__(self, connect_matrix, concentrations, beta):
+class NDM(Thread):
+    def __init__(self, subject, paths, downsample = False):
+        Thread.__init__(self)
         ''' 
         t_total: gap between baseline and followup PET (in years)
             timestep = t_total / (iterations * 10)
@@ -46,15 +45,14 @@ class DiffusionSimulation:
             t_total = timestep * iterations * 10
         Putting iterations to '1' and for t_total = 2 years, the timestep is 0.2
         '''
-        self.rois = 166 
+        self.subject = subject
+        self.paths = paths
+
+        self.downsample = downsample
+        
         self.t_total = 2 # total length of the simulation in years
         self.timestep = 1e-5
         self.iterations = 2318 # number of iterations obtained through empirical test (2318)
-        self.cm = connect_matrix
-        self.beta = beta
-        self.diffusion_init = concentrations
-        
-        self.calc_laplacian()  
 
     '''
     DEPRECATED
@@ -82,14 +80,9 @@ class DiffusionSimulation:
         self.eigvecs = self.eigvecs.real
         self.eigvals = np.array(self.eigvals).real # Taking only the real part
         self.inv_eigvecs = np.linalg.inv(self.eigvecs + eps)
-                    
-    def run(self, downsample=False):   
-        self.diffusion_final = self.iterate_spreading()
-        if downsample: 
-            self.diffusion_final = self.downsample_matrix(self.diffusion_final)
-        return self.diffusion_final[-1]
+                   
 
-    def integration_step(self, x_prev):
+    def integration_step(self):
         # methods proposed by Julien Lefevre during Marseille Brainhack 
         step = 0
         try:
@@ -100,23 +93,22 @@ class DiffusionSimulation:
             logging.error(e)
             print("Error during integration step")
             print(e)
-        xt = x_prev + step * self.timestep
-        return xt
+        self.diffusion[-1].append(self.diffusion[-1] + step * self.timestep)
+        return
     
     def iterate_spreading(self):
-        diffusion = [self.diffusion_init]  
+        self.diffusion = [self.t0_concentration]  
         for _ in range(self.iterations):
             try:
-                next_step = self.integration_step(diffusion[-1])
+                self.integration_step()
             except Exception as e:
                 logging.error(f"Error during iterate spreading")
                 logging.error(e)
                 print(f"Error during integration step")
                 print(e)
-                break
-            diffusion.append(next_step)  
-            
-        return np.asarray(diffusion, dtype=object)
+                break 
+        
+        self.diffusion = np.asarray(self.diffusion, dtype=object)
  
     def downsample_matrix(self, matrix, target_len=int(1e3)):
         ''' Take every n-th sample when the matrix is longer than target length. '''
@@ -126,69 +118,65 @@ class DiffusionSimulation:
             matrix = matrix[::factor, :] # downsampling
         return matrix
 
-def run_simulation(subject, paths, beta):    
-    
-    if not os.path.exists(subject+'test/'):
-        os.makedirs(subject+'test/')    
+    def run(self):    
+        
+        if not os.path.exists(self.subject+'test/'):
+            os.makedirs(self.subject+'test/')    
 
-    try:
-        connect_matrix = drop_data_in_connect_matrix(load_matrix(paths['CM']))
-        #connect_matrix = prepare_cm(connect_matrix)
-        t0_concentration = load_matrix(paths['baseline'])
-        t1_concentration = load_matrix(paths['followup'])
-    except Exception as e:
-        logging.error(f"Error during data load for subject {subject}. Traceback: ")
-        logging.error(e)
-        print(f"Error during data load for subject {subject}. Traceback: ")
-        print(e)
-        return
+        try:
+            self.cm = drop_data_in_connect_matrix(load_matrix(paths['CM']))
+            #connect_matrix = prepare_cm(connect_matrix)
+            self.t0_concentration = load_matrix(paths['baseline'])
+            self.t1_concentration = load_matrix(paths['followup'])
+            self.calc_laplacian()  
+        except Exception as e:
+            logging.error(f"Error during data load for subject {self.subject}. Traceback: ")
+            logging.error(e)
+            print(f"Error during data load for subject {self.subject}. Traceback: ")
+            print(e)
+            return
 
-    try:
-        simulation = DiffusionSimulation(connect_matrix, t0_concentration, beta)
-    except Exception as e:
-        logging.error(f"Error during simulation initialization for subject {subject}. Traceback: ")
-        logging.error(e)
-        print(f"Error during simulation initialization for subject {subject}. Traceback: ")
-        print(e)
+        try:
+            t1_concentration_pred = self.iterate_spreading()
+            if self.downsample: 
+                self.diffusion_final = self.downsample_matrix(self.diffusion_final)
+        except Exception as e:
+            logging.error(f"Error during simulation for subject {self.subject}. Traceback: ")
+            logging.error(e)
+            print(f"Error during simulation for subject {self.subject}. Traceback: ")
+            print(e)
+            return
+        
+        try:
+            mse = mean_squared_error(self.t1_concentration, t1_concentration_pred)
+            pcc = pearson_corr_coef(self.t1_concentration, t1_concentration_pred)[0]
+            reg_err = np.abs(t1_concentration_pred - self.t1_concentration)
+            if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
+            if np.isnan(pcc): raise Exception("Invalid value of PCC")
+        except Exception as e:
+            logging.error(f"Error during computation of statistics for subject {self.subject}. Traceback: ")
+            logging.error(e)
+            print(f"Error during computation of statistics for subject {self.subject}. Traceback: ")
+            print(e)
+            return
+        
+        logging.info(f"Saving prediction for subject {self.subject}")
+        try:
+            np.savetxt(os.path.join(self.subject, 'test/NDM_diffusion_' + date + '.csv'), t1_concentration_pred, delimiter=',')
+            np.savetxt(os.path.join(self.subject, 'test/NDM_terminal_concentrations_' + date + '.csv'), t1_concentration_pred[-1, :], delimiter=',')
+            save_prediction_plot(self.t0_concentration, t1_concentration_pred, self.t1_concentration, self.subject, os.path.join(self.subject, 'test/NDM_' + date + '.png'), mse, pcc)
+        except Exception as e:
+            logging.error(f"Error during save of prediction for subject {self.subject}. Traceback: ")
+            logging.error(e)
+            print(f"Error during save of prediction for subject {self.subject}. Traceback: ")
+            print(e)
+            return
+        
+        mse_list.append(mse)
+        pcc_list.append(pcc)
+        reg_err_list.append(reg_err)
+        pt_subs.add_row([self.subject, round(mse,4), round(pcc,4)])
         return
-
-    try:
-        t1_concentration_pred = simulation.run()
-    except Exception as e:
-        logging.error(f"Error during simulation for subject {subject}. Traceback: ")
-        logging.error(e)
-        print(f"Error during simulation for subject {subject}. Traceback: ")
-        print(e)
-        return
-    
-    try:
-        mse = mean_squared_error(t1_concentration_pred, t1_concentration)
-        corr_coef = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
-        regional_errors = np.abs(t1_concentration_pred - t1_concentration)
-        if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
-        if np.isnan(corr_coef): raise Exception("Invalid value of PCC")
-    except Exception as e:
-        logging.error(f"Error during computation of statistics for subject {subject}. Traceback: ")
-        logging.error(e)
-        print(f"Error during computation of statistics for subject {subject}. Traceback: ")
-        print(e)
-        return
-    
-    logging.info(f"Saving prediction for subject {subj}")
-    try:
-        np.savetxt(os.path.join(subject, 'test/NDM_diffusion_' + date + '.csv'), simulation.diffusion_final, delimiter=',')
-        np.savetxt(os.path.join(subject, 'test/NDM_terminal_concentrations_' + date + '.csv'), simulation.diffusion_final[-1, :], delimiter=',')
-        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, os.path.join(subject, 'test/NDM_' + date + '.png'), mse, corr_coef)
-    except Exception as e:
-        logging.error(f"Error during save of prediction for subject {subject}. Traceback: ")
-        logging.error(e)
-        print(f"Error during save of prediction for subject {subject}. Traceback: ")
-        print(e)
-        return
-    
-    queue.put([subj, mse, corr_coef, regional_errors])
-    queue.close()
-    return
     
 if __name__ == '__main__':
     
@@ -222,7 +210,7 @@ if __name__ == '__main__':
             num_cores = int(input('Cores to use [hit \'Enter\' for all available]: '))
         except Exception as e:
             print('Using default')
-            num_cores = multiprocessing.cpu_count()
+            num_cores = cpu_count()
             logging.info(f"{num_cores} cores available")
             
     beta = float(sys.argv[3]) if len(sys.argv) > 3 else -1
@@ -246,38 +234,22 @@ if __name__ == '__main__':
     pcc_list = []
     reg_err_list = []
     
-    procs = []
     total_time = time()
     
-    counter = 0
-    done = 0
     for subj, paths in dataset.items():
-        p = multiprocessing.Process(target=run_simulation, args=(
-                                                                subj, 
-                                                                paths, 
-                                                                beta,
-                                                                ))
-        procs.append(p)
-    
-    for p in tqdm(procs):
-        p.start()       
-        counter += 1 
-        while (counter%num_cores == 0 and counter>0) or (len(procs)-counter<done and done<len(procs)):
-            subj, err, pcc, reg_err = queue.get()
-            mse_list.append(err)
-            pcc_list.append(pcc)
-            reg_err_list.append(reg_err)
-            pt_subs.add_row([subj, round(err,5), round(pcc,5)])
-            counter -= 1
-            done += 1
-    
-    for p in procs:
-        p.join()
+        NDM(subj, paths).start()
 
+        while active_count() > num_cores + 1:
+            pass 
+
+    while active_count() > 2:
+        pass
+        
+    
     ### OUTPUTS ###
 
     np.savetxt(f"{output_mat}NDM_{category}_regions_{date}.csv", np.mean(np.array(reg_err_list), axis=0), delimiter=',')
-    pt_avg.add_row([round(np.mean(mse_list, axis=0), 5), round(np.std(mse_list, axis=0), 2), round(np.mean(pcc_list, axis=0), 5), round(np.std(pcc_list, axis=0), 2)])
+    pt_avg.add_row([round(np.mean(mse_list, axis=0), 4), round(np.std(mse_list, axis=0), 2), round(np.mean(pcc_list, axis=0), 4), round(np.std(pcc_list, axis=0), 2)])
 
     total_time = time() - total_time
     filename = f"{output_res}/NDM_{category}_{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}.txt"

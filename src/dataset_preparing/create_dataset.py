@@ -86,10 +86,9 @@ class datasetThread(threading.Thread):
         "baseline": t0_concentration_path, 
         "followup": t1_concentration_path
         }
-        # Assuring consistency while accessing dictionary
-        queueLock.acquire()
+        
         self.queue.put([self.subject, results_dict, kind]) 
-        queueLock.release()  
+        
         logging.info(f"Subject {self.subject} loaded")
 
         return    
