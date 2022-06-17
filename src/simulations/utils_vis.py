@@ -3,11 +3,12 @@
 import os
 
 import matplotlib.pyplot as plt
+
 import numpy as np
 import seaborn as sns
 
-sns.set_theme(style="darkgrid")
-sns.set_palette(['#390099', '#FF0054', '#00A6FB'])
+#sns.set_theme(style="darkgrid")
+#sns.set_palette(['#390099', '#FF0054', '#00A6FB'])
 
 def visualize_NIfTI_data(data, depths, time_idx=None):
     ''' Visualize provided depths from NIfTI data at the specific time. 
@@ -44,35 +45,31 @@ def visualize_diffusion_timeplot(matrix, timestep, total_time, save_dir=None):
         plt.savefig(os.path.join(save_dir, 'diffusion_over_time.png'))
     plt.show() 
     
-def save_prediction_plot(baseline, prediction, followup, subject, filepath, error=None, corr_coeff=None):
-    '''
-    plt.figure(figsize=(15, 5))
-    plt.plot(baseline, '-', marker='o', c='b', label='initial concentration t0')
-    plt.plot(prediction, '--', marker='o', c='r', label='predicted concentration t1')
-    plt.plot(followup, '-', marker='o', c='g', label='true concentration t1')
-    plt.xlabel('ROI (index of brain region based on AAL atlas)')
-    plt.ylabel('concentration of misfolded proteins')
-    plt.legend(loc='upper right')
-    if error is not None: plt.title(f'Subject: {subject} \nError between true and predicted t1: {error:.2f}\nPearson correlation coeff: {corr_coeff:.2f}')
-    plt.tight_layout()
-    plt.savefig(filepath)
-    # After saving the figure, explicitly close it to avoid memory wasting
-    plt.close()
-    '''
+def save_prediction_plot(baseline, prediction, followup, subject, filepath, error=None, corr_coeff=None):    
     plt.figure(figsize=(20, 15))
-    sns.lineplot(data=baseline, label='baseline concentration', marker='o', dashes=False, markers=True)
-    sns.lineplot(data=prediction, label='predicted followup concentration', marker='o', dashes=True, markers=True)
-    sns.lineplot(data=followup, label='followup concentration', marker='o', dashes=False, markers=True)
+    plt.plot(baseline, '-', marker='o', c='#390099', label='baseline concentration', linewidth=2)
+    plt.plot(followup, '-', marker='o', c='#00A6FB', label='followup concentration', linewidth=2)
+    plt.plot(prediction, '-', marker='o', c='#FF0054', label='predicted concentration', linewidth=4, alpha = 0.5)
+        
+    '''
+    plt.figure(figsize=(25, 10))
+    sns.lineplot(data=baseline, label='baseline concentration', marker='o', dashes=False, markers=True, linewidth=1)
+    sns.lineplot(data=followup, label='followup concentration', marker='o', dashes=False, markers=True, linewidth=1)
+    sns.lineplot(data=prediction, label='predicted followup concentration', marker='o', dashes=True, markers=True, linewidth=3, alpha = 0.5)
+    '''
     
-    plt.legend(bbox_to_anchor=(1, 1.06), loc='upper right', borderaxespad=0.)
-    plt.xlabel('ROI (index of brain region based on AAL3 atlas)')
-    plt.ylabel('concentration of misfolded proteins')
-    
-    if error is not None: plt.title(f'Subject: {subject.split(os.sep)[-2]} \nError between true and predicted t1: {error:.5f}\nPearson correlation coeff: {corr_coeff:.5f}')
+    plt.legend(bbox_to_anchor=(1, 1.065), loc='upper right', borderaxespad=0.1, fontsize=12)
+    plt.xlabel('ROI (166 regions of AAL3 atlas)', fontsize=12)
+    plt.ylabel('concentration of misfolded proteins', fontsize=12)
+    plt.xlim(-1, len(baseline))
+    plt.xticks(np.arange(0, len(baseline), step=5), fontsize=12)
+    plt.grid(True)
     plt.tight_layout()
+    
+    if error is not None: plt.title(f'Subject: {subject.split(os.sep)[-2]} \nError between true and predicted t1: {error}\nPearson correlation coeff: {corr_coeff}')
     plt.savefig(filepath)
     plt.close()
-
+    
     return 
     
 def visualize_error(error):

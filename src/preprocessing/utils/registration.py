@@ -33,7 +33,8 @@ class Registration():
         fl.inputs.reference = self.ref
         fl.inputs.out_file = self.output_dir + self.name + '_reg.nii.gz'
         fl.inputs.output_type = 'NIFTI_GZ'
-        fl.inputs.bins = 1500
+        # NOTE: DO NOT CHANGE BINS
+        #fl.inputs.bins = 1500
         fl.inputs.dof = 12
         fl.inputs.cost_func = 'mutualinfo'
         # For 3D to 3D mode the DOF can be set to 12 (affine), 9 (traditional), 7 (global rescale) or 6 (rigid body)

@@ -14,12 +14,11 @@ Authors: Yasser Iturria-Medina ,Roberto C. Sotero,Paule J. Toussaint,Alan C. Eva
 
 from datetime import datetime
 import json
-from threading import Thread, active_count, Lock
+from threading import Thread, Lock
 from multiprocessing import cpu_count
 import os
 import logging
 import sys
-from tempfile import tempdir
 from time import time
 import warnings
 from prettytable import PrettyTable
@@ -35,6 +34,7 @@ from utils import drop_data_in_connect_matrix, load_matrix
 np.seterr(all = 'raise')
 date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_ESM_{date}.log")
+digits = 5
 
 class ESM(Thread):       
     
@@ -160,7 +160,7 @@ class ESM(Thread):
         total_mse.append(mse)
         total_pcc.append(pcc)
         total_reg_err.append(reg_err)
-        pt_subs.add_row([subj, round(mse,4), round(pcc,4)])
+        pt_subs.add_row([subj, round(mse,digits), round(pcc,digits)])
         lock.release()
             
         return
@@ -248,18 +248,24 @@ if __name__=="__main__":
     total_time = time()
 
     lock = Lock()
+    
+    works = []
     for subj, paths in tqdm(dataset.items()):
-        ESM(paths, subj).start()
-        while active_count() > num_cores + 1:
-            pass
+        works.append(ESM(paths, subj))
+        works[-1].start()
+        while len (works) >= num_cores:
+            for w in works:
+                if not w.is_alive():
+                    works.remove(w)
             
-    while active_count() > 2:
-        pass  
+    for w in works:
+        w.join()
+        works.remove(w)
         
     ### OUTPUT ###
    
     np.savetxt(f"{output_mat}ESM_{category}_regions_{date}.csv", np.mean(np.array(total_reg_err), axis=0), delimiter=',')
-    pt_avg.add_row([round(np.mean(total_mse, axis=0), 4), round(np.std(total_mse, axis=0), 2), round(np.mean(total_pcc, axis=0), 4), round(np.std(total_pcc, axis=0), 2)])
+    pt_avg.add_row([round(np.mean(total_mse, axis=0), digits), round(np.std(total_mse, axis=0), 2), round(np.mean(total_pcc, axis=0), digits), round(np.std(total_pcc, axis=0), 2)])
 
     total_time = time() - total_time
     filename = f"{output_res}ESM_{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}.txt"

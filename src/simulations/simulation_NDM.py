@@ -33,7 +33,7 @@ import warnings
 np.seterr(all = 'raise')
 date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.ERROR, force=True, filename = f"trace_NDM_{date}.log")
-
+digits = 5
 
 class NDM(Thread):
     def __init__(self, subject, paths, downsample = False):
@@ -175,7 +175,7 @@ class NDM(Thread):
         mse_list.append(mse)
         pcc_list.append(pcc)
         reg_err_list.append(reg_err)
-        pt_subs.add_row([self.subject, round(mse,4), round(pcc,4)])
+        pt_subs.add_row([self.subject, round(mse,digits), round(pcc,digits)])
         return
     
 if __name__ == '__main__':
@@ -236,20 +236,26 @@ if __name__ == '__main__':
     
     total_time = time()
     
+    works = []
     for subj, paths in dataset.items():
-        NDM(subj, paths).start()
+        works.append(NDM(subj, paths))
+        works[-1].start()
 
-        while active_count() > num_cores + 1:
-            pass 
+        while len(works) >= num_cores:
+            for w in works:
+                if not w.is_alive():
+                    works.remove(w)
+                    break
 
-    while active_count() > 2:
-        pass
+    for w in works:
+        w.join()
+        works.remove(w)
         
     
     ### OUTPUTS ###
 
     np.savetxt(f"{output_mat}NDM_{category}_regions_{date}.csv", np.mean(np.array(reg_err_list), axis=0), delimiter=',')
-    pt_avg.add_row([round(np.mean(mse_list, axis=0), 4), round(np.std(mse_list, axis=0), 2), round(np.mean(pcc_list, axis=0), 4), round(np.std(pcc_list, axis=0), 2)])
+    pt_avg.add_row([round(np.mean(mse_list, axis=0), digits), round(np.std(mse_list, axis=0), 2), round(np.mean(pcc_list, axis=0), digits), round(np.std(pcc_list, axis=0), 2)])
 
     total_time = time() - total_time
     filename = f"{output_res}/NDM_{category}_{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}.txt"

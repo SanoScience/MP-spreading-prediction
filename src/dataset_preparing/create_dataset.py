@@ -22,8 +22,7 @@ import os
 from glob import glob
 import json
 import logging
-import queue
-import threading
+from threading import Thread, Lock
 
 import numpy as np
 import re
@@ -36,20 +35,16 @@ logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5
 
 wrong_subjects = []
 
-class datasetThread(threading.Thread):
-   def __init__(self, threadID, dataset_dir, subject, threshold, queue, tracers= ['av45','fbb','pib']):
-        threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.dataset_dir = dataset_dir
+class datasetThread(Thread):
+   def __init__(self, subject, tracers= ['av45','fbb','pib']):
+        Thread.__init__(self)
         self.subject = subject
-        self.queue = queue 
         self.tracers = tracers
-        self.threshold = threshold
 
    def run(self):    
         pets_list = []
         try:
-            connectivity_matrix_path = os.path.join(os.path.join(self.dataset_dir, self.subject, 
+            connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, self.subject, 
                                                 'ses-baseline', 'dwi', 'connect_matrix_norm.csv'))
             if not os.path.isfile(connectivity_matrix_path): raise Exception(f"{connectivity_matrix_path} doesn't exist")
 
@@ -68,7 +63,7 @@ class datasetThread(threading.Thread):
             t0_sum = sum(t0_concentration)
             t1_sum = sum(t1_concentration)
             logging.info(f"Subject {self.subject} has t0={t0_sum} and t1={t1_sum}")
-            if t1_sum < (t0_sum*self.threshold):
+            if t1_sum < (t0_sum * threshold):
                 wrong_subjects.append(self.subject)
                 raise Exception(f"Subject {self.subject} has a gap baseline-followup of {t1_sum-t0_sum}")
 
@@ -87,7 +82,16 @@ class datasetThread(threading.Thread):
         "followup": t1_concentration_path
         }
         
-        self.queue.put([self.subject, results_dict, kind]) 
+        lock.acquire()
+        datasets['ALL'].append([self.subject, results_dict])
+        if kind == 'Increasing':
+            datasets['Increasing'].append([self.subject, results_dict])
+        else:
+            datasets['Decreasing'].append([self.subject, results_dict])
+        for c in categories:
+            if re.match(rf".*sub-{c}.*", self.subject):
+                datasets[c].append([self.subject, results_dict])        
+        lock.release()
         
         logging.info(f"Subject {self.subject} loaded")
 
@@ -144,35 +148,26 @@ if __name__ == '__main__':
     for c in categories:
         datasets[c]= []
         
-    queueLock = threading.Lock()
-    dictQueue = queue.Queue(len(subjects))
+    lock = Lock()
+    
+    works = []
     for subj in subjects:
         try:
-            t = datasetThread(threading.active_count(), dataset_dir, subj, threshold, dictQueue)
-            t.start()
-            while threading.active_count() == num_cores+1:
-                pass # simply wait
+            works.append(datasetThread(subj))
+            works[-1].start()
+            while len(works) >= num_cores:
+                for w in works:
+                    if not w.is_alive():
+                        works.remove(w)
                     
         except Exception:
             logging.error(f'No valid data for subject: {subj}')
             continue 
         
-    while threading.active_count() > 1:
-        # wait for the termination of all threads (Note that one thread is the current main)
-        pass
-
-    while not dictQueue.empty():
-        element = dictQueue.get()
-        datasets['ALL'].append([element[0], element[1]])
-        if element[2] == 'Increasing':
-            datasets['Increasing'].append([element[0], element[1]])
-        else:
-            datasets['Decreasing'].append([element[0], element[1]])
-        for c in categories:
-            if re.match(rf".*sub-{c}.*", element[0]):
-                datasets[c].append([element[0], element[1]])
+    for w in works:
+        w.join()
+        works.remove(w)        
                 
-        #dataset[element[0]] = element[1]
     for d in datasets.keys():
         save_dataset(datasets[d], dataset_output + dataset_name.format(d))
         logging.info(f'Size of the dataset \'{dataset_output + dataset_name.format(d)}\': {len(datasets[d])}')

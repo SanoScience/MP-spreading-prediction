@@ -29,7 +29,7 @@ from sklearn.metrics import mean_squared_error
 np.seterr(all = 'raise')
 date = str(datetime.now().strftime('%y-%m-%d_%H:%M:%S'))
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_MAR_{date}.log")
-
+digits = 5
 
 class MAR(Thread):
     def __init__(self, subject, paths):
@@ -118,7 +118,7 @@ class MAR(Thread):
                 
                 iter_count += 1
                 
-            if error_reconstruct <= self.error_stop or bad_iter_count == self.max_bad_iter or iter_count == self.iter_max or norm <= self.gradient_thr: break
+            if error_reconstruct <= self.error_stop or bad_iter_count == self.max_bad_iter or iter_count == iter_max or norm <= self.gradient_thr: break
             trial += 1
             self.eta /= 10 
         
@@ -155,19 +155,21 @@ class MAR(Thread):
             pcc = pearson_corr_coef(self.t1_concentration, t1_concentration_pred)[0]
             if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
             if np.isnan(pcc): raise Exception("Invalid value of PCC")
+            mse = round(mse, digits)
+            pcc = round(pcc, digits)
         except Exception as e:
             logging.error(f"Exception happened for Pearson correlation coefficient and MSE computation for subject {self.subject}. Traceback:\n{e}") 
             return
-    
+
+        lock.acquire()
+        # NOTE: plots should be saved one by one without multiple threads!
         try:
             logging.info(f"Saving prediction plot for subject {self.subject}")
             save_prediction_plot(self.t0_concentration, t1_concentration_pred, self.t1_concentration, self.subject, self.subject + 'train/MAR_train_' + date + '.png', mse, pcc)
             save_coeff_matrix(self.subject + 'train/MAR_train_' + date + '.csv', self.A)
         except Exception as e:
             logging.error(f"Exception happened during saving of simulation results for subject {self.subject}. Traceback:\n{e}")
-            return
-
-        lock.acquire()
+            
         training_scores[self.subject] = [mse, pcc]
         lock.release()
 
@@ -175,14 +177,18 @@ class MAR(Thread):
 
 def training():
     
+    works = []
     for subj, paths in train_set.items():
-        MAR(subj, paths).start()      
+        works.append(MAR(subj, paths))
+        works[-1].start()      
 
-        while active_count() > num_cores + 1:
-            pass
+        while len(works) >= num_cores:
+            for w in works:
+                if not w.is_alive(): 
+                    works.remove(w)
     
-    while active_count() > 2:
-        pass
+    for w in works:
+        w.join()
     
     coeff_matrices = []
     # read results saved by "run_simulation method"
@@ -363,7 +369,7 @@ if __name__ == '__main__':
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Avg MSE test", "SD MSE test", "Avg Pearson test", "SD Pearson test"]
-    pt_avg.add_row([round(np.mean(total_mse), 5), round(np.std(total_mse), 2), round(np.mean(total_pcc), 5), round(np.std(total_pcc), 2)])
+    pt_avg.add_row([round(np.mean(total_mse), digits), round(np.std(total_mse), 2), round(np.mean(total_pcc), digits), round(np.std(total_pcc), 2)])
         
     pt_train = PrettyTable()
     pt_train.field_names = ["ID", "Avg MSE train", "Avg Pearson train"]
@@ -372,8 +378,7 @@ if __name__ == '__main__':
     for s in training_scores.keys():
         mse_subj = [training_scores[s][0]]
         pcc_subj = [training_scores[s][1]]
-        pt_train.add_row([s, round(np.mean(mse_subj), 5), round(np.std(mse_subj), 2), round(np.mean(pcc_subj), 5), round(np.std(pcc_subj), 2)])
-        pt_train.add_row([s, round(np.mean(mse_subj), 5), round(np.mean(pcc_subj), 5)])
+        pt_train.add_row([s, round(np.mean(mse_subj), digits), round(np.mean(pcc_subj), digits)])
 
     pt_test = PrettyTable()
     pt_test.field_names = ["ID", "Avg MSE test", "Avg Pearson test"]
@@ -382,7 +387,7 @@ if __name__ == '__main__':
     for s in test_scores.keys():
         mse_subj = [test_scores[s][0]]
         pcc_subj = [test_scores[s][1]]
-        pt_test.add_row([s, round(np.mean(mse_subj), 5), round(np.mean(pcc_subj), 5)])
+        pt_test.add_row([s, round(np.mean(mse_subj), digits), round(np.mean(pcc_subj), digits)])
 
     total_time = time() - total_time
     filename = f"{output_res}MAR_{category}_{date}.txt"
