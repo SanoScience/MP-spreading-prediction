@@ -122,7 +122,8 @@ class ESM(Thread):
         return self.t0
         
     def run(self): 
-
+        if not os.path.exists(self.subj + 'test/'):
+                os.makedirs(self.subj + 'test/')
         try:
             self.cm = drop_data_in_connect_matrix(load_matrix(paths['CM']))
             # ESM uses self connections for inner propagation (CM has a diagonal set to 0 due to normalization during CM generation)
@@ -131,7 +132,7 @@ class ESM(Thread):
             self.t0 = t0_concentration.copy()
             t1_concentration = load_matrix(paths['followup'])
         except Exception as e:
-            logging.error(f'Error appening while loading data of subject {subj}. Traceback: {e}')
+            logging.error(f'Error appening while loading data of subject {self.subj}. Traceback: {e}')
             return
 
         try:
@@ -140,7 +141,7 @@ class ESM(Thread):
             t1_concentration_pred = self.drop_negative_predictions(t1_concentration_pred)
             if np.isnan(t1_concentration_pred).any() or np.isinf(t1_concentration_pred).any(): raise Exception("Discarding prediction")
         except Exception as e:
-            logging.error(f'Error during simulation for subject {subj}. Traceback: {e}')
+            logging.error(f'Error during simulation for subject {self.subj}. Traceback: {e}')
             return
         
         try:
@@ -149,18 +150,18 @@ class ESM(Thread):
             if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
             if np.isnan(pcc): raise Exception("Invalid value of PCC")
         except Exception as e:
-            logging.error(f'Error appening during computation of MSE and PCC for subject {subj}. Traceback: {e}')
+            logging.error(f'Error appening during computation of MSE and PCC for subject {self.subj}. Traceback: {e}')
             return
         
-        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, subj, subj + 'test/ESM_' + date + '.png', mse, pcc)
-        logging.info(f"Saving prediction in {subj + 'test/ESM_' + date + '.png'}")
+        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, self.subj, self.subj + 'test/ESM_' + date + '.png', mse, pcc)
+        logging.info(f"Saving prediction in {self.subj + 'test/ESM_' + date + '.png'}")
         reg_err = np.abs(t1_concentration_pred - t1_concentration)
         
         lock.acquire()
         total_mse.append(mse)
         total_pcc.append(pcc)
         total_reg_err.append(reg_err)
-        pt_subs.add_row([subj, round(mse,digits), round(pcc,digits)])
+        pt_subs.add_row([self.subj, round(mse,digits), round(pcc,digits)])
         lock.release()
             
         return
@@ -188,6 +189,8 @@ if __name__=="__main__":
     output_mat = config['paths']['dataset_dir'] + f'simulations/{category}/matrices/'
     if not os.path.exists(output_res):
         os.makedirs(output_res)
+    if not os.path.exists(output_mat):
+        os.makedirs(output_mat)
 
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)

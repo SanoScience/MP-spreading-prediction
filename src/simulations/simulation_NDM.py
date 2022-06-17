@@ -86,14 +86,14 @@ class NDM(Thread):
         # methods proposed by Julien Lefevre during Marseille Brainhack 
         step = 0
         try:
-            exp = np.exp(self.beta * self.eigvals * -1)
-            step = self.eigvecs * exp * self.eigvecs @  self.diffusion_init
+            exp = np.exp(beta * self.eigvals * -1)
+            step = self.eigvecs * exp * self.eigvecs @  self.diffusion[-1]
         except Exception as e:
             logging.error("Error during integration step")
             logging.error(e)
             print("Error during integration step")
             print(e)
-        self.diffusion[-1].append(self.diffusion[-1] + step * self.timestep)
+        self.diffusion.append(self.diffusion[-1] + step * self.timestep)
         return
     
     def iterate_spreading(self):
@@ -108,7 +108,7 @@ class NDM(Thread):
                 print(e)
                 break 
         
-        self.diffusion = np.asarray(self.diffusion, dtype=object)
+        return np.asarray(self.diffusion[-1], dtype=object)
  
     def downsample_matrix(self, matrix, target_len=int(1e3)):
         ''' Take every n-th sample when the matrix is longer than target length. '''
@@ -162,8 +162,8 @@ class NDM(Thread):
         
         logging.info(f"Saving prediction for subject {self.subject}")
         try:
-            np.savetxt(os.path.join(self.subject, 'test/NDM_diffusion_' + date + '.csv'), t1_concentration_pred, delimiter=',')
-            np.savetxt(os.path.join(self.subject, 'test/NDM_terminal_concentrations_' + date + '.csv'), t1_concentration_pred[-1, :], delimiter=',')
+            np.savetxt(os.path.join(self.subject, 'test/NDM_diffusion_' + date + '.csv'), self.diffusion, delimiter=',')
+            np.savetxt(os.path.join(self.subject, 'test/NDM_terminal_concentrations_' + date + '.csv'), t1_concentration_pred, delimiter=',')
             save_prediction_plot(self.t0_concentration, t1_concentration_pred, self.t1_concentration, self.subject, os.path.join(self.subject, 'test/NDM_' + date + '.png'), mse, pcc)
         except Exception as e:
             logging.error(f"Error during save of prediction for subject {self.subject}. Traceback: ")
@@ -200,6 +200,8 @@ if __name__ == '__main__':
     output_mat = config['paths']['dataset_dir'] + f'simulations/{category}/matrices/'
     if not os.path.exists(output_res):
         os.makedirs(output_res)
+    if not os.path.exists(output_mat):
+        os.makedirs(output_mat)
 
     with open(dataset_path, 'r') as f:
         dataset = json.load(f)

@@ -37,8 +37,8 @@ class MAR(Thread):
         self.subject = subject
         self.paths = paths
 
-        self.error_stop = 1e-5                                                  # acceptable error threshold for the reconstruction error
-        self.gradient_thr = 1e-20
+        self.error_stop = 1e-10                                                  # acceptable error threshold for the reconstruction error
+        self.gradient_thr = 1e-1
         self.eta = 1e-5                                             
         self.max_retry = 10 
         self.max_bad_iter = 1     

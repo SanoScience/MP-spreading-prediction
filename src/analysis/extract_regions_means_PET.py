@@ -86,7 +86,7 @@ class pet_average(Thread):
             try:
                 # NOTE: storing indices doesn't work! (see below)
                 # indices = np.where(atlas == label)
-                avg = self.pet_data[np.where(atlas_data == label)].mean()
+                avg = np.mean(self.pet_data[np.where(atlas_data == label)])
                 self.pet_data[np.where(atlas_data == label)] = avg
             except Exception as e:
                 logging.error(f"Invalid index for image {self.pet_id}")
@@ -103,26 +103,27 @@ class pet_average(Thread):
             print(f"Error during background remotion. Traceback: {e}")
         
         # return mean concentration for each region and the new voxels with value corresponding to correspondent regional concentration
-        return np.array(np.mean(means, axis=0))
+        return np.array(means)
 
     def run(self):
         self.pet_data /= self.max_val
         means = self.extract_avg_region_means()
         lock.acquire()
-        voxels[self.file_id] = means
+        concentrations[self.file_id] = means
+        voxels[self.file_id] = self.pet_data
         if 'sub-AD' in self.pet_id:
-            ad_voxels.append(means)
+            ad_voxels.append(self.pet_data)
         elif 'sub-LMCI' in self.pet_id:
-            lmci_voxels.append(means)
+            lmci_voxels.append(self.pet_data)
         elif 'sub-MCI' in self.pet_id:
-            mci_voxels.append(means)
+            mci_voxels.append(self.pet_data)
         elif 'sub-EMCI' in self.pet_id:
-            emci_voxels.append(means)
+            emci_voxels.append(self.pet_data)
         if 'sub-CN' in self.pet_id:      
-            cn_voxels.append(means)
+            cn_voxels.append(self.pet_data)
             if 'ses-baseline' in self.pet_id:
                 cn_baseline_region.append(means)
-                cn_baseline_voxels.append(means)
+                cn_baseline_voxels.append(self.pet_data)
         lock.release()
 
 if __name__ == '__main__':
@@ -208,9 +209,7 @@ if __name__ == '__main__':
     for w in works:
         w.join()
         works.remove(w)   
-    
-    time.sleep(3)
-    
+        
     ### AVERAGE PET VOXELS
     print('Averaging PETs voxels...')
     try:
@@ -336,35 +335,35 @@ if __name__ == '__main__':
     print("Z-score normalization of category concentrations")
     try:
         ad_voxels = (ad_voxels - cn_voxels_mean) / cn_voxels_std
-        ad_voxels = 1 / (1 + np.exp(- ad_voxels))
+        ad_voxels = 1 / (1 + np.exp(-ad_voxels))
         ad_voxels[np.where(atlas_data==0)] = 0
     except Exception as e:
         logging.error(f"Error in Z-score normalization of AD voxels concentrations. Traceback: {e}")
         print(f"Error in Z-score normalization of AD voxels concentrations. Traceback: {e}")
     try:
         lmci_voxels = (lmci_voxels - cn_voxels_mean) / cn_voxels_std
-        lmci_voxels = 1 / (1 + np.exp(- lmci_voxels)) 
+        lmci_voxels = 1 / (1 + np.exp(-lmci_voxels)) 
         lmci_voxels[np.where(atlas_data==0)] = 0
     except Exception as e:
         logging.error(f"Error in Z-score normalization of LMCI voxels concentrations. Traceback: {e}")
         print(f"Error in Z-score normalization of LMCI voxels concentrations. Traceback: {e}")
     try:    
         mci_voxels = (mci_voxels - cn_voxels_mean) / cn_voxels_std
-        mci_voxels = 1 / (1 + np.exp(- mci_voxels))
+        mci_voxels = 1 / (1 + np.exp(-mci_voxels))
         mci_voxels[np.where(atlas_data==0)] = 0
     except Exception as e:
         logging.error(f"Error in Z-score normalization of MCI voxels concentrations. Traceback: {e}")
         print(f"Error in Z-score normalization of MCI voxels concentrations. Traceback: {e}")
     try:    
         emci_voxels = (emci_voxels - cn_voxels_mean) / cn_voxels_std
-        emci_voxels = 1 / (1 + np.exp(- emci_voxels))
+        emci_voxels = 1 / (1 + np.exp(-emci_voxels))
         emci_voxels[np.where(atlas_data==0)] = 0
     except Exception as e:
         logging.error(f"Error in Z-score normalization of EMCI voxels concentrations. Traceback: {e}")
         print(f"Error in Z-score normalization of EMCI voxels concentrations. Traceback: {e}")
     try:    
         cn_voxels = (cn_voxels - cn_voxels_mean) / cn_voxels_std
-        cn_voxels = 1 / (1 + np.exp(- cn_voxels))
+        cn_voxels = 1 / (1 + np.exp(-cn_voxels))
         cn_voxels[np.where(atlas_data==0)] = 0
     except Exception as e:
         logging.error(f"Error in Z-score normalization of CN voxels concentrations. Traceback: {e}")
@@ -404,16 +403,16 @@ if __name__ == '__main__':
         logging.error(f"Error in saving CN normalized concentrations. Traceback: {e}")
         print(f"Error in saving CN normalized concentrations. Traceback: {e}")
     
-    '''
+    
     logging.info("Z-score normalization of subjects regional concentrations")
     print("Z-score normalization of subjects regional concentrations")
     for pet in tqdm(voxels.keys()):
         try:
             # z-score (region(i) - healthy_mean(i))/healthy_std(i)    
-            #voxels[pet] = (voxels[pet] - cn_voxels_mean)/cn_voxels_std
+            voxels[pet] = (voxels[pet] - cn_voxels_mean)/cn_voxels_std
             
             # logistic transformation
-            #voxels[pet] = 1 / (1 + np.exp(-voxels[pet])) 
+            voxels[pet] = 1 / (1 + np.exp(-voxels[pet])) 
             voxels[pet][np.where(atlas_data==0)] = 0
             
             output_path = pet.replace('.nii.gz', '_avg.nii.gz')          
@@ -421,5 +420,5 @@ if __name__ == '__main__':
         except Exception as e:
             logging.error(f"Error in z-score normalization of subjects {pet} regional concentration: {e}")
             print(f"Error in z-score normalization of subjects {pet} regional concentration: {e}")
-    '''
+    
     logging.info('*** Done ***')
