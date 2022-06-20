@@ -153,11 +153,12 @@ class ESM(Thread):
             logging.error(f'Error appening during computation of MSE and PCC for subject {self.subj}. Traceback: {e}')
             return
         
-        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, self.subj, self.subj + 'test/ESM_' + date + '.png', mse, pcc)
-        logging.info(f"Saving prediction in {self.subj + 'test/ESM_' + date + '.png'}")
+        
         reg_err = np.abs(t1_concentration_pred - t1_concentration)
         
         lock.acquire()
+        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, self.subj, self.subj + 'test/ESM_' + date + '.png', mse, pcc)
+        logging.info(f"Saving prediction in {self.subj + 'test/ESM_' + date + '.png'}")
         total_mse.append(mse)
         total_pcc.append(pcc)
         total_reg_err.append(reg_err)

@@ -164,7 +164,6 @@ class NDM(Thread):
         try:
             np.savetxt(os.path.join(self.subject, 'test/NDM_diffusion_' + date + '.csv'), self.diffusion, delimiter=',')
             np.savetxt(os.path.join(self.subject, 'test/NDM_terminal_concentrations_' + date + '.csv'), t1_concentration_pred, delimiter=',')
-            save_prediction_plot(self.t0_concentration, t1_concentration_pred, self.t1_concentration, self.subject, os.path.join(self.subject, 'test/NDM_' + date + '.png'), mse, pcc)
         except Exception as e:
             logging.error(f"Error during save of prediction for subject {self.subject}. Traceback: ")
             logging.error(e)
@@ -172,10 +171,14 @@ class NDM(Thread):
             print(e)
             return
         
+        lock.aquire()
+        save_prediction_plot(self.t0_concentration, t1_concentration_pred, self.t1_concentration, self.subject, os.path.join(self.subject, 'test/NDM_' + date + '.png'), mse, pcc)
         mse_list.append(mse)
         pcc_list.append(pcc)
         reg_err_list.append(reg_err)
         pt_subs.add_row([self.subject, round(mse,digits), round(pcc,digits)])
+        lock.release()
+
         return
     
 if __name__ == '__main__':
@@ -238,6 +241,7 @@ if __name__ == '__main__':
     
     total_time = time()
     
+    lock = Lock()
     works = []
     for subj, paths in dataset.items():
         works.append(NDM(subj, paths))

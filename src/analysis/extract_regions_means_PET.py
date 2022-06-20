@@ -48,35 +48,15 @@ class pet_loader(Thread):
 
     def load_pet(self):
         pet_data = load(self.pet).get_fdata()
-        if np.sum(pet_data) == 0:
+        # clean PET from unnecessary voxels
+        pet_data[np.where(atlas_data == 0)] = 0
+        if np.sum(pet_data[np.where(atlas_data!= 0)]) == 0:
             print(f"File {self.pet} is empty!")
             logging.error(f"File {self.pet} is empty!")
-        #pet_data /= np.max(pet_data)
+        pet_data /= np.max(pet_data)
         return pet_data
 
-    # NOTE: this function override the homonyms 'run' in the Thread class, executed when the method 'start' is invoked
-    def run(self):  
-        pet_data = self.load_pet()
-        
-        id = self.pet.split('/')[-1].split('.')[0].split('_')[0]
-        if 'ses-baseline' in self.pet:
-            session = 'baseline'
-        else:
-            session = 'followup'
-            
-        lock.acquire()        
-        subj_pet[id].append([session, pet_data])
-        lock.release()
-
-class pet_average(Thread):
-    def __init__(self, file_id, pet_id, pet_data, max_val):
-        Thread.__init__(self)
-        self.file_id = file_id
-        self.pet_id = pet_id
-        self.pet_data = pet_data
-        self.max_val = max_val
-        
-    def extract_avg_region_means(self):
+    def extract_avg_region_means(self, pet_data):
         means = []
         # do not take atlas region with index=0, which indicates the background
         # there are 166 unique labels (35, 36, 81, 82 are missing)
@@ -86,45 +66,52 @@ class pet_average(Thread):
             try:
                 # NOTE: storing indices doesn't work! (see below)
                 # indices = np.where(atlas == label)
-                avg = np.mean(self.pet_data[np.where(atlas_data == label)])
-                self.pet_data[np.where(atlas_data == label)] = avg
+                avg = np.mean(pet_data[np.where(atlas_data == label)])
+                pet_data[np.where(atlas_data == label)] = avg
             except Exception as e:
-                logging.error(f"Invalid index for image {self.pet_id}")
-                print(f"Invalid index for image {self.pet_id}")
+                logging.error(f"Invalid index for image {self.pet}")
+                print(f"Invalid index for image {self.pet}")
                 avg = 0
             means.append(avg)
-        
-        # put what is not in the atlas to 0 (i.e. skull)
+            
+            # put what is not in the atlas to 0 (i.e. skull)
+        '''
         try:
-            self.pet_data[np.where(atlas_data==0)] = 0
-            np.nan_to_num(self.pet_data, copy=False, nan=0, posinf=0, neginf=0)
+            pet_data[np.where(atlas_data==0)] = 0
+            np.nan_to_num(pet_data, copy=False, nan=0, posinf=0, neginf=0)
         except Exception as e:
             logging.error(f"Error during background remotion. Traceback: {e}")
             print(f"Error during background remotion. Traceback: {e}")
+        '''
         
         # return mean concentration for each region and the new voxels with value corresponding to correspondent regional concentration
-        return np.array(means)
+        return np.array(means), pet_data
+        
 
-    def run(self):
-        self.pet_data /= self.max_val
-        means = self.extract_avg_region_means()
+    # NOTE: this function override the homonyms 'run' in the Thread class, executed when the method 'start' is invoked
+    def run(self):  
+        pet_data = self.load_pet()
+        means, pet_data = self.extract_avg_region_means(pet_data)
+        
         lock.acquire()
-        concentrations[self.file_id] = means
-        voxels[self.file_id] = self.pet_data
-        if 'sub-AD' in self.pet_id:
-            ad_voxels.append(self.pet_data)
-        elif 'sub-LMCI' in self.pet_id:
-            lmci_voxels.append(self.pet_data)
-        elif 'sub-MCI' in self.pet_id:
-            mci_voxels.append(self.pet_data)
-        elif 'sub-EMCI' in self.pet_id:
-            emci_voxels.append(self.pet_data)
-        if 'sub-CN' in self.pet_id:      
-            cn_voxels.append(self.pet_data)
-            if 'ses-baseline' in self.pet_id:
+        concentrations[self.pet] = means
+        voxels[self.pet] = pet_data
+        if 'sub-AD' in self.pet:
+            ad_voxels.append(pet_data)
+        elif 'sub-LMCI' in self.pet:
+            lmci_voxels.append(pet_data)
+        elif 'sub-MCI' in self.pet:
+            mci_voxels.append(pet_data)
+        elif 'sub-EMCI' in self.pet:
+            emci_voxels.append(pet_data)
+        if 'sub-CN' in self.pet:      
+            cn_voxels.append(pet_data)
+            # NOTE: file_id, NOT pet_id!
+            if 'ses-baseline' in self.pet:
                 cn_baseline_region.append(means)
-                cn_baseline_voxels.append(self.pet_data)
+                cn_baseline_voxels.append(pet_data)
         lock.release()
+
 
 if __name__ == '__main__':
     ## INPUT
@@ -175,40 +162,12 @@ if __name__ == '__main__':
 
         while len(works) >= num_cores:
             for w in works:
-                w.join(timeout=0.1)
                 if not w.is_alive():
                     works.remove(w)
     
     for w in works:
         w.join()
         works.remove(w)
-        
-    
-    ### NORMALIZE VALUES USING THE MAXIMUM VALUE BETWEEN BASELINE AND FOLLOWUP
-    print('Normalizing PETs...')
-    for subj_id in tqdm(subj_pet):
-        max_val = 0
-        for data in subj_pet[subj_id]:
-            tmp = np.max(data[1])
-            if max_val < tmp:
-                max_val = tmp
-                
-        for data in subj_pet[subj_id]:
-            file_id = ''
-            for p in pets:
-                if data[0] in p and subj_id in p:
-                    file_id = p
-                    break
-            works.append(pet_average(file_id, subj_id, data[1], max_val))
-            works[-1].start()
-        while len(works) >= num_cores:
-            for w in works:
-                if not w.is_alive():
-                    works.remove(w)
-    
-    for w in works:
-        w.join()
-        works.remove(w)   
         
     ### AVERAGE PET VOXELS
     print('Averaging PETs voxels...')
@@ -281,7 +240,7 @@ if __name__ == '__main__':
         print(f"Error in saving CN average concentrations. Traceback: {e}")
         
     ### CN BASELINE CONCENTRATIONS 
-    print("Computing CN baseline average concentrations...")
+    print("Computing CN baseline regional mean concentrations...")
     try:
         # REGIONS
         cn_baseline_region = np.array(cn_baseline_region)
@@ -293,7 +252,14 @@ if __name__ == '__main__':
         
         np.savetxt('cn_baseline_mean.csv', cn_baseline_mean, delimiter=', ')
         np.savetxt('cn_baseline_std.csv', cn_baseline_std, delimiter=', ')
-
+    except Exception as e:
+        logging.error(f"Error during computation of CN baseline regional mean concentrations. Traceback: {e}")
+        print(f"Error during computation of CN baseline regional mean concentrations. Traceback: {e}")
+        cn_baseline_mean = 0
+        cn_baseline_std = 1
+       
+    print("Computing CN baseline voxels mean concentrations...") 
+    try:
         # VOXELS
         cn_baseline_voxels = np.array(cn_baseline_voxels)
         
@@ -304,10 +270,8 @@ if __name__ == '__main__':
         cn_voxels_std[cn_voxels_std == 0] = 1
         cn_voxels_std[np.where(atlas_data==0)] = 1 
     except Exception as e:
-        logging.error(f"Error during computation of CN baseline average concentrations. Traceback: {e}")
-        print(f"Error during computation of CN baseline average concentrations. Traceback: {e}")
-        cn_baseline_mean = 0
-        cn_baseline_std = 1
+        logging.error(f"Error during computation of CN baseline voxels mean concentrations. Traceback: {e}")
+        print(f"Error during computation of CN baseline voxels concentrations. Traceback: {e}")
         cn_voxels_mean = 0
         cn_voxels_std = 1
             

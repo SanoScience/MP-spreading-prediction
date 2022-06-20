@@ -35,67 +35,59 @@ logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5
 
 wrong_subjects = []
 
-class datasetThread(Thread):
-   def __init__(self, subject, tracers= ['av45','fbb','pib']):
-        Thread.__init__(self)
-        self.subject = subject
-        self.tracers = tracers
+def load_dict(subject, tracers= ['av45','fbb','pib']):    
+    pets_list = []
+    try:
+        connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, subject, 
+                                            'ses-baseline', 'dwi', 'connect_matrix_norm.csv'))
+        if not os.path.isfile(connectivity_matrix_path): raise Exception(f"{connectivity_matrix_path} doesn't exist")
 
-   def run(self):    
-        pets_list = []
-        try:
-            connectivity_matrix_path = os.path.join(os.path.join(dataset_dir, self.subject, 
-                                                'ses-baseline', 'dwi', 'connect_matrix_norm.csv'))
-            if not os.path.isfile(connectivity_matrix_path): raise Exception(f"{connectivity_matrix_path} doesn't exist")
+        for t in tracers:
+            pets_list = pets_list + glob(os.path.join(os.path.join(dataset_dir, subject, 
+                                            'ses-*', 'pet', f'*trc-{t}_pet.csv')))
+        #NOTE: year check has been manually done (see DEPRECATED below)
+        for i in range(len(pets_list)):
+            if 'ses-baseline' in pets_list[i]:
+                t0_concentration_path = pets_list[i]
+                t0_concentration = load_matrix(t0_concentration_path) 
+            if 'ses-followup' in pets_list[i]:
+                t1_concentration_path = pets_list[i]
+                t1_concentration = load_matrix(t1_concentration_path)
 
-            for t in self.tracers:
-                pets_list = pets_list + glob(os.path.join(os.path.join(self.dataset_dir, self.subject, 
-                                                'ses-*', 'pet', f'*trc-{t}_pet.csv')))
-            #NOTE: year check has been manually done (see DEPRECATED below)
-            for i in range(len(pets_list)):
-                if 'ses-baseline' in pets_list[i]:
-                    t0_concentration_path = pets_list[i]
-                    t0_concentration = load_matrix(t0_concentration_path) 
-                if 'ses-followup' in pets_list[i]:
-                    t1_concentration_path = pets_list[i]
-                    t1_concentration = load_matrix(t1_concentration_path)
+        t0_sum = sum(t0_concentration)
+        t1_sum = sum(t1_concentration)
+        logging.info(f"Subject {subject} has t0={t0_sum} and t1={t1_sum}")
+        if t1_sum < (t0_sum * threshold):
+            wrong_subjects.append(subject)
+            raise Exception(f"Subject {subject} has a gap baseline-followup of {t1_sum-t0_sum}")
 
-            t0_sum = sum(t0_concentration)
-            t1_sum = sum(t1_concentration)
-            logging.info(f"Subject {self.subject} has t0={t0_sum} and t1={t1_sum}")
-            if t1_sum < (t0_sum * threshold):
-                wrong_subjects.append(self.subject)
-                raise Exception(f"Subject {self.subject} has a gap baseline-followup of {t1_sum-t0_sum}")
-
-            if t1_sum - t0_sum < 0:
-                kind = 'Decreasing'
-            else:
-                kind = 'Increasing'
-                
-        except Exception as e:
-            logging.error(e)
-            return None   
-
-        results_dict = {
-        "CM": connectivity_matrix_path, 
-        "baseline": t0_concentration_path, 
-        "followup": t1_concentration_path
-        }
-        
-        lock.acquire()
-        datasets['ALL'].append([self.subject, results_dict])
-        if kind == 'Increasing':
-            datasets['Increasing'].append([self.subject, results_dict])
+        if t1_sum - t0_sum < 0:
+            kind = 'Decreasing'
         else:
-            datasets['Decreasing'].append([self.subject, results_dict])
-        for c in categories:
-            if re.match(rf".*sub-{c}.*", self.subject):
-                datasets[c].append([self.subject, results_dict])        
-        lock.release()
-        
-        logging.info(f"Subject {self.subject} loaded")
+            kind = 'Increasing'
+            
+    except Exception as e:
+        logging.error(e)
+        return None   
 
-        return    
+    results_dict = {
+    "CM": connectivity_matrix_path, 
+    "baseline": t0_concentration_path, 
+    "followup": t1_concentration_path
+    }
+    
+    datasets['ALL'].append([subject, results_dict])
+    if kind == 'Increasing':
+        datasets['Increasing'].append([subject, results_dict])
+    else:
+        datasets['Decreasing'].append([subject, results_dict])
+    for c in categories:
+        if re.match(rf".*sub-{c}.*", subject):
+            datasets[c].append([subject, results_dict])        
+    
+    logging.info(f"Subject {subject} loaded")
+
+    return    
 
 def load_matrix(path):
     data = np.genfromtxt(path, delimiter=",")
@@ -148,25 +140,13 @@ if __name__ == '__main__':
     for c in categories:
         datasets[c]= []
         
-    lock = Lock()
     
-    works = []
     for subj in subjects:
         try:
-            works.append(datasetThread(subj))
-            works[-1].start()
-            while len(works) >= num_cores:
-                for w in works:
-                    if not w.is_alive():
-                        works.remove(w)
-                    
+            load_dict(subj)       
         except Exception:
             logging.error(f'No valid data for subject: {subj}')
-            continue 
-        
-    for w in works:
-        w.join()
-        works.remove(w)        
+            continue   
                 
     for d in datasets.keys():
         save_dataset(datasets[d], dataset_output + dataset_name.format(d))

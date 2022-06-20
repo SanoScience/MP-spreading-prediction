@@ -38,8 +38,8 @@ class MAR(Thread):
         self.paths = paths
 
         self.error_stop = 1e-10                                                  # acceptable error threshold for the reconstruction error
-        self.gradient_thr = 1e-1
-        self.eta = 1e-5                                             
+        self.gradient_thr = 1e-10
+        self.eta = 1e-5                                            
         self.max_retry = 10 
         self.max_bad_iter = 1     
         
@@ -162,23 +162,28 @@ class MAR(Thread):
             return
 
         lock.acquire()
+        
         # NOTE: plots should be saved one by one without multiple threads!
         try:
             logging.info(f"Saving prediction plot for subject {self.subject}")
             save_prediction_plot(self.t0_concentration, t1_concentration_pred, self.t1_concentration, self.subject, self.subject + 'train/MAR_train_' + date + '.png', mse, pcc)
             save_coeff_matrix(self.subject + 'train/MAR_train_' + date + '.csv', self.A)
+            A_matrices[self.subject] = self.A
         except Exception as e:
             logging.error(f"Exception happened during saving of simulation results for subject {self.subject}. Traceback:\n{e}")
             
         training_scores[self.subject] = [mse, pcc]
+        
         lock.release()
 
-        return      
+        return   
 
 def training():
     
     works = []
     for subj, paths in train_set.items():
+        if subj in A_matrices: continue
+        logging.info(f"Subject {subj} is not in A_matrices, queuing for training")
         works.append(MAR(subj, paths))
         works[-1].start()      
 
@@ -194,12 +199,12 @@ def training():
     # read results saved by "run_simulation method"
     for subj, _ in train_set.items():
         try:
-            coeff_matrices.append(load_matrix(subj + 'train/MAR_train_' + date + '.csv'))
+            coeff_matrices.append(A_matrices[subj])
         except Exception as e:
             logging.error(f"Matrix for subject {subj} with a suitable date could not be found")
 
-    avg_coeff_matrix = np.mean(coeff_matrices, axis=0)
-    return avg_coeff_matrix
+    avg_coeff_matrix = np.mean(np.array(coeff_matrices), axis=0)
+    return avg_coeff_matrix   
 
 def test():
     mse_subj = []
@@ -210,7 +215,7 @@ def test():
         try:
             t0_concentration = load_matrix(paths['baseline'])
             t1_concentration = load_matrix(paths['followup'])
-            pred = avg_A @ t0_concentration
+            pred = A_train @ t0_concentration
             mse = mean_squared_error(t1_concentration, pred)
             pcc = pearson_corr_coef(t1_concentration, pred)[0]
             if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
@@ -315,7 +320,7 @@ if __name__ == '__main__':
     while N_fold < 1:
         try:
             N_fold = int(input(f'Folds for cross validation [default {len(dataset.keys())}]: '))
-            if N_fold > len(dataset.keys()) or N_fold > len(dataset.keys())/train_size: 
+            if N_fold > len(dataset.keys()) or N_fold > (len(dataset.keys()) - test_size + 1): 
                 logging.raiseExceptions("Invalid number of folds")
                 raise Exception("Number of folds is greater than number of subjects or number of possible splits")
         except Exception as e:
@@ -335,7 +340,7 @@ if __name__ == '__main__':
 
     lock = Lock()
 
-    matrices_A = []
+    A_matrices = {}
 
     for i in tqdm(range(N_fold)):   
         train_set = {}
@@ -355,16 +360,14 @@ if __name__ == '__main__':
             counter += 1    
         
         start_time = time()
-        avg_A = training()
-        matrices_A.append(avg_A)
+        A_train = training()
         train_time += time() - start_time
 
         test()
         logging.info(f"*** Fold {i} completed ***")
 
     ### OUTPUT STATS ###
-
-    np.savetxt(f"{output_mat}MAR_{category}_{date}.csv", np.mean(matrices_A, axis=0), delimiter=',')
+    np.savetxt(f"{output_mat}MAR_{category}_{date}.csv", np.mean(np.array(list(A_matrices.values())), axis=0), delimiter=',')
     np.savetxt(f"{output_mat}MAR_{category}_regions_{date}.csv", np.mean(np.array(total_reg_err), axis=0), delimiter=',')
 
     pt_avg = PrettyTable()
@@ -376,9 +379,9 @@ if __name__ == '__main__':
     pt_train.sortby = "ID"
 
     for s in training_scores.keys():
-        mse_subj = [training_scores[s][0]]
-        pcc_subj = [training_scores[s][1]]
-        pt_train.add_row([s, round(np.mean(mse_subj), digits), round(np.mean(pcc_subj), digits)])
+        mse_subj = training_scores[s][0]
+        pcc_subj = training_scores[s][1]
+        pt_train.add_row([s, round(mse_subj, digits), round(pcc_subj, digits)])
 
     pt_test = PrettyTable()
     pt_test.field_names = ["ID", "Avg MSE test", "Avg Pearson test"]
