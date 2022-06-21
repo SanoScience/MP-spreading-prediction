@@ -171,7 +171,7 @@ class NDM(Thread):
             print(e)
             return
         
-        lock.aquire()
+        lock.acquire()
         save_prediction_plot(self.t0_concentration, t1_concentration_pred, self.t1_concentration, self.subject, os.path.join(self.subject, 'test/NDM_' + date + '.png'), mse, pcc)
         mse_list.append(mse)
         pcc_list.append(pcc)
