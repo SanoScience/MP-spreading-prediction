@@ -29,6 +29,7 @@ import re
 import yaml
 from datetime import datetime
 import sys
+from spektral.data import Dataset, Graph
 
 start_time = datetime.today()
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_{start_time.strftime('%Y-%m-%d-%H:%M:%S')}.log")
@@ -155,6 +156,9 @@ def load_dict(subject, tracers= ['av45','fbb','pib']):
         logging.error(f"Error while creating dataset for subject {subject}. Traceback: {e}")
         return   
 
+    #graph_file = subject + subject.split('/')[-2] + '_graph.npz'
+    #np.savez(graph_file, x=t0_concentration, y=t1_concentration, subject=subject)
+    
     # NOTE: 'datetime' objects are converted to string to allow JSON serialization
     results_dict = {
     "CM": connectivity_matrix_path, 
@@ -164,6 +168,7 @@ def load_dict(subject, tracers= ['av45','fbb','pib']):
     "CDR_t0_score": cdr_t0[1],
     "CDR_t1_date": str(cdr_t1[0]),
     "CDR_t1_score": cdr_t1[1],
+    #"graph": graph_file,
     }
     
     datasets['ALL'].append([subject, results_dict])
@@ -174,6 +179,7 @@ def load_dict(subject, tracers= ['av45','fbb','pib']):
     for c in categories:
         if re.match(rf".*sub-{c}.*", subject):
             datasets[c].append([subject, results_dict])        
+    
     
     logging.info(f"Subject {subject} loaded")
 
