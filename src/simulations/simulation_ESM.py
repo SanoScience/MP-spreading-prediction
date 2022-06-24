@@ -28,13 +28,13 @@ from tqdm import tqdm
 from scipy.stats import pearsonr as pearson_corr_coef
 from sklearn.metrics import mean_squared_error
 
-from utils_vis import save_prediction_plot
-from utils import drop_data_in_connect_matrix, load_matrix
+from utils_vis import *
+from utils import *
 
 np.seterr(all = 'raise')
 date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_ESM_{date}.log")
-digits = 5
+digits = 4
 
 class ESM(Thread):       
     
@@ -64,13 +64,12 @@ class ESM(Thread):
         
         #TODO: should I use something different from 0 for null concentrations? (i.e. 0.1) Possibly depending on strenght of connections
         # between healthy and infected regions (and also internal concentrations)
-        
         try:        
             #P = define_initial_P(concentration, self.cm, distances, max_concentration)
             # NOTE Initial P has to be explored for different values (i.e. 0.5 instead of 1)
             P = np.array(np.where(self.t0>0, 1, 0), dtype=np.float64)
-            iterations = 5 # found through empirical trials
-            timestep = 1e-2
+            iterations = 2 # found through empirical trials
+            timestep = 1e-5
         except Exception as e:
             logging.error(f"Error while initializing variables: {e}")
             return self.t0
@@ -83,7 +82,7 @@ class ESM(Thread):
                     # Compute Beta and Delta vectors
                     Beta = 1 - np.exp(- beta_0 * P) # Diffusion
                     Delta = np.exp(- delta_0 * P) # Recovery
-                    gini = self.compute_gini(self.t0)
+                    gini = self.compute_gini()
                     
                     Beta_ext = gini * Beta 
                     Beta_int = (1 - gini) * Beta
@@ -93,7 +92,7 @@ class ESM(Thread):
                     # Define gaussian noise (NOTE authors don't differentiate it by region nor by time)
                     noise = np.random.normal(mu_noise, sigma_noise)
                 except Exception as e: 
-                    logging.error(f"Error in computing Beta, Delta, Epsilon, gini or noise. Traceback: {e}")
+                    logging.error(f"Iteration {k}: Error in computing Beta, Delta, Epsilon, gini or noise. Traceback: {e}")
                     return self.t0
                 try:
                     for i in range(self.n_regions):
@@ -106,22 +105,22 @@ class ESM(Thread):
                         Epsilon[i] += self.cm[i,i] * Beta_int[i] * P[i]
                 
                     # Updating probabilities
-                    #P = (1 - P) * Epsilon - Delta * P + noise
-                    P += (1 - P) * Epsilon - Delta * P + noise
+                    P += ((1 - P) * Epsilon - Delta * P + noise) * timestep
                     assert P.all()<=1 and P.all()>=0, "Probabilities are not between 0 and 1"
                 except Exception as e:
-                    logging.error(f"Error in updating P. Traceback: {e}")
+                    logging.error(f"Iteration {k}: Error in updating P. Traceback: {e}")
                     return self.t0
             
             try:
                 self.t0 += (P * (self.t0 @ self.cm)) * timestep
             except Exception as e:
-                logging.error(f"Error in updating concentration. Traceback: {e}")
+                logging.error(f"Iteration {k}: Error in updating concentration. Traceback: {e}")
                 return self.t0        
             
         return self.t0
         
     def run(self): 
+        logging.info(f"Starting simulation for subject {self.subj}")
         if not os.path.exists(self.subj + 'test/'):
                 os.makedirs(self.subj + 'test/')
         try:
@@ -130,7 +129,7 @@ class ESM(Thread):
             self.cm += np.identity(self.cm.shape[0])
             t0_concentration = load_matrix(paths['baseline'])
             self.t0 = t0_concentration.copy()
-            t1_concentration = load_matrix(paths['followup'])
+            self.t1_concentration = load_matrix(paths['followup'])
         except Exception as e:
             logging.error(f'Error appening while loading data of subject {self.subj}. Traceback: {e}')
             return
@@ -145,8 +144,8 @@ class ESM(Thread):
             return
         
         try:
-            mse = mean_squared_error(t1_concentration, t1_concentration_pred)
-            pcc = pearson_corr_coef(t1_concentration_pred, t1_concentration)[0]
+            mse = mean_squared_error(self.t1_concentration, t1_concentration_pred)
+            pcc = pearson_corr_coef(self.t1_concentration, t1_concentration_pred)[0]
             if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
             if np.isnan(pcc): raise Exception("Invalid value of PCC")
         except Exception as e:
@@ -154,10 +153,10 @@ class ESM(Thread):
             return
         
         
-        reg_err = np.abs(t1_concentration_pred - t1_concentration)
+        reg_err = np.abs(t1_concentration_pred - self.t1_concentration)
         
         lock.acquire()
-        save_prediction_plot(t0_concentration, t1_concentration_pred, t1_concentration, self.subj, self.subj + 'test/ESM_' + date + '.png', mse, pcc)
+        save_prediction_plot(t0_concentration, t1_concentration_pred, self.t1_concentration, self.subj, self.subj + 'test/ESM_' + date + '.png', mse, pcc)
         logging.info(f"Saving prediction in {self.subj + 'test/ESM_' + date + '.png'}")
         total_mse.append(mse)
         total_pcc.append(pcc)
@@ -267,8 +266,11 @@ if __name__=="__main__":
         works.remove(w)
         
     ### OUTPUT ###
-   
-    np.savetxt(f"{output_mat}ESM_{category}_regions_{date}.csv", np.mean(np.array(total_reg_err), axis=0), delimiter=',')
+    avg_reg_err = np.mean(total_reg_err, axis=0)
+    avg_reg_err_filename = output_res+f'ESM_region_{date}.png'
+    save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
+    np.savetxt(f"{output_mat}ESM_{category}_regions_{date}.csv", avg_reg_err, delimiter=',')
+    
     pt_avg.add_row([round(np.mean(total_mse, axis=0), digits), round(np.std(total_mse, axis=0), 2), round(np.mean(total_pcc, axis=0), digits), round(np.std(total_pcc, axis=0), 2)])
 
     total_time = time() - total_time

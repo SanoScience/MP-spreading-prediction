@@ -22,8 +22,8 @@ import numpy as np
 from scipy.stats import pearsonr as pearson_corr_coef
 from sklearn.metrics import mean_squared_error
 
-from utils_vis import save_prediction_plot
-from utils import drop_data_in_connect_matrix, load_matrix
+from utils_vis import *
+from utils import *
 from datetime import datetime
 from prettytable import PrettyTable
 import yaml
@@ -32,8 +32,8 @@ import warnings
 
 np.seterr(all = 'raise')
 date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
-logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.ERROR, force=True, filename = f"trace_NDM_{date}.log")
-digits = 5
+logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_NDM_{date}.log")
+digits = 4
 
 class NDM(Thread):
     def __init__(self, subject, paths, downsample = False):
@@ -175,7 +175,7 @@ class NDM(Thread):
         save_prediction_plot(self.t0_concentration, t1_concentration_pred, self.t1_concentration, self.subject, os.path.join(self.subject, 'test/NDM_' + date + '.png'), mse, pcc)
         mse_list.append(mse)
         pcc_list.append(pcc)
-        reg_err_list.append(reg_err)
+        total_reg_err.append(reg_err)
         pt_subs.add_row([self.subject, round(mse,digits), round(pcc,digits)])
         lock.release()
 
@@ -237,7 +237,7 @@ if __name__ == '__main__':
 
     mse_list = []
     pcc_list = []
-    reg_err_list = []
+    total_reg_err = []
     
     total_time = time()
     
@@ -259,8 +259,12 @@ if __name__ == '__main__':
         
     
     ### OUTPUTS ###
+    
+    avg_reg_err = np.mean(total_reg_err, axis=0)
+    avg_reg_err_filename = output_res+f'NDM_region_{date}.png'
+    save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
+    np.savetxt(f"{output_mat}NDM_{category}_regions_{date}.csv", avg_reg_err, delimiter=',')
 
-    np.savetxt(f"{output_mat}NDM_{category}_regions_{date}.csv", np.mean(np.array(reg_err_list), axis=0), delimiter=',')
     pt_avg.add_row([round(np.mean(mse_list, axis=0), digits), round(np.std(mse_list, axis=0), 2), round(np.mean(pcc_list, axis=0), digits), round(np.std(pcc_list, axis=0), 2)])
 
     total_time = time() - total_time

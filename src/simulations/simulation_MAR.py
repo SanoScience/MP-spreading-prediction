@@ -29,7 +29,7 @@ from sklearn.metrics import mean_squared_error
 np.seterr(all = 'raise')
 date = str(datetime.now().strftime('%y-%m-%d_%H:%M:%S'))
 logging.basicConfig(format='%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d,%H:%M:%S', level=logging.INFO, force=True, filename = f"trace_MAR_{date}.log")
-digits = 5
+digits = 4
 
 class MAR(Thread):
     def __init__(self, subject, paths):
@@ -368,7 +368,11 @@ if __name__ == '__main__':
 
     ### OUTPUT STATS ###
     np.savetxt(f"{output_mat}MAR_{category}_{date}.csv", np.mean(np.array(list(A_matrices.values())), axis=0), delimiter=',')
-    np.savetxt(f"{output_mat}MAR_{category}_regions_{date}.csv", np.mean(np.array(total_reg_err), axis=0), delimiter=',')
+    
+    avg_reg_err = np.mean(total_reg_err, axis=0)
+    avg_reg_err_filename = output_res+f'MAR_region_{date}.png'    
+    save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
+    np.savetxt(f"{output_mat}MAR_{category}_regions_{date}.csv", avg_reg_err, delimiter=',')
 
     pt_avg = PrettyTable()
     pt_avg.field_names = ["Avg MSE test ", "SD MSE test", "Avg Pearson test", "SD Pearson test"]

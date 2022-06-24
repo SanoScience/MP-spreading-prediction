@@ -6,9 +6,13 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 import seaborn as sns
+from matplotlib.collections import LineCollection
+from matplotlib.colors import ListedColormap, BoundaryNorm
 
 #sns.set_theme(style="darkgrid")
 #sns.set_palette(['#390099', '#FF0054', '#00A6FB'])
+
+digits = 4
 
 def visualize_NIfTI_data(data, depths, time_idx=None):
     ''' Visualize provided depths from NIfTI data at the specific time. 
@@ -46,10 +50,10 @@ def visualize_diffusion_timeplot(matrix, timestep, total_time, save_dir=None):
     plt.show() 
     
 def save_prediction_plot(baseline, prediction, followup, subject, filepath, error=None, corr_coeff=None):    
-    plt.figure(figsize=(20, 15))
-    plt.plot(baseline, '-', marker='o', c='#390099', label='baseline concentration', linewidth=2)
-    plt.plot(followup, '-', marker='o', c='#00A6FB', label='followup concentration', linewidth=2)
-    plt.plot(prediction, '-', marker='o', c='#FF0054', label='predicted concentration', linewidth=4, alpha = 0.5)
+    plt.figure(figsize=(18, 10))
+    plt.plot(baseline, '-', marker='o', c='#390099', label='baseline', linewidth=1)
+    plt.plot(followup, '-', marker='o', c='#00A6FB', label='followup', linewidth=1)
+    plt.plot(prediction, '-', marker='o', c='#FF0054', label='predicted', linewidth=4, alpha = 0.4)
         
     '''
     plt.figure(figsize=(25, 10))
@@ -58,19 +62,42 @@ def save_prediction_plot(baseline, prediction, followup, subject, filepath, erro
     sns.lineplot(data=prediction, label='predicted followup concentration', marker='o', dashes=True, markers=True, linewidth=3, alpha = 0.5)
     '''
     
-    plt.legend(bbox_to_anchor=(1, 1.065), loc='upper right', borderaxespad=0.1, fontsize=12)
-    plt.xlabel('ROI (166 regions of AAL3 atlas)', fontsize=12)
-    plt.ylabel('concentration of misfolded proteins', fontsize=12)
+    plt.legend(bbox_to_anchor=(0, 1), loc='upper left', fontsize=22)
+    plt.xlabel('ROI (166 regions of AAL3 atlas)', fontsize=22)
+    plt.ylabel('Concentration of Amyloid-Beta', fontsize=22)
     plt.xlim(-1, len(baseline))
-    plt.xticks(np.arange(0, len(baseline), step=5), fontsize=12)
+    plt.yticks(fontsize=18)
+    plt.xticks(np.arange(len(baseline), step=2), fontsize=10, rotation=35)
     plt.grid(True)
     plt.tight_layout()
     
-    if error is not None: plt.title(f'Subject: {subject.split(os.sep)[-2]} \nError between true and predicted t1: {error}\nPearson correlation coeff: {corr_coeff}')
-    plt.savefig(filepath)
+    if error is not None: plt.title(f'Subject: {subject.split(os.sep)[-2]}, MSE: {round(error, digits)}, PCC: {round(corr_coeff, digits)}', fontsize=22)
+    plt.savefig(filepath, bbox_inches='tight')
     plt.close()
     
     return 
+
+def save_avg_regional_errors(avg_reg_err, avg_reg_err_filename):
+    #for i in avg_reg_err:
+    #    plt.hist(i)
+    
+    
+    plt.figure(figsize=(20, 10))
+    colors = [0, 0, 0]
+    for i in range(0, len(avg_reg_err)-1):
+        curr_col = avg_reg_err[i+1]/np.max(avg_reg_err)
+        colors = [max(curr_col, colors[0]), 0, 0]
+        plt.plot([i, i+1], [avg_reg_err[i], avg_reg_err[i+1]], linewidth=3, c=colors)
+        colors = [curr_col, 0, 0]
+    
+    plt.ylabel('Regional error', fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlim(-1, len(avg_reg_err))
+    plt.xticks(np.arange(len(avg_reg_err), step=2), fontsize=10, rotation=35)
+    plt.xlabel('ROI (166 regions of AAL3 atlas)', fontsize=14)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(avg_reg_err_filename)
     
 def visualize_error(error):
     plt.figure(figsize=(15, 5))
