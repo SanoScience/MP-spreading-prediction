@@ -98,7 +98,7 @@ class MAR(Thread):
                     break
 
                 try:
-                    gradient = (-(self.t1_concentration - (self.A * self.B) @ self.t0_concentration) @ self.t0_concentration.T) * self.B
+                    gradient = (-(self.t1_concentration - (self.A * self.B) @ self.t0_concentration) @ self.t0_concentration.T) * self.B + lam * np.sum(np.abs(self.A))
                     norm = np.linalg.norm(gradient)
                     if norm <= self.gradient_thr:
                         logging.info(f"Gradient for subject {self.subject} met termination criterion")
