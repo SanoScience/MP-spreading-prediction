@@ -69,7 +69,7 @@ class ESM(Thread):
             # NOTE Initial P has to be explored for different values (i.e. 0.5 instead of 1)
             P = np.array(np.where(self.t0>0, 1, 0), dtype=np.float64)
             iterations = 2 # found through empirical trials
-            timestep = 1e-5
+            timestep = 1e-2
         except Exception as e:
             logging.error(f"Error while initializing variables: {e}")
             return self.t0
@@ -127,25 +127,25 @@ class ESM(Thread):
             self.cm = drop_data_in_connect_matrix(load_matrix(paths['CM']))
             # ESM uses self connections for inner propagation (CM has a diagonal set to 0 due to normalization during CM generation)
             self.cm += np.identity(self.cm.shape[0])
-            t0_concentration = load_matrix(paths['baseline'])
-            self.t0 = t0_concentration.copy()
+            self.t0_concentration = load_matrix(paths['baseline'])
+            self.t0 = np.copy(self.t0_concentration)
             self.t1_concentration = load_matrix(paths['followup'])
         except Exception as e:
             logging.error(f'Error appening while loading data of subject {self.subj}. Traceback: {e}')
             return
 
         try:
-            t1_concentration_pred = self.simulation()
+            self.t1_concentration_pred = self.simulation()
 
-            t1_concentration_pred = self.drop_negative_predictions(t1_concentration_pred)
-            if np.isnan(t1_concentration_pred).any() or np.isinf(t1_concentration_pred).any(): raise Exception("Discarding prediction")
+            self.t1_concentration_pred = self.drop_negative_predictions(self.t1_concentration_pred)
+            if np.isnan(self.t1_concentration_pred).any() or np.isinf(self.t1_concentration_pred).any(): raise Exception("Discarding prediction")
         except Exception as e:
             logging.error(f'Error during simulation for subject {self.subj}. Traceback: {e}')
             return
         
         try:
-            mse = mean_squared_error(self.t1_concentration, t1_concentration_pred)
-            pcc = pearson_corr_coef(self.t1_concentration, t1_concentration_pred)[0]
+            mse = mean_squared_error(self.t1_concentration, self.t1_concentration_pred)
+            pcc = pearson_corr_coef(self.t1_concentration, self.t1_concentration_pred)[0]
             if np.isnan(mse) or np.isinf(mse): raise Exception("Invalid value of MSE")
             if np.isnan(pcc): raise Exception("Invalid value of PCC")
         except Exception as e:
@@ -153,10 +153,10 @@ class ESM(Thread):
             return
         
         
-        reg_err = np.abs(t1_concentration_pred - self.t1_concentration)
+        reg_err = np.abs(self.t1_concentration_pred - self.t1_concentration)
         
         lock.acquire()
-        save_prediction_plot(t0_concentration, t1_concentration_pred, self.t1_concentration, self.subj, self.subj + 'test/ESM_' + date + '.png', mse, pcc)
+        save_prediction_plot(self.t0_concentration, self.t1_concentration_pred, self.t1_concentration, self.subj, self.subj + 'test/ESM_' + date + '.png', mse, pcc)
         logging.info(f"Saving prediction in {self.subj + 'test/ESM_' + date + '.png'}")
         total_mse.append(mse)
         total_pcc.append(pcc)
