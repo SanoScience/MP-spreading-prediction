@@ -67,7 +67,7 @@ def save_prediction_plot(baseline, prediction, followup, subject, filepath, erro
     plt.ylabel('Concentration of Amyloid-Beta', fontsize=22)
     plt.xlim(-1, len(baseline))
     plt.yticks(fontsize=18)
-    plt.xticks(np.arange(len(baseline), step=2), fontsize=10, rotation=35)
+    plt.xticks(np.arange(len(baseline), step=2), fontsize=12, rotation=40)
     plt.grid(True)
     plt.tight_layout()
     
@@ -90,11 +90,11 @@ def save_avg_regional_errors(avg_reg_err, avg_reg_err_filename):
         plt.plot([i, i+1], [avg_reg_err[i], avg_reg_err[i+1]], linewidth=3, c=colors)
         colors = [curr_col, 0, 0]
     
-    plt.ylabel('Regional error', fontsize=14)
-    plt.yticks(fontsize=14)
+    plt.ylabel('Regional error', fontsize=18)
+    plt.yticks(fontsize=16)
     plt.xlim(-1, len(avg_reg_err))
-    plt.xticks(np.arange(len(avg_reg_err), step=2), fontsize=10, rotation=35)
-    plt.xlabel('ROI (166 regions of AAL3 atlas)', fontsize=14)
+    plt.xticks(np.arange(len(avg_reg_err), step=2), fontsize=12, rotation=40)
+    plt.xlabel('ROI (166 regions of AAL3 atlas)', fontsize=18)
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(avg_reg_err_filename)
