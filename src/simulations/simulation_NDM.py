@@ -29,6 +29,7 @@ from prettytable import PrettyTable
 import yaml
 import networkx as nx
 import warnings
+import re
 
 np.seterr(all = 'raise')
 date = datetime.now().strftime('%y-%m-%d_%H:%M:%S')
@@ -124,10 +125,10 @@ class NDM(Thread):
             os.makedirs(self.subject+'test/')    
 
         try:
-            self.cm = drop_data_in_connect_matrix(load_matrix(paths['CM']))
+            self.cm = drop_data_in_connect_matrix(load_matrix(self.paths['CM']))
             #connect_matrix = prepare_cm(connect_matrix)
-            self.t0_concentration = load_matrix(paths['baseline'])
-            self.t1_concentration = load_matrix(paths['followup'])
+            self.t0_concentration = load_matrix(self.paths['baseline'])
+            self.t1_concentration = load_matrix(self.paths['followup'])
             self.calc_laplacian()  
         except Exception as e:
             logging.error(f"Error during data load for subject {self.subject}. Traceback: ")
@@ -173,9 +174,9 @@ class NDM(Thread):
         
         lock.acquire()
         save_prediction_plot(self.t0_concentration, t1_concentration_pred, self.t1_concentration, self.subject, os.path.join(self.subject, 'test/NDM_' + date + '.png'), mse, pcc)
-        mse_list.append(mse)
-        pcc_list.append(pcc)
-        total_reg_err.append(reg_err)
+        total_mse[self.subject] = mse
+        total_pcc[self.subject] = pcc
+        total_reg_err[self.subject] = reg_err
         pt_subs.add_row([self.subject, round(mse,digits), round(pcc,digits)])
         lock.release()
 
@@ -229,21 +230,21 @@ if __name__ == '__main__':
     ### SIMULATIONS ###
 
     pt_avg = PrettyTable()
-    pt_avg.field_names = ["Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
+    pt_avg.field_names = ["CG", "Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
     
     pt_subs = PrettyTable()
     pt_subs.field_names = ["ID", "MSE", "Pearson"]
     pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
-    mse_list = []
-    pcc_list = []
-    total_reg_err = []
+    total_mse = {}
+    total_pcc = {}
+    total_reg_err = {}
     
     total_time = time()
     
     lock = Lock()
     works = []
-    for subj, paths in dataset.items():
+    for subj, paths in tqdm(dataset.items()):
         works.append(NDM(subj, paths))
         works[-1].start()
 
@@ -260,15 +261,40 @@ if __name__ == '__main__':
     
     ### OUTPUTS ###
     
-    avg_reg_err = np.mean(total_reg_err, axis=0)
-    avg_reg_err_filename = output_res+f'NDM_region_{date}.png'
-    save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
-    np.savetxt(f"{output_mat}NDM_{category}_regions_{date}.csv", avg_reg_err, delimiter=',')
+    categories = ['AD', 'LMCI', 'MCI', 'EMCI', 'CN', 'Decreasing', 'Increasing']
+    
+    for c in categories:
+        cat_reg_err = []
+        cat_total_mse = []
+        cat_total_pcc = []
+        for sub in total_reg_err.keys():
+            if re.match(rf".*sub-{c}.*", sub):
+                cat_reg_err.append(total_reg_err[sub])
+                cat_total_mse.append(total_mse[sub])
+                cat_total_pcc.append(total_pcc[sub])
 
-    pt_avg.add_row([round(np.mean(mse_list, axis=0), digits), round(np.std(mse_list, axis=0), 2), round(np.mean(pcc_list, axis=0), digits), round(np.std(pcc_list, axis=0), 2)])
+        if len(cat_reg_err) == 0:
+            continue
+        avg_reg_err = np.mean(cat_reg_err, axis=0)
+        avg_reg_err_filename = output_res +f'NDM_region_{c}_{date}.png'
+        save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
+        np.savetxt(f"{output_mat}NDM_{c}_regions_{c}_{date}.csv", avg_reg_err, delimiter=',')
+        avg_mse = np.mean(cat_total_mse, axis=0)
+        std_mse = np.std(cat_total_mse, axis=0)
+        avg_pcc = np.mean(cat_total_pcc, axis=0)
+        std_pcc = np.std(cat_total_pcc, axis=0)
+    
+        pt_avg.add_row([c, round(avg_mse, digits), round(std_mse, 2), round(avg_pcc, digits), round(std_pcc, 2)])
+        
+    if category not in categories:
+        pt_avg.add_row([category, round(np.mean(list(total_mse.values())), digits), round(np.std(list(total_mse.values())), 2), round(np.mean(list(total_pcc.values())), digits), round(np.std(list(total_pcc.values())), 2)])
+        avg_reg_err = np.mean(list(total_reg_err.values()), axis=0)
+        avg_reg_err_filename = output_res +f'ESM_region_{category}_{date}.png'
+        save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
+        np.savetxt(f"{output_mat}NDM_{category}_regions_{date}.csv", avg_reg_err, delimiter=',')
 
     total_time = time() - total_time
-    filename = f"{output_res}/NDM_{category}_{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}.txt"
+    filename = f"{output_res}NDM_{category}_{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}.txt"
     out_file= open(filename, 'w')
     out_file.write(f"Category: {category}\n")
     out_file.write(f"Cores: {num_cores}\n")

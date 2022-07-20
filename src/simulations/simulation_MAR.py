@@ -12,7 +12,7 @@ A.Crimi et al. "Effective Brain Connectivity Through a Constrained Autoregressiv
 import os
 import logging
 import sys
-from time import time
+from time import time, sleep
 import json
 from tqdm import tqdm 
 import numpy as np
@@ -25,6 +25,7 @@ from multiprocessing import cpu_count
 from prettytable import PrettyTable
 import yaml
 from sklearn.metrics import mean_squared_error
+import re
 
 np.seterr(all = 'raise')
 date = str(datetime.now().strftime('%y-%m-%d_%H:%M:%S'))
@@ -207,8 +208,6 @@ def training():
     return avg_coeff_matrix   
 
 def test():
-    mse_subj = []
-    pcc_subj = []
     reg_err = []
     for subj, paths in test_set.items():
         logging.info(f"Test on subject {subj}")
@@ -227,15 +226,11 @@ def test():
             logging.error(e)
             continue
         else:
-            mse_subj.append(mse)
-            pcc_subj.append(pcc)
-            reg_err.append(regional_error)
+            total_mse[subj] = mse
+            total_pcc[subj] = pcc
+            total_reg_err[subj] = reg_err
             test_scores[subj] = [mse, pcc]
-
-    total_mse.append(np.mean(mse_subj, axis=0))
-    total_pcc.append(np.mean(pcc_subj, axis=0))
-    total_reg_err.append(np.mean(reg_err, axis=0))
-
+            
     return
 
 
@@ -331,9 +326,9 @@ if __name__ == '__main__':
 
     training_scores = {}
     test_scores = {}
-    total_mse = []
-    total_pcc = []
-    total_reg_err = []
+    total_mse = {}
+    total_pcc = {}
+    total_reg_err = {}
 
     total_time = time()
     train_time = 0
@@ -366,17 +361,51 @@ if __name__ == '__main__':
         test()
         logging.info(f"*** Fold {i} completed ***")
 
+    total_time = time() - total_time
+    sleep(1)   
     ### OUTPUT STATS ###
+    categories = ['AD', 'LMCI', 'MCI', 'EMCI', 'CN', 'Decreasing', 'Increasing']
+    
+    pt_avg = PrettyTable()
+    pt_avg.field_names = ["CG", "Avg MSE test ", "SD MSE test", "Avg Pearson test", "SD Pearson test"]
+    #pt_avg.add_row([round(np.mean(total_mse), digits), round(np.std(total_mse), 2), round(np.mean(total_pcc), digits), round(np.std(total_pcc), 2)])
+    
+    for c in categories:
+        cat_reg_err = []
+        cat_total_mse = []
+        cat_total_pcc = []
+        for sub in total_reg_err.keys():
+            if re.match(rf".*sub-{c}.*", sub):
+                cat_reg_err.append(total_reg_err[sub])
+                cat_total_mse.append(total_mse[sub])
+                cat_total_pcc.append(total_pcc[sub])
+
+        if len(cat_reg_err) == 0:
+            continue
+        avg_reg_err = np.mean(cat_reg_err, axis=0)
+        avg_reg_err_filename = output_res +f'MAR_region_{c}_{date}.png'
+        save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
+        np.savetxt(f"{output_mat}MAR_{c}_regions_{date}.csv", avg_reg_err, delimiter=',')
+        avg_mse = np.mean(cat_total_mse, axis=0)
+        std_mse = np.std(cat_total_mse, axis=0)
+        avg_pcc = np.mean(cat_total_pcc, axis=0)
+        std_pcc = np.std(cat_total_pcc, axis=0)
+        
+        pt_avg.add_row([c, round(avg_mse, digits), round(std_mse, 2), round(avg_pcc, digits), round(std_pcc, 2)])
+    
+    if category not in categories:
+        pt_avg.add_row([category, round(np.mean(list(total_mse.values())), digits), round(np.std(list(total_mse.values())), 2), round(np.mean(list(total_pcc.values())), digits), round(np.std(list(total_pcc.values())), 2)])
+        avg_reg_err = np.mean(list(total_reg_err.values()), axis=0)
+        avg_reg_err_filename = output_res +f'MAR_region_{category}_{date}.png'
+        save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
+        np.savetxt(f"{output_mat}MAR_{category}_regions_{date}.csv", avg_reg_err, delimiter=',')
+    
     np.savetxt(f"{output_mat}MAR_{category}_{date}.csv", np.mean(np.array(list(A_matrices.values())), axis=0), delimiter=',')
     
-    avg_reg_err = np.mean(total_reg_err, axis=0)
-    avg_reg_err_filename = output_res+f'MAR_region_{date}.png'    
-    save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
-    np.savetxt(f"{output_mat}MAR_{category}_regions_{date}.csv", avg_reg_err, delimiter=',')
-
-    pt_avg = PrettyTable()
-    pt_avg.field_names = ["Avg MSE test ", "SD MSE test", "Avg Pearson test", "SD Pearson test"]
-    pt_avg.add_row([round(np.mean(total_mse), digits), round(np.std(total_mse), 2), round(np.mean(total_pcc), digits), round(np.std(total_pcc), 2)])
+    #avg_reg_err = np.mean(total_reg_err, axis=0)
+    #avg_reg_err_filename = output_res+f'MAR_region_{date}.png'    
+    #save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
+    #np.savetxt(f"{output_mat}MAR_{category}_regions_{date}.csv", avg_reg_err, delimiter=',')
         
     pt_train = PrettyTable()
     pt_train.field_names = ["ID", "Avg MSE train", "Avg Pearson train"]
@@ -396,7 +425,6 @@ if __name__ == '__main__':
         pcc_subj = [test_scores[s][1]]
         pt_test.add_row([s, round(np.mean(mse_subj), digits), round(np.mean(pcc_subj), digits)])
 
-    total_time = time() - total_time
     filename = f"{output_res}MAR_{category}_{date}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")

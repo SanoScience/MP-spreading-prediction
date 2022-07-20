@@ -3,7 +3,7 @@ set TF_ENABLE_ONEDNN_OPTS=0
 echo "ALL"
 python3 simulation_GCN.py 	ALL 	0 	20000
 python3 simulation_GCN.py 	ALL 	2	20000
-python3 simulation_GCN.py 	ALL	3	20000
+python3 simulation_GCN.py 	ALL	    3	20000
 
 echo "AD"
 python3 simulation_GCN.py 	AD   	0       20000

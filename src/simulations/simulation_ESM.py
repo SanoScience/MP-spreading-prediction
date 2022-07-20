@@ -19,7 +19,7 @@ from multiprocessing import cpu_count
 import os
 import logging
 import sys
-from time import time
+from time import time, sleep
 import warnings
 from prettytable import PrettyTable
 import yaml
@@ -27,6 +27,7 @@ import numpy as np
 from tqdm import tqdm
 from scipy.stats import pearsonr as pearson_corr_coef
 from sklearn.metrics import mean_squared_error
+import re
 
 from utils_vis import *
 from utils import *
@@ -124,12 +125,12 @@ class ESM(Thread):
         if not os.path.exists(self.subj + 'test/'):
                 os.makedirs(self.subj + 'test/')
         try:
-            self.cm = drop_data_in_connect_matrix(load_matrix(paths['CM']))
+            self.cm = drop_data_in_connect_matrix(load_matrix(self.paths['CM']))
             # ESM uses self connections for inner propagation (CM has a diagonal set to 0 due to normalization during CM generation)
             self.cm += np.identity(self.cm.shape[0])
-            self.t0_concentration = load_matrix(paths['baseline'])
+            self.t0_concentration = load_matrix(self.paths['baseline'])
             self.t0 = np.copy(self.t0_concentration)
-            self.t1_concentration = load_matrix(paths['followup'])
+            self.t1_concentration = load_matrix(self.paths['followup'])
         except Exception as e:
             logging.error(f'Error appening while loading data of subject {self.subj}. Traceback: {e}')
             return
@@ -158,9 +159,9 @@ class ESM(Thread):
         lock.acquire()
         save_prediction_plot(self.t0_concentration, self.t1_concentration_pred, self.t1_concentration, self.subj, self.subj + 'test/ESM_' + date + '.png', mse, pcc)
         logging.info(f"Saving prediction in {self.subj + 'test/ESM_' + date + '.png'}")
-        total_mse.append(mse)
-        total_pcc.append(pcc)
-        total_reg_err.append(reg_err)
+        total_mse[self.subj] = mse
+        total_pcc[self.subj] = pcc
+        total_reg_err[self.subj] = reg_err
         pt_subs.add_row([self.subj, round(mse,digits), round(pcc,digits)])
         lock.release()
             
@@ -238,15 +239,15 @@ if __name__=="__main__":
     ### SIMULATIONS ###
 
     pt_avg = PrettyTable()
-    pt_avg.field_names = ["Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
+    pt_avg.field_names = ["CG", "Avg MSE", "SD MSE", "Avg Pearson", "SD Pearson"]
     
     pt_subs = PrettyTable()
     pt_subs.field_names = ["ID", "MSE", "Pearson"]
     pt_subs.sortby = "ID" # Set the table always sorted by patient ID
 
-    total_mse = []
-    total_pcc = []
-    total_reg_err = []
+    total_mse = {}
+    total_pcc = {}
+    total_reg_err = {}
     
     total_time = time()
 
@@ -265,15 +266,43 @@ if __name__=="__main__":
         w.join()
         works.remove(w)
         
-    ### OUTPUT ###
-    avg_reg_err = np.mean(total_reg_err, axis=0)
-    avg_reg_err_filename = output_res+f'ESM_region_{date}.png'
-    save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
-    np.savetxt(f"{output_mat}ESM_{category}_regions_{date}.csv", avg_reg_err, delimiter=',')
-    
-    pt_avg.add_row([round(np.mean(total_mse, axis=0), digits), round(np.std(total_mse, axis=0), 2), round(np.mean(total_pcc, axis=0), digits), round(np.std(total_pcc, axis=0), 2)])
-
+        
     total_time = time() - total_time
+    sleep(1)   
+    ### OUTPUT ###
+    categories = ['AD', 'LMCI', 'MCI', 'EMCI', 'CN', 'Decreasing', 'Increasing']
+    
+    
+    for c in categories:
+        cat_reg_err = []
+        cat_total_mse = []
+        cat_total_pcc = []
+        for sub in total_reg_err.keys():
+            if re.match(rf".*sub-{c}.*", sub):
+                cat_reg_err.append(total_reg_err[sub])
+                cat_total_mse.append(total_mse[sub])
+                cat_total_pcc.append(total_pcc[sub])
+
+        if len(cat_reg_err) == 0:
+            continue
+        avg_reg_err = np.mean(cat_reg_err, axis=0)
+        avg_reg_err_filename = output_res +f'ESM_region_{c}_{date}.png'
+        save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
+        np.savetxt(f"{output_mat}ESM_{c}_regions_{date}.csv", avg_reg_err, delimiter=',')
+        avg_mse = np.mean(cat_total_mse, axis=0)
+        std_mse = np.std(cat_total_mse, axis=0)
+        avg_pcc = np.mean(cat_total_pcc, axis=0)
+        std_pcc = np.std(cat_total_pcc, axis=0)
+        
+        pt_avg.add_row([c, round(avg_mse, digits), round(std_mse, 2), round(avg_pcc, digits), round(std_pcc, 2)])
+    
+    if category not in categories:
+        pt_avg.add_row([category, round(np.mean(list(total_mse.values())), digits), round(np.std(list(total_mse.values())), 2), round(np.mean(list(total_pcc.values())), digits), round(np.std(list(total_pcc.values())), 2)])
+        avg_reg_err = np.mean(list(total_reg_err.values()), axis=0)
+        avg_reg_err_filename = output_res +f'ESM_region_{category}_{date}.png'
+        save_avg_regional_errors(avg_reg_err, avg_reg_err_filename)
+        np.savetxt(f"{output_mat}ESM_{category}_regions_{date}.csv", avg_reg_err, delimiter=',')
+
     filename = f"{output_res}ESM_{datetime.now().strftime('%y-%m-%d_%H:%M:%S')}.txt"
     out_file = open(filename, 'w')
     out_file.write(f"Category: {category}\n")
