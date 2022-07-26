@@ -1,0 +1,1002 @@
+{
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4434/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4434/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4434/ses-baseline/pet/sub-EMCI4434_ses-baseline_acq-AP_date-2012-02-17_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4434/ses-followup/pet/sub-EMCI4434_ses-followup_acq-AP_date-2014-02-25_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-12-15",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-03-11",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4434/sub-EMCI4434_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4944/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4944/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4944/ses-baseline/pet/sub-EMCI4944_ses-baseline_acq-AP_date-2013-01-09_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4944/ses-followup/pet/sub-EMCI4944_ses-followup_acq-AP_date-2015-01-06_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-10-12",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2015-01-15",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4944/sub-EMCI4944_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2407/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2407/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2407/ses-baseline/pet/sub-EMCI2407_ses-baseline_acq-AP_date-2013-12-17_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2407/ses-followup/pet/sub-EMCI2407_ses-followup_acq-AP_date-2015-11-26_trc-av45_pet.csv",
+        "CDR_t0_date": "2014-12-02",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2015-12-01",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2407/sub-EMCI2407_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2052/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2052/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2052/ses-baseline/pet/sub-EMCI2052_ses-baseline_acq-AP_date-2012-09-24_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2052/ses-followup/pet/sub-EMCI2052_ses-followup_acq-AP_date-2014-09-24_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-10-20",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-04-24",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2052/sub-EMCI2052_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6389/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6389/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6389/ses-baseline/pet/sub-AD6389_ses-baseline_acq-AP_date-2018-07-17_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6389/ses-followup/pet/sub-AD6389_ses-followup_acq-AP_date-2020-07-29_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-05-30",
+        "CDR_t0_score": 1.0,
+        "CDR_t1_date": "2020-07-31",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6389/sub-AD6389_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6100/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6100/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6100/ses-baseline/pet/sub-AD6100_ses-baseline_acq-AP_date-2018-02-20_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6100/ses-followup/pet/sub-AD6100_ses-followup_acq-AP_date-2020-01-28_trc-fbb_pet.csv",
+        "CDR_t0_date": "2017-10-24",
+        "CDR_t0_score": 1.0,
+        "CDR_t1_date": "2020-05-12",
+        "CDR_t1_score": 2.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6100/sub-AD6100_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6512/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6512/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6512/ses-baseline/pet/sub-MCI6512_ses-baseline_acq-AP_date-2018-09-27_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6512/ses-followup/pet/sub-MCI6512_ses-followup_acq-AP_date-2020-10-15_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-08-24",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2021-01-11",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6512/sub-MCI6512_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI0150/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI0150/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI0150/ses-baseline/pet/sub-MCI0150_ses-baseline_acq-AP_date-2007-05-18_trc-pib_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI0150/ses-followup/pet/sub-MCI0150_ses-followup_acq-AP_date-2009-03-25_trc-pib_pet.csv",
+        "CDR_t0_date": "2007-03-22",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2009-04-27",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI0150/sub-MCI0150_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6323/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6323/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6323/ses-baseline/pet/sub-CN6323_ses-baseline_acq-AP_date-2018-06-12_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6323/ses-followup/pet/sub-CN6323_ses-followup_acq-AP_date-2020-09-23_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-04-18",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2020-10-02",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6323/sub-CN6323_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4516/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4516/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4516/ses-baseline/pet/sub-CN4516_ses-baseline_acq-AP_date-2012-02-28_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4516/ses-followup/pet/sub-CN4516_ses-followup_acq-AP_date-2014-02-18_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-01-30",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2014-02-17",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4516/sub-CN4516_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4494/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4494/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4494/ses-baseline/pet/sub-AD4494_ses-baseline_acq-AP_date-2012-02-29_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4494/ses-followup/pet/sub-AD4494_ses-followup_acq-AP_date-2014-02-20_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-01-23",
+        "CDR_t0_score": 1.0,
+        "CDR_t1_date": "2014-02-10",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4494/sub-AD4494_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4240/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4240/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4240/ses-baseline/pet/sub-LMCI4240_ses-baseline_acq-AP_date-2011-10-04_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4240/ses-followup/pet/sub-LMCI4240_ses-followup_acq-AP_date-2013-10-01_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-09-16",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-10-22",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4240/sub-LMCI4240_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4199/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4199/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4199/ses-baseline/pet/sub-EMCI4199_ses-baseline_acq-AP_date-2011-09-28_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4199/ses-followup/pet/sub-EMCI4199_ses-followup_acq-AP_date-2013-10-09_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-08-17",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-10-13",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4199/sub-EMCI4199_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4168/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4168/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4168/ses-baseline/pet/sub-EMCI4168_ses-baseline_acq-AP_date-2011-09-13_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4168/ses-followup/pet/sub-EMCI4168_ses-followup_acq-AP_date-2013-10-04_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-08-08",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-09-13",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4168/sub-EMCI4168_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4430/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4430/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4430/ses-baseline/pet/sub-LMCI4430_ses-baseline_acq-AP_date-2012-02-15_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4430/ses-followup/pet/sub-LMCI4430_ses-followup_acq-AP_date-2014-02-10_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-12-13",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-02-06",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4430/sub-LMCI4430_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4757/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4757/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4757/ses-baseline/pet/sub-LMCI4757_ses-baseline_acq-AP_date-2012-06-21_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4757/ses-followup/pet/sub-LMCI4757_ses-followup_acq-AP_date-2014-06-25_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-05-31",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-07-07",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4757/sub-LMCI4757_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN0031/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN0031/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN0031/ses-baseline/pet/sub-CN0031_ses-baseline_acq-AP_date-2016-01-26_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN0031/ses-followup/pet/sub-CN0031_ses-followup_acq-AP_date-2018-04-18_trc-av45_pet.csv",
+        "CDR_t0_date": "2016-04-09",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2018-04-24",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN0031/sub-CN0031_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2007/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2007/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2007/ses-baseline/pet/sub-EMCI2007_ses-baseline_acq-AP_date-2013-08-09_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2007/ses-followup/pet/sub-EMCI2007_ses-followup_acq-AP_date-2015-08-19_trc-av45_pet.csv",
+        "CDR_t0_date": "2013-11-11",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2015-08-19",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2007/sub-EMCI2007_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6241/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6241/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6241/ses-baseline/pet/sub-MCI6241_ses-baseline_acq-AP_date-2018-06-07_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6241/ses-followup/pet/sub-MCI6241_ses-followup_acq-AP_date-2020-08-26_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-05-30",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2020-08-26",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6241/sub-MCI6241_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2068/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2068/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2068/ses-baseline/pet/sub-EMCI2068_ses-baseline_acq-AP_date-2012-10-17_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2068/ses-followup/pet/sub-EMCI2068_ses-followup_acq-AP_date-2014-11-05_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-10-19",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-11-13",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2068/sub-EMCI2068_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4215/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4215/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4215/ses-baseline/pet/sub-AD4215_ses-baseline_acq-AP_date-2011-10-24_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4215/ses-followup/pet/sub-AD4215_ses-followup_acq-AP_date-2013-11-05_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-08-26",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-11-07",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4215/sub-AD4215_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6067/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6067/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6067/ses-baseline/pet/sub-CN6067_ses-baseline_acq-AP_date-2017-10-13_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6067/ses-followup/pet/sub-CN6067_ses-followup_acq-AP_date-2019-10-01_trc-av45_pet.csv",
+        "CDR_t0_date": "2017-09-29",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2019-10-02",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6067/sub-CN6067_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN0751/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN0751/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN0751/ses-baseline/pet/sub-CN0751_ses-baseline_acq-AP_date-2012-09-05_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN0751/ses-followup/pet/sub-CN0751_ses-followup_acq-AP_date-2014-09-17_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-09-06",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2014-09-23",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN0751/sub-CN0751_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4507/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4507/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4507/ses-baseline/pet/sub-LMCI4507_ses-baseline_acq-AP_date-2018-05-29_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4507/ses-followup/pet/sub-LMCI4507_ses-followup_acq-AP_date-2020-11-05_trc-av45_pet.csv",
+        "CDR_t0_date": "2018-05-29",
+        "CDR_t0_score": 1.0,
+        "CDR_t1_date": "2020-05-22",
+        "CDR_t1_score": 2.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4507/sub-LMCI4507_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4276/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4276/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4276/ses-baseline/pet/sub-CN4276_ses-baseline_acq-AP_date-2017-04-07_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4276/ses-followup/pet/sub-CN4276_ses-followup_acq-AP_date-2019-04-15_trc-av45_pet.csv",
+        "CDR_t0_date": "2017-04-14",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2019-04-29",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4276/sub-CN4276_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6724/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6724/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6724/ses-baseline/pet/sub-MCI6724_ses-baseline_acq-AP_date-2019-07-10_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6724/ses-followup/pet/sub-MCI6724_ses-followup_acq-AP_date-2021-06-22_trc-fbb_pet.csv",
+        "CDR_t0_date": "2019-04-23",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2021-06-17",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6724/sub-MCI6724_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6515/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6515/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6515/ses-baseline/pet/sub-CN6515_ses-baseline_acq-AP_date-2018-08-22_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6515/ses-followup/pet/sub-CN6515_ses-followup_acq-AP_date-2020-10-14_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-07-23",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2020-10-08",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6515/sub-CN6515_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4675/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4675/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4675/ses-baseline/pet/sub-LMCI4675_ses-baseline_acq-AP_date-2012-05-16_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4675/ses-followup/pet/sub-LMCI4675_ses-followup_acq-AP_date-2014-05-06_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-04-10",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-04-28",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4675/sub-LMCI4675_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4188/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4188/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4188/ses-baseline/pet/sub-EMCI4188_ses-baseline_acq-AP_date-2011-10-11_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4188/ses-followup/pet/sub-EMCI4188_ses-followup_acq-AP_date-2013-10-08_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-08-24",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-10-09",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4188/sub-EMCI4188_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4136/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4136/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4136/ses-baseline/pet/sub-AD4136_ses-baseline_acq-AP_date-2011-08-30_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4136/ses-followup/pet/sub-AD4136_ses-followup_acq-AP_date-2013-09-03_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-07-27",
+        "CDR_t0_score": 1.0,
+        "CDR_t1_date": "2013-09-04",
+        "CDR_t1_score": 2.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4136/sub-AD4136_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4225/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4225/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4225/ses-baseline/pet/sub-CN4225_ses-baseline_acq-AP_date-2011-10-20_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4225/ses-followup/pet/sub-CN4225_ses-followup_acq-AP_date-2013-10-10_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-09-02",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2013-10-21",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4225/sub-CN4225_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4513/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4513/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4513/ses-baseline/pet/sub-EMCI4513_ses-baseline_acq-AP_date-2012-03-12_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4513/ses-followup/pet/sub-EMCI4513_ses-followup_acq-AP_date-2014-03-19_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-02-24",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-04-25",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4513/sub-EMCI4513_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4643/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4643/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4643/ses-baseline/pet/sub-CN4643_ses-baseline_acq-AP_date-2012-05-08_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4643/ses-followup/pet/sub-CN4643_ses-followup_acq-AP_date-2014-05-07_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-03-28",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2014-05-07",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4643/sub-CN4643_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4538/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4538/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4538/ses-baseline/pet/sub-LMCI4538_ses-baseline_acq-AP_date-2012-05-17_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4538/ses-followup/pet/sub-LMCI4538_ses-followup_acq-AP_date-2014-06-05_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-02-09",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-06-06",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4538/sub-LMCI4538_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4872/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4872/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4872/ses-baseline/pet/sub-CN4872_ses-baseline_acq-AP_date-2016-08-29_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4872/ses-followup/pet/sub-CN4872_ses-followup_acq-AP_date-2018-07-30_trc-av45_pet.csv",
+        "CDR_t0_date": "2017-03-09",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2018-07-20",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4872/sub-CN4872_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4143/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4143/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4143/ses-baseline/pet/sub-EMCI4143_ses-baseline_acq-AP_date-2011-08-30_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4143/ses-followup/pet/sub-EMCI4143_ses-followup_acq-AP_date-2013-09-23_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-07-22",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-09-02",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4143/sub-EMCI4143_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6788/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6788/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6788/ses-baseline/pet/sub-MCI6788_ses-baseline_acq-AP_date-2019-10-02_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6788/ses-followup/pet/sub-MCI6788_ses-followup_acq-AP_date-2021-11-30_trc-fbb_pet.csv",
+        "CDR_t0_date": "2019-08-06",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2021-12-06",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6788/sub-MCI6788_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4184/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4184/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4184/ses-baseline/pet/sub-EMCI4184_ses-baseline_acq-AP_date-2011-10-07_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4184/ses-followup/pet/sub-EMCI4184_ses-followup_acq-AP_date-2013-09-16_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-08-30",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-09-13",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4184/sub-EMCI4184_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6721/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6721/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6721/ses-baseline/pet/sub-AD6721_ses-baseline_acq-AP_date-2019-05-16_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6721/ses-followup/pet/sub-AD6721_ses-followup_acq-AP_date-2021-09-21_trc-fbb_pet.csv",
+        "CDR_t0_date": "2019-04-16",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2021-04-28",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6721/sub-AD6721_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4706/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4706/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4706/ses-baseline/pet/sub-EMCI4706_ses-baseline_acq-AP_date-2017-11-03_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4706/ses-followup/pet/sub-EMCI4706_ses-followup_acq-AP_date-2019-12-16_trc-av45_pet.csv",
+        "CDR_t0_date": "2017-10-20",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2019-12-23",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4706/sub-EMCI4706_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4089/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4089/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4089/ses-baseline/pet/sub-AD4089_ses-baseline_acq-AP_date-2011-08-12_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4089/ses-followup/pet/sub-AD4089_ses-followup_acq-AP_date-2013-08-26_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-06-16",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-07-26",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4089/sub-AD4089_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6640/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6640/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6640/ses-baseline/pet/sub-MCI6640_ses-baseline_acq-AP_date-2019-01-15_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6640/ses-followup/pet/sub-MCI6640_ses-followup_acq-AP_date-2021-06-29_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-11-30",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2021-05-05",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6640/sub-MCI6640_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4081/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4081/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4081/ses-baseline/pet/sub-CN4081_ses-baseline_acq-AP_date-2011-08-03_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4081/ses-followup/pet/sub-CN4081_ses-followup_acq-AP_date-2013-08-19_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-06-14",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2013-09-20",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4081/sub-CN4081_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4928/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4928/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4928/ses-baseline/pet/sub-LMCI4928_ses-baseline_acq-AP_date-2012-09-14_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4928/ses-followup/pet/sub-LMCI4928_ses-followup_acq-AP_date-2014-09-11_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-08-29",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-10-08",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4928/sub-LMCI4928_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4900/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4900/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4900/ses-baseline/pet/sub-CN4900_ses-baseline_acq-AP_date-2017-10-30_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4900/ses-followup/pet/sub-CN4900_ses-followup_acq-AP_date-2019-11-08_trc-av45_pet.csv",
+        "CDR_t0_date": "2017-11-03",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2019-11-11",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4900/sub-CN4900_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6455/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6455/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6455/ses-baseline/pet/sub-CN6455_ses-baseline_acq-AP_date-2018-07-11_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6455/ses-followup/pet/sub-CN6455_ses-followup_acq-AP_date-2020-09-30_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-06-22",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2020-10-05",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6455/sub-CN6455_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4187/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4187/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4187/ses-baseline/pet/sub-LMCI4187_ses-baseline_acq-AP_date-2011-08-24_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4187/ses-followup/pet/sub-LMCI4187_ses-followup_acq-AP_date-2013-09-18_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-08-15",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-03-03",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4187/sub-LMCI4187_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4584/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4584/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4584/ses-baseline/pet/sub-LMCI4584_ses-baseline_acq-AP_date-2012-04-20_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4584/ses-followup/pet/sub-LMCI4584_ses-followup_acq-AP_date-2014-04-03_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-03-05",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-04-02",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4584/sub-LMCI4584_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4448/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4448/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4448/ses-baseline/pet/sub-CN4448_ses-baseline_acq-AP_date-2012-02-17_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4448/ses-followup/pet/sub-CN4448_ses-followup_acq-AP_date-2014-02-12_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-01-11",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2014-02-18",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4448/sub-CN4448_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI1352/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI1352/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI1352/ses-baseline/pet/sub-MCI1352_ses-baseline_acq-AP_date-2013-03-22_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI1352/ses-followup/pet/sub-MCI1352_ses-followup_acq-AP_date-2015-04-23_trc-av45_pet.csv",
+        "CDR_t0_date": "2013-04-16",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2015-04-09",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI1352/sub-MCI1352_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4387/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4387/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4387/ses-baseline/pet/sub-CN4387_ses-baseline_acq-AP_date-2011-12-20_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4387/ses-followup/pet/sub-CN4387_ses-followup_acq-AP_date-2013-12-03_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-12-01",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2013-12-03",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4387/sub-CN4387_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6014/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6014/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6014/ses-baseline/pet/sub-CN6014_ses-baseline_acq-AP_date-2018-03-14_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6014/ses-followup/pet/sub-CN6014_ses-followup_acq-AP_date-2020-03-16_trc-av45_pet.csv",
+        "CDR_t0_date": "2018-02-16",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2021-05-13",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6014/sub-CN6014_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2187/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2187/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2187/ses-baseline/pet/sub-EMCI2187_ses-baseline_acq-AP_date-2013-03-21_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2187/ses-followup/pet/sub-EMCI2187_ses-followup_acq-AP_date-2015-08-19_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-12-12",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2015-04-29",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2187/sub-EMCI2187_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4051/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4051/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4051/ses-baseline/pet/sub-EMCI4051_ses-baseline_acq-AP_date-2011-07-18_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4051/ses-followup/pet/sub-EMCI4051_ses-followup_acq-AP_date-2013-06-17_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-05-17",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-07-08",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4051/sub-EMCI4051_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2238/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2238/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2238/ses-baseline/pet/sub-EMCI2238_ses-baseline_acq-AP_date-2013-02-19_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2238/ses-followup/pet/sub-EMCI2238_ses-followup_acq-AP_date-2015-03-18_trc-av45_pet.csv",
+        "CDR_t0_date": "2013-01-30",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2015-01-15",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2238/sub-EMCI2238_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2213/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2213/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2213/ses-baseline/pet/sub-EMCI2213_ses-baseline_acq-AP_date-2012-12-07_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2213/ses-followup/pet/sub-EMCI2213_ses-followup_acq-AP_date-2014-12-18_trc-av45_pet.csv",
+        "CDR_t0_date": "2013-02-15",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-12-19",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2213/sub-EMCI2213_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4919/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4919/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4919/ses-baseline/pet/sub-EMCI4919_ses-baseline_acq-AP_date-2012-09-20_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4919/ses-followup/pet/sub-EMCI4919_ses-followup_acq-AP_date-2014-09-16_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-08-28",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-09-18",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4919/sub-EMCI4919_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4715/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4715/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4715/ses-baseline/pet/sub-LMCI4715_ses-baseline_acq-AP_date-2012-06-06_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4715/ses-followup/pet/sub-LMCI4715_ses-followup_acq-AP_date-2014-06-03_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-04-30",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-06-06",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4715/sub-LMCI4715_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4455/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4455/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4455/ses-baseline/pet/sub-EMCI4455_ses-baseline_acq-AP_date-2012-02-27_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4455/ses-followup/pet/sub-EMCI4455_ses-followup_acq-AP_date-2014-04-24_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-01-12",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-02-12",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4455/sub-EMCI4455_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6009/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6009/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6009/ses-baseline/pet/sub-CN6009_ses-baseline_acq-AP_date-2017-05-16_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6009/ses-followup/pet/sub-CN6009_ses-followup_acq-AP_date-2019-07-19_trc-av45_pet.csv",
+        "CDR_t0_date": "2017-04-03",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2019-06-17",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6009/sub-CN6009_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4952/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4952/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4952/ses-baseline/pet/sub-CN4952_ses-baseline_acq-AP_date-2017-02-14_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4952/ses-followup/pet/sub-CN4952_ses-followup_acq-AP_date-2019-05-23_trc-av45_pet.csv",
+        "CDR_t0_date": "2017-02-21",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2019-06-15",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4952/sub-CN4952_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4488/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4488/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4488/ses-baseline/pet/sub-CN4488_ses-baseline_acq-AP_date-2016-02-25_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4488/ses-followup/pet/sub-CN4488_ses-followup_acq-AP_date-2017-09-22_trc-av45_pet.csv",
+        "CDR_t0_date": "2016-03-01",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2017-09-12",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4488/sub-CN4488_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4061/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4061/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4061/ses-baseline/pet/sub-LMCI4061_ses-baseline_acq-AP_date-2011-06-21_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4061/ses-followup/pet/sub-LMCI4061_ses-followup_acq-AP_date-2013-09-04_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-05-18",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-09-12",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4061/sub-LMCI4061_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4489/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4489/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4489/ses-baseline/pet/sub-LMCI4489_ses-baseline_acq-AP_date-2012-02-20_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4489/ses-followup/pet/sub-LMCI4489_ses-followup_acq-AP_date-2014-02-12_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-01-27",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-02-11",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4489/sub-LMCI4489_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6852/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6852/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6852/ses-baseline/pet/sub-MCI6852_ses-baseline_acq-AP_date-2020-02-19_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6852/ses-followup/pet/sub-MCI6852_ses-followup_acq-AP_date-2022-02-21_trc-av45_pet.csv",
+        "CDR_t0_date": "2020-02-11",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2022-03-04",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI6852/sub-MCI6852_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6796/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6796/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6796/ses-baseline/pet/sub-AD6796_ses-baseline_acq-AP_date-2019-09-19_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6796/ses-followup/pet/sub-AD6796_ses-followup_acq-AP_date-2021-08-24_trc-fbb_pet.csv",
+        "CDR_t0_date": "2019-08-20",
+        "CDR_t0_score": 1.0,
+        "CDR_t1_date": "2021-08-31",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6796/sub-AD6796_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4214/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4214/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4214/ses-baseline/pet/sub-LMCI4214_ses-baseline_acq-AP_date-2011-10-03_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4214/ses-followup/pet/sub-LMCI4214_ses-followup_acq-AP_date-2013-10-16_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-08-25",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-10-25",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4214/sub-LMCI4214_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4674/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4674/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4674/ses-baseline/pet/sub-EMCI4674_ses-baseline_acq-AP_date-2012-05-18_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4674/ses-followup/pet/sub-EMCI4674_ses-followup_acq-AP_date-2014-05-23_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-04-10",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-05-27",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4674/sub-EMCI4674_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4974/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4974/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4974/ses-baseline/pet/sub-EMCI4974_ses-baseline_acq-AP_date-2012-11-07_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4974/ses-followup/pet/sub-EMCI4974_ses-followup_acq-AP_date-2014-10-30_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-10-09",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-12-22",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4974/sub-EMCI4974_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6516/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6516/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6516/ses-baseline/pet/sub-CN6516_ses-baseline_acq-AP_date-2018-09-05_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6516/ses-followup/pet/sub-CN6516_ses-followup_acq-AP_date-2020-12-02_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-07-25",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2020-11-03",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6516/sub-CN6516_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6216/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6216/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6216/ses-baseline/pet/sub-AD6216_ses-baseline_acq-AP_date-2018-07-10_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6216/ses-followup/pet/sub-AD6216_ses-followup_acq-AP_date-2020-11-11_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-04-28",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2020-11-20",
+        "CDR_t1_score": 3.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6216/sub-AD6216_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4945/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4945/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4945/ses-baseline/pet/sub-LMCI4945_ses-baseline_acq-AP_date-2013-01-09_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4945/ses-followup/pet/sub-LMCI4945_ses-followup_acq-AP_date-2015-01-06_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-10-16",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2015-01-09",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4945/sub-LMCI4945_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2216/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2216/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2216/ses-baseline/pet/sub-EMCI2216_ses-baseline_acq-AP_date-2013-03-12_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2216/ses-followup/pet/sub-EMCI2216_ses-followup_acq-AP_date-2015-03-17_trc-av45_pet.csv",
+        "CDR_t0_date": "2013-04-03",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2015-03-25",
+        "CDR_t1_score": 2.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2216/sub-EMCI2216_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2191/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2191/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2191/ses-baseline/pet/sub-EMCI2191_ses-baseline_acq-AP_date-2013-04-12_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2191/ses-followup/pet/sub-EMCI2191_ses-followup_acq-AP_date-2015-04-01_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-03-14",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2015-09-08",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2191/sub-EMCI2191_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4568/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4568/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4568/ses-baseline/pet/sub-AD4568_ses-baseline_acq-AP_date-2012-03-22_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4568/ses-followup/pet/sub-AD4568_ses-followup_acq-AP_date-2014-04-02_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-02-27",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-03-27",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4568/sub-AD4568_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4114/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4114/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4114/ses-baseline/pet/sub-LMCI4114_ses-baseline_acq-AP_date-2011-07-27_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4114/ses-followup/pet/sub-LMCI4114_ses-followup_acq-AP_date-2013-07-12_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-07-06",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-07-25",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4114/sub-LMCI4114_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6264/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6264/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6264/ses-baseline/pet/sub-AD6264_ses-baseline_acq-AP_date-2018-09-24_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6264/ses-followup/pet/sub-AD6264_ses-followup_acq-AP_date-2020-10-12_trc-av45_pet.csv",
+        "CDR_t0_date": "2018-06-05",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2021-09-21",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6264/sub-AD6264_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4637/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4637/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4637/ses-baseline/pet/sub-CN4637_ses-baseline_acq-AP_date-2012-04-24_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4637/ses-followup/pet/sub-CN4637_ses-followup_acq-AP_date-2014-05-06_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-03-23",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2014-05-05",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4637/sub-CN4637_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4213/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4213/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4213/ses-baseline/pet/sub-CN4213_ses-baseline_acq-AP_date-2011-09-23_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4213/ses-followup/pet/sub-CN4213_ses-followup_acq-AP_date-2013-09-12_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-08-24",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2013-09-24",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4213/sub-CN4213_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI1418/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI1418/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI1418/ses-baseline/pet/sub-MCI1418_ses-baseline_acq-AP_date-2007-07-11_trc-pib_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI1418/ses-followup/pet/sub-MCI1418_ses-followup_acq-AP_date-2009-08-06_trc-pib_pet.csv",
+        "CDR_t0_date": "2007-07-03",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2009-08-17",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-MCI1418/sub-MCI1418_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2146/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2146/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2146/ses-baseline/pet/sub-EMCI2146_ses-baseline_acq-AP_date-2012-11-02_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2146/ses-followup/pet/sub-EMCI2146_ses-followup_acq-AP_date-2014-10-03_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-12-10",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2014-10-06",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2146/sub-EMCI2146_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4350/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4350/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4350/ses-baseline/pet/sub-CN4350_ses-baseline_acq-AP_date-2011-12-21_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4350/ses-followup/pet/sub-CN4350_ses-followup_acq-AP_date-2013-12-16_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-11-01",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2013-12-19",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4350/sub-CN4350_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4888/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4888/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4888/ses-baseline/pet/sub-LMCI4888_ses-baseline_acq-AP_date-2012-09-05_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4888/ses-followup/pet/sub-LMCI4888_ses-followup_acq-AP_date-2014-08-19_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-07-25",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-08-13",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4888/sub-LMCI4888_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2239/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2239/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2239/ses-baseline/pet/sub-EMCI2239_ses-baseline_acq-AP_date-2012-11-16_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2239/ses-followup/pet/sub-EMCI2239_ses-followup_acq-AP_date-2014-11-19_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-11-19",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-11-20",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2239/sub-EMCI2239_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6683/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6683/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6683/ses-baseline/pet/sub-AD6683_ses-baseline_acq-AP_date-2019-03-05_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6683/ses-followup/pet/sub-AD6683_ses-followup_acq-AP_date-2021-03-25_trc-fbb_pet.csv",
+        "CDR_t0_date": "2019-01-29",
+        "CDR_t0_score": 1.0,
+        "CDR_t1_date": "2021-02-24",
+        "CDR_t1_score": 2.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6683/sub-AD6683_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6513/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6513/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6513/ses-baseline/pet/sub-CN6513_ses-baseline_acq-AP_date-2018-10-09_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6513/ses-followup/pet/sub-CN6513_ses-followup_acq-AP_date-2020-08-18_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-07-19",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2020-10-12",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN6513/sub-CN6513_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2245/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2245/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2245/ses-baseline/pet/sub-EMCI2245_ses-baseline_acq-AP_date-2013-01-21_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2245/ses-followup/pet/sub-EMCI2245_ses-followup_acq-AP_date-2015-01-14_trc-av45_pet.csv",
+        "CDR_t0_date": "2013-01-24",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2015-01-16",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2245/sub-EMCI2245_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4030/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4030/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4030/ses-baseline/pet/sub-LMCI4030_ses-baseline_acq-AP_date-2011-06-23_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4030/ses-followup/pet/sub-LMCI4030_ses-followup_acq-AP_date-2013-05-29_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-04-27",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-05-17",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4030/sub-LMCI4030_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2201/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2201/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2201/ses-baseline/pet/sub-EMCI2201_ses-baseline_acq-AP_date-2013-01-11_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2201/ses-followup/pet/sub-EMCI2201_ses-followup_acq-AP_date-2015-02-18_trc-av45_pet.csv",
+        "CDR_t0_date": "2013-01-15",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2015-03-02",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI2201/sub-EMCI2201_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6142/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6142/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6142/ses-baseline/pet/sub-AD6142_ses-baseline_acq-AP_date-2018-01-17_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6142/ses-followup/pet/sub-AD6142_ses-followup_acq-AP_date-2020-03-04_trc-av45_pet.csv",
+        "CDR_t0_date": "2017-12-05",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2020-01-24",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6142/sub-AD6142_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4301/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4301/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4301/ses-baseline/pet/sub-EMCI4301_ses-baseline_acq-AP_date-2011-11-10_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4301/ses-followup/pet/sub-EMCI4301_ses-followup_acq-AP_date-2013-11-14_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-10-18",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2013-12-16",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4301/sub-EMCI4301_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6549/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6549/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6549/ses-baseline/pet/sub-AD6549_ses-baseline_acq-AP_date-2018-10-09_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6549/ses-followup/pet/sub-AD6549_ses-followup_acq-AP_date-2020-10-28_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-09-21",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2020-11-18",
+        "CDR_t1_score": 2.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6549/sub-AD6549_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4404/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4404/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4404/ses-baseline/pet/sub-EMCI4404_ses-baseline_acq-AP_date-2012-02-10_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4404/ses-followup/pet/sub-EMCI4404_ses-followup_acq-AP_date-2014-01-23_trc-av45_pet.csv",
+        "CDR_t0_date": "2011-12-03",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-01-22",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-EMCI4404/sub-EMCI4404_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN1261/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN1261/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN1261/ses-baseline/pet/sub-CN1261_ses-baseline_acq-AP_date-2013-03-05_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN1261/ses-followup/pet/sub-CN1261_ses-followup_acq-AP_date-2015-06-04_trc-av45_pet.csv",
+        "CDR_t0_date": "2013-04-08",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2015-07-02",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN1261/sub-CN1261_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4896/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4896/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4896/ses-baseline/pet/sub-LMCI4896_ses-baseline_acq-AP_date-2016-08-23_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4896/ses-followup/pet/sub-LMCI4896_ses-followup_acq-AP_date-2018-09-12_trc-av45_pet.csv",
+        "CDR_t0_date": "2016-08-31",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2018-08-14",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4896/sub-LMCI4896_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4626/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4626/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4626/ses-baseline/pet/sub-LMCI4626_ses-baseline_acq-AP_date-2012-04-09_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4626/ses-followup/pet/sub-LMCI4626_ses-followup_acq-AP_date-2014-05-13_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-03-21",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-06-16",
+        "CDR_t1_score": 0.5,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4626/sub-LMCI4626_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4951/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4951/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4951/ses-baseline/pet/sub-CN4951_ses-baseline_acq-AP_date-2017-02-14_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4951/ses-followup/pet/sub-CN4951_ses-followup_acq-AP_date-2019-05-23_trc-av45_pet.csv",
+        "CDR_t0_date": "2017-02-21",
+        "CDR_t0_score": 0.0,
+        "CDR_t1_date": "2019-06-09",
+        "CDR_t1_score": 0.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-CN4951/sub-CN4951_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6433/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6433/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6433/ses-baseline/pet/sub-AD6433_ses-baseline_acq-AP_date-2018-08-23_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6433/ses-followup/pet/sub-AD6433_ses-followup_acq-AP_date-2020-10-22_trc-fbb_pet.csv",
+        "CDR_t0_date": "2018-08-13",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2020-11-18",
+        "CDR_t1_score": 2.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6433/sub-AD6433_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4857/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4857/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4857/ses-baseline/pet/sub-LMCI4857_ses-baseline_acq-AP_date-2012-08-02_trc-av45_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4857/ses-followup/pet/sub-LMCI4857_ses-followup_acq-AP_date-2014-08-14_trc-av45_pet.csv",
+        "CDR_t0_date": "2012-07-12",
+        "CDR_t0_score": 0.5,
+        "CDR_t1_date": "2014-09-12",
+        "CDR_t1_score": 1.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4857/sub-LMCI4857_graph.npz"
+    },
+    "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6013/": {
+        "CM": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6013/ses-baseline/dwi/connect_matrix_norm.csv",
+        "baseline": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6013/ses-baseline/pet/sub-AD6013_ses-baseline_acq-AP_date-2017-05-30_trc-fbb_pet.csv",
+        "followup": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6013/ses-followup/pet/sub-AD6013_ses-followup_acq-AP_date-2019-07-25_trc-fbb_pet.csv",
+        "CDR_t0_date": "2017-04-14",
+        "CDR_t0_score": 1.0,
+        "CDR_t1_date": "2019-06-07",
+        "CDR_t1_score": 2.0,
+        "graph": "/home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6013/sub-AD6013_graph.npz"
+    }
+}
