@@ -2,7 +2,3 @@
 .ipynb_checkpoints
 __pycache__
 .env
-data/
-results/
-output/
-input/
