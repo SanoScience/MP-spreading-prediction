@@ -1,4 +1,4 @@
-# Spreading of misfolded proteins in Alzheimer’s Disease using Constrained Autoregressive Model
+# Prediction of misfolded proteins spreading in Alzheimer’s disease using machine learning
 
 ### Authors 
 Luca Gherardini <br> 
