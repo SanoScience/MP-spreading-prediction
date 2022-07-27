@@ -1,5 +1,3 @@
-from audioop import avg
-from re import A
 import pandas as pd
 import json
 import numpy as np

@@ -55,6 +55,8 @@ pvalues.append(test.pvalue)
 
 print(statistics)
 print(pvalues)
+
+'''
 fig = plt.figure(figsize=(25, 7))
 ax = fig.add_axes([0.1, 0.1, 0.8, 0.8]) # main axes
 width = 0.02  # the width of the bars
@@ -73,6 +75,7 @@ plt.xlabel('P-value', fontsize=22)
 plt.ylabel('Mann-Whitney U test', fontsize=22)
 plt.grid(True)
 plt.savefig('Mannwhitneyu_tests.png')
+'''
 
 ############### regional errors densities
 plt.figure(figsize=(20, 10))
