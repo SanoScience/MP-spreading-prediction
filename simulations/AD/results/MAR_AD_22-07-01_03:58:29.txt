@@ -1,0 +1,73 @@
+Category: AD
+Cores: 10
+Subjects: 24
+Training set size: 23
+Testing set size: 1
+Lambda coefficient: 0.0
+Matrix: I
+Binary matrix: no
+Iterations per patient: 3000000
+Folds: 24
+Elapsed time for training (s): 1046.92
+Total time (s): 1058.45
++---------------+-------------+------------------+-----------------+
+| Avg MSE test  | SD MSE test | Avg Pearson test | SD Pearson test |
++---------------+-------------+------------------+-----------------+
+|     0.0027    |     0.0     |      0.9662      |       0.02      |
++---------------+-------------+------------------+-----------------+
++------------------------------------------------------------+---------------+-------------------+
+|                             ID                             | Avg MSE train | Avg Pearson train |
++------------------------------------------------------------+---------------+-------------------+
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4009/ |     0.0012    |       0.9361      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4089/ |     0.0013    |       0.9609      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4136/ |     0.0009    |        0.95       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4215/ |     0.0013    |       0.9729      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4494/ |     0.0004    |       0.9722      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4500/ |     0.0008    |       0.976       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4568/ |     0.0003    |       0.979       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4591/ |     0.0006    |       0.9544      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4686/ |     0.0005    |       0.9744      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6013/ |     0.0005    |       0.9848      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6100/ |     0.0004    |       0.9794      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6142/ |     0.0004    |       0.983       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6179/ |     0.0008    |       0.9569      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6216/ |     0.0011    |       0.9753      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6264/ |     0.0009    |       0.9265      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6347/ |     0.0005    |       0.9894      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6377/ |     0.0008    |       0.9669      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6389/ |     0.0007    |       0.9546      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6433/ |     0.0008    |       0.9727      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6549/ |     0.0016    |       0.9157      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6683/ |     0.0002    |       0.9803      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6721/ |     0.0004    |       0.9798      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6784/ |     0.0005    |       0.9748      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6796/ |     0.0006    |       0.973       |
++------------------------------------------------------------+---------------+-------------------+
++------------------------------------------------------------+--------------+------------------+
+|                             ID                             | Avg MSE test | Avg Pearson test |
++------------------------------------------------------------+--------------+------------------+
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4009/ |    0.0021    |      0.9361      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4089/ |    0.0015    |      0.9609      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4136/ |    0.0052    |       0.95       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4215/ |    0.0113    |      0.9729      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4494/ |    0.0013    |      0.9722      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4500/ |    0.0016    |      0.976       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4568/ |    0.0057    |      0.979       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4591/ |    0.0012    |      0.9544      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4686/ |    0.0067    |      0.9744      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6013/ |    0.0009    |      0.9848      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6100/ |    0.0013    |      0.9794      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6142/ |    0.0007    |      0.983       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6179/ |    0.0021    |      0.9569      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6216/ |    0.0012    |      0.9753      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6264/ |    0.0009    |      0.9265      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6347/ |    0.0033    |      0.9894      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6377/ |    0.0083    |      0.9669      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6389/ |    0.0018    |      0.9546      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6433/ |    0.0027    |      0.9727      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6549/ |    0.0027    |      0.9157      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6683/ |    0.0008    |      0.9803      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6721/ |    0.0004    |      0.9798      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6784/ |    0.0011    |      0.9748      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6796/ |    0.0008    |      0.973       |
++------------------------------------------------------------+--------------+------------------+

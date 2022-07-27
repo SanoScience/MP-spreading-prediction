@@ -1,0 +1,119 @@
+Category: LMCI
+Cores: 10
+Subjects: 47
+Training set size: 46
+Testing set size: 1
+Lambda coefficient: 0.0
+Matrix: CM
+Binary matrix: yes
+Iterations per patient: 3000000
+Folds: 47
+Elapsed time for training (s): 258.62
+Total time (s): 280.54
++---------------+-------------+------------------+-----------------+
+| Avg MSE test  | SD MSE test | Avg Pearson test | SD Pearson test |
++---------------+-------------+------------------+-----------------+
+|     0.0382    |     0.03    |      0.4466      |       0.14      |
++---------------+-------------+------------------+-----------------+
++--------------------------------------------------------------+---------------+-------------------+
+|                              ID                              | Avg MSE train | Avg Pearson train |
++--------------------------------------------------------------+---------------+-------------------+
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4030/ |     0.0859    |       0.3375      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4061/ |     0.0623    |       0.3701      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4094/ |     0.0425    |       0.2216      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4114/ |     0.0422    |        0.23       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4115/ |     0.0131    |       0.1049      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4162/ |     0.035     |       0.4898      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4187/ |     0.0593    |       0.2534      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4197/ |     0.0574    |       0.5109      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4210/ |     0.034     |      -0.0053      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4214/ |     0.0382    |       0.2952      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4229/ |     0.0387    |       0.4908      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4240/ |     0.109     |       0.026       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4287/ |     0.0699    |       0.4318      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4354/ |     0.0247    |       0.297       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4414/ |     0.0762    |       0.1644      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4430/ |     0.0395    |       0.4893      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4458/ |     0.0432    |       0.6259      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4489/ |     0.0961    |       0.2809      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4507/ |     0.0288    |       0.6207      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4510/ |      0.03     |       0.4256      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4538/ |     0.0181    |       0.4135      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4584/ |     0.0281    |       0.5321      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4611/ |     0.0361    |       0.4082      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4626/ |     0.0285    |       0.4742      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4630/ |     0.0414    |       0.3204      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4631/ |     0.069     |       0.3947      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4654/ |     0.0748    |       0.4461      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4675/ |     0.0233    |       0.6501      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4712/ |     0.0399    |       0.3633      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4715/ |     0.0582    |       0.1491      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4722/ |     0.0602    |       0.3472      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4723/ |     0.0485    |       0.1852      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4729/ |     0.0427    |       0.4941      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4757/ |     0.0594    |       0.2479      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4767/ |     0.0307    |       0.424       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4782/ |     0.0276    |       0.2914      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4807/ |     0.0873    |       0.4927      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4857/ |     0.096     |       0.4121      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4869/ |     0.0469    |       0.3229      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4873/ |     0.034     |       0.4534      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4888/ |     0.1046    |       0.3049      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4896/ |     0.0242    |       0.5413      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4902/ |     0.0449    |       0.3282      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4928/ |     0.0651    |       0.3089      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4936/ |     0.0734    |       0.519       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4945/ |     0.0475    |       0.5009      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI5047/ |     0.0857    |       0.3539      |
++--------------------------------------------------------------+---------------+-------------------+
++--------------------------------------------------------------+--------------+------------------+
+|                              ID                              | Avg MSE test | Avg Pearson test |
++--------------------------------------------------------------+--------------+------------------+
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4030/ |    0.0554    |      0.4534      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4061/ |    0.0351    |      0.3951      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4094/ |    0.0267    |      0.3704      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4114/ |    0.0197    |      0.3459      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4115/ |    0.0065    |      0.3918      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4162/ |    0.0296    |      0.5601      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4187/ |    0.0335    |      0.3531      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4197/ |    0.0294    |      0.5653      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4210/ |    0.0544    |      0.0741      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4214/ |    0.0279    |      0.3805      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4229/ |    0.0283    |      0.5318      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4240/ |    0.2115    |     -0.0912      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4287/ |    0.0395    |      0.5135      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4354/ |    0.0164    |      0.3936      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4414/ |    0.0294    |      0.3893      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4430/ |    0.0295    |      0.517       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4458/ |    0.0355    |      0.6449      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4489/ |    0.0328    |      0.5348      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4507/ |    0.0414    |      0.666       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4510/ |    0.0288    |      0.5054      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4538/ |    0.0328    |      0.3593      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4584/ |    0.0284    |      0.5381      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4611/ |    0.0322    |      0.4082      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4626/ |    0.0293    |      0.4997      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4630/ |    0.0281    |      0.3075      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4631/ |    0.0401    |      0.4881      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4654/ |    0.0343    |      0.6011      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4675/ |    0.0253    |      0.6441      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4712/ |    0.0357    |      0.3842      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4715/ |    0.0427    |      0.3288      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4722/ |    0.0321    |      0.4244      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4723/ |    0.0285    |      0.3518      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4729/ |    0.0391    |      0.524       |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4757/ |    0.0469    |      0.2235      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4767/ |    0.0212    |      0.4883      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4782/ |    0.0178    |      0.4455      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4807/ |    0.0503    |      0.5065      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4857/ |    0.0504    |      0.5556      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4869/ |    0.0324    |      0.4295      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4873/ |    0.0307    |      0.4926      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4888/ |    0.0405    |      0.4258      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4896/ |    0.0264    |      0.4412      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4902/ |    0.024     |      0.4758      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4928/ |    0.0501    |      0.5029      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4936/ |    0.0693    |      0.6116      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI4945/ |    0.0468    |      0.5275      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-LMCI5047/ |    0.047     |      0.5104      |
++--------------------------------------------------------------+--------------+------------------+

@@ -1,0 +1,70 @@
+Category: AD
+Cores: 16
+Subjects: 24
+Training set size: 23
+Testing set size: 1
+Iterations per patient: 3000000
+Folds: 24
+Elapsed time for training (s): 0.10
+Total time (s): 0.12
++-------------+------------+
+| Avg AE test | SD AE test |
++-------------+------------+
+|     0.65    |    0.51    |
++-------------+------------+
++------------------------------------------------------------+--------------+
+|                             ID                             | Avg AE train |
++------------------------------------------------------------+--------------+
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4009/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4089/ |     0.5      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4136/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4215/ |     0.5      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4494/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4500/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4568/ |     0.5      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4591/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4686/ |     0.5      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6013/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6100/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6142/ |     0.5      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6179/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6216/ |     0.5      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6264/ |     0.5      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6347/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6377/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6389/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6433/ |     0.5      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6549/ |     0.5      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6683/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6721/ |     0.5      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6784/ |     1.0      |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6796/ |     1.0      |
++------------------------------------------------------------+--------------+
++------------------------------------------------------------+-------------+--------------+----------+
+|                             ID                             | Avg AE test | Assigned CDR | True CDR |
++------------------------------------------------------------+-------------+--------------+----------+
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4009/ |     0.6     |     1.4      |   2.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4089/ |     1.3     |     2.3      |   1.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4136/ |     0.8     |     1.2      |   2.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4215/ |     1.0     |     2.0      |   1.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4494/ |     0.8     |     1.8      |   1.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4500/ |     0.0     |     2.0      |   2.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4568/ |     1.3     |     1.8      |   0.5    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4591/ |     0.7     |     1.7      |   1.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD4686/ |     0.0     |     1.0      |   1.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6013/ |     0.2     |     2.2      |   2.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6100/ |     0.1     |     1.9      |   2.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6142/ |     1.3     |     2.3      |   1.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6179/ |     0.1     |     1.1      |   1.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6216/ |     1.3     |     1.7      |   3.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6264/ |     0.5     |     1.5      |   1.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6347/ |     0.1     |     2.1      |   2.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6377/ |     1.4     |     1.9      |   0.5    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6389/ |     0.7     |     1.7      |   1.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6433/ |     0.1     |     1.9      |   2.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6549/ |     0.0     |     2.0      |   2.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6683/ |     0.7     |     1.3      |   2.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6721/ |     0.1     |     1.1      |   1.0    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6784/ |     1.2     |     1.7      |   0.5    |
+| /home/hippo/Luca/ADNI_Dataset/ADNI/derivatives/sub-AD6796/ |     1.3     |     2.3      |   1.0    |
++------------------------------------------------------------+-------------+--------------+----------+

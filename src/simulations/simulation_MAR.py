@@ -208,7 +208,6 @@ def training():
     return avg_coeff_matrix   
 
 def test():
-    reg_err = []
     for subj, paths in test_set.items():
         logging.info(f"Test on subject {subj}")
         try:
@@ -228,7 +227,7 @@ def test():
         else:
             total_mse[subj] = mse
             total_pcc[subj] = pcc
-            total_reg_err[subj] = reg_err
+            total_reg_err[subj] = regional_error
             test_scores[subj] = [mse, pcc]
             
     return
