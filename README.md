@@ -21,7 +21,7 @@ To install the necessary dependencies you can use ```pip install -r requirements
        ├── sub-AD4009
        │   ├── ses-baseline
        │   │   ├── dwi
-       |   |   ├── anat
+       │   │   ├── anat
        │   │   └── pet
        │   └── ses-followup
        │       └── pet
