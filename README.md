@@ -3,13 +3,15 @@
 ### Authors 
 Luca Gherardini <br> 
 Alessandro Crimi <br>
-Aleksandra Pestka
-
+Aleksandra Zajdel (Pestka)
 
 Simulations and models used for predicting th progression of Alzheimer disease:
 - Constrained Multivariate Autoregressive Model (MAR)
 - Network Diffusion Model (NDM)
 - Epidemic Spreading Model (ESM)
+
+### Citing this work
+If you use this code, please cite this paper: "Prediction of misfolded Proteins  using Machine Learning]{Prediction of misfolded Proteins spreading in Alzheimer's disease using Machine Learning  and Spreading Models" Gherardini, Zajdel, Pini, Crimi
 
 ### Workflow
 1. Install dependencies.<br>
@@ -116,5 +118,4 @@ python3 simulation_CDRMR.py <category> <cores> <train_size> <iter_max> <N_fold>
         └── utils.py
 ```
 
-### Citing this work
-If you use this code, please cite this paper: TBA 
+
