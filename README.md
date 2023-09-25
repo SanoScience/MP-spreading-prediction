@@ -11,7 +11,7 @@ Simulations and models used for predicting th progression of Alzheimer disease:
 - Epidemic Spreading Model (ESM)
 
 ### Citing this work
-If you use this code, please cite this paper: "Prediction of misfolded Proteins  using Machine Learning]{Prediction of misfolded Proteins spreading in Alzheimer's disease using Machine Learning  and Spreading Models" Gherardini, Zajdel, Pini, Crimi
+If you use this code, please cite this paper: "Prediction of misfolded Proteins  using Machine Learning]{Prediction of misfolded Proteins spreading in Alzheimer's disease using Machine Learning  and Spreading Models" Gherardini, Zajdel, Pini, Crimi, Cerebral Cortex 2023
 
 ### Workflow
 1. Install dependencies.<br>
